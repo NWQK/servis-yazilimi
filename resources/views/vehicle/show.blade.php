@@ -1,4 +1,24 @@
 <div class="modal-body">
+    @if (auth()->user()->type !== 'client' && auth()->user()->can('create vehicle'))
+        <div class="mb-3 p-3 border rounded">
+            @if ($vehicle->qrCode)
+                <strong>QR etiketi: {{ $vehicle->qrCode->label }}</strong>
+                <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener" href="{{ route('vehicle-qr.print', ['ids' => [$vehicle->qrCode->id]]) }}">Tekrar yazdır</a>
+                <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener noreferrer" href="{{ $vehicle->qrCode->publicUrl() }}">Müşteri görünümü</a>
+            @elseif (auth()->user()->can('edit vehicle'))
+                <form method="post" action="{{ route('vehicle-qr.assign', $vehicle) }}">
+                    @csrf
+                    <label for="existing_qr" class="form-label">Araca QR etiketi ata</label>
+                    <select id="existing_qr" name="qr_code_id" class="form-control mb-2" required>
+                        <option value="">Teslim edeceğiniz etiketin numarasını seçin</option>
+                        @foreach ($qrCodes as $qr)<option value="{{ $qr->id }}">{{ $qr->label }}</option>@endforeach
+                    </select>
+                    <button class="btn btn-secondary" @disabled($qrCodes->isEmpty())>QR ata</button>
+                    <a href="{{ route('vehicle-qr.index') }}">Etiketleri yönet</a>
+                </form>
+            @endif
+        </div>
+    @endif
     <div class="product-card">
         <div class="row">
             <div class="col-6">

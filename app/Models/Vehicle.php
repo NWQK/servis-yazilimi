@@ -8,6 +8,12 @@ use Illuminate\Database\Eloquent\Model;
 class Vehicle extends Model
 {
     use HasFactory;
+
+    public function qrCode()
+    {
+        return $this->hasOne(VehicleQrCode::class);
+    }
+
     protected $fillable=[
         'client',
         'vehicle_id',

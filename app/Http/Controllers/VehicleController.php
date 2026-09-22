@@ -9,6 +9,9 @@ use App\Models\Vehicle;
 use App\Models\VehicleBrand;
 use App\Models\VehicleType;
 use Illuminate\Http\Request;
+use App\Models\VehicleQrCode;
+use App\Services\VehicleQrPool;
+use Illuminate\Validation\Rule;
 
 class VehicleController extends Controller
 {
@@ -30,22 +33,27 @@ class VehicleController extends Controller
 
     public function create()
     {
+        abort_unless(auth()->user()->type !== 'client' && auth()->user()->can('create vehicle'), 403);
+        app(VehicleQrPool::class)->replenish(parentId());
+        $qrCodes = VehicleQrCode::where('parent_id', parentId())->available()->whereNotNull('printed_at')->orderBy('id')->get();
         $types = VehicleType::where('parent_id', parentId())->get()->pluck('type', 'id');
         $types->prepend(__('Select Type'), '');
         $clients = User::where('parent_id', parentId())->where('type', 'client')->get()->pluck('name', 'id');
-        return view('vehicle.create', compact('types', 'clients'));
+        return view('vehicle.create', compact('types', 'clients', 'qrCodes'));
     }
 
 
     public function store(Request $request)
     {
+        abort_if(auth()->user()->type === 'client', 403);
         if (\Auth::user()->can('create vehicle')) {
             $validator = \Validator::make(
                 $request->all(),
                 [
-                    'client' => 'required',
-                    'type' => 'required',
-                    'brand' => 'required',
+                    'client' => ['required', Rule::exists('users', 'id')->where('parent_id', parentId())->where('type', 'client')],
+                    'type' => ['required', Rule::exists('vehicle_types', 'id')->where('parent_id', parentId())],
+                    'brand' => ['required', Rule::exists('vehicle_brands', 'id')->where('parent_id', parentId())->where('type', $request->type)],
+                    'qr_code_id' => 'required|integer',
                     'model' => 'required',
                     'color' => 'required',
                     'license_plate' => 'required',
@@ -59,28 +67,32 @@ class VehicleController extends Controller
             if ($validator->fails()) {
                 $messages = $validator->getMessageBag();
 
-                return redirect()->back()->with('error', $messages->first());
+                return redirect()->back()->withInput()->with('error', $messages->first());
             }
-            $vehicle = new Vehicle();
-            $vehicle->vehicle_id = $this->vehicleNumber();
-            $vehicle->client = $request->client;
-            $vehicle->type = $request->type;
-            $vehicle->brand = $request->brand;
-            $vehicle->model = $request->model;
-            $vehicle->license_plate = $request->license_plate;
-            $vehicle->engine_type = $request->engine_type;
-            $vehicle->engine_no = $request->engine_no;
-            $vehicle->fuel_type = $request->fuel_type;
-            $vehicle->chassis_no = $request->chassis_no;
-            $vehicle->mileage = $request->mileage;
-            $vehicle->last_service_date = $request->last_service_date;
-            $vehicle->next_service_due_date = $request->next_service_due_date;
-            $vehicle->insurance_details = $request->insurance_details;
-            $vehicle->color = $request->color;
-            $vehicle->status = $request->status;
-            $vehicle->notes = $request->notes;
-            $vehicle->parent_id = parentId();
-            $vehicle->save();
+            $vehicle = app(VehicleQrPool::class)->createVehicle(parentId(), (int) $request->qr_code_id, function () use ($request) {
+                $vehicle = new Vehicle();
+                $vehicle->vehicle_id = $this->vehicleNumber();
+                $vehicle->client = $request->client;
+                $vehicle->type = $request->type;
+                $vehicle->brand = $request->brand;
+                $vehicle->model = $request->model;
+                $vehicle->license_plate = $request->license_plate;
+                $vehicle->engine_type = $request->engine_type;
+                $vehicle->engine_no = $request->engine_no;
+                $vehicle->fuel_type = $request->fuel_type;
+                $vehicle->chassis_no = $request->chassis_no;
+                $vehicle->mileage = $request->mileage;
+                $vehicle->last_service_date = $request->last_service_date;
+                $vehicle->next_service_due_date = $request->next_service_due_date;
+                $vehicle->insurance_details = $request->insurance_details;
+                $vehicle->color = $request->color;
+                $vehicle->status = $request->status;
+                $vehicle->notes = $request->notes;
+                $vehicle->parent_id = parentId();
+                $vehicle->save();
+
+                return $vehicle;
+            });
 
             $module = 'vehicle_create';
             $notification = Notification::where('parent_id', parentId())->where('module', $module)->first();
@@ -121,12 +133,20 @@ class VehicleController extends Controller
 
     public function show(Vehicle $vehicle)
     {
-        return view('vehicle.show', compact('vehicle'));
+        abort_unless(auth()->user()->can('show vehicle') && (int) $vehicle->parent_id === (int) parentId(), 403);
+        abort_if(auth()->user()->type === 'client' && (int) $vehicle->client !== (int) auth()->id(), 403);
+        $qrCodes = collect();
+        if (auth()->user()->type !== 'client' && auth()->user()->can('create vehicle') && auth()->user()->can('edit vehicle') && !$vehicle->qrCode) {
+            app(VehicleQrPool::class)->replenish(parentId());
+            $qrCodes = VehicleQrCode::where('parent_id', parentId())->available()->whereNotNull('printed_at')->orderBy('id')->get();
+        }
+        return view('vehicle.show', compact('vehicle', 'qrCodes'));
     }
 
 
     public function edit(Vehicle $vehicle)
     {
+        abort_unless(auth()->user()->can('edit vehicle') && (int) $vehicle->parent_id === (int) parentId() && auth()->user()->type !== 'client', 403);
         $types = VehicleType::where('parent_id', parentId())->get()->pluck('type', 'id');
         $types->prepend(__('Select Type'), '');
         $clients = User::where('parent_id', parentId())->where('type', 'client')->get()->pluck('name', 'id');
@@ -136,13 +156,14 @@ class VehicleController extends Controller
 
     public function update(Request $request, Vehicle $vehicle)
     {
+        abort_unless((int) $vehicle->parent_id === (int) parentId() && auth()->user()->type !== 'client', 403);
         if (\Auth::user()->can('edit vehicle')) {
             $validator = \Validator::make(
                 $request->all(),
                 [
-                    'client' => 'required',
-                    'type' => 'required',
-                    'brand' => 'required',
+                    'client' => ['required', Rule::exists('users', 'id')->where('parent_id', parentId())->where('type', 'client')],
+                    'type' => ['required', Rule::exists('vehicle_types', 'id')->where('parent_id', parentId())],
+                    'brand' => ['required', Rule::exists('vehicle_brands', 'id')->where('parent_id', parentId())->where('type', $request->type)],
                     'model' => 'required',
                     'color' => 'required',
                     'license_plate' => 'required',
@@ -185,6 +206,7 @@ class VehicleController extends Controller
 
     public function destroy(Vehicle $vehicle)
     {
+        abort_unless((int) $vehicle->parent_id === (int) parentId() && auth()->user()->type !== 'client', 403);
         if (\Auth::user()->can('delete vehicle')) {
             $vehicle->delete();
             return redirect()->route('vehicle.index')->with('success', __('Vehicle successfully deleted.'));
@@ -204,7 +226,7 @@ class VehicleController extends Controller
 
     public function getBrand($typeId)
     {
-        $types = VehicleBrand::where('type', $typeId)->get()->pluck('name', 'id');
+        $types = VehicleBrand::where('parent_id', parentId())->where('type', $typeId)->get()->pluck('name', 'id');
         return response()->json($types);
     }
 }

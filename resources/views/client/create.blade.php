@@ -132,6 +132,7 @@
                                     </div>
                                 </div>
                                 <div class="tab-pane" id="VehiclePane">
+                                    @include('vehicle_qr.select')
                                     @php $subscriptionData = currentSubscription(); @endphp
                                     @if (settings()['openai_module'] == 'on' &&
                                             (Auth::user()->type !== 'super admin' ||

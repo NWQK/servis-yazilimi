@@ -34,6 +34,21 @@ use App\Http\Controllers\VehicleBrandController;
 use App\Http\Controllers\ServiceTypeController;
 use App\Http\Controllers\TaxController;
 use App\Http\Controllers\UnitController;
+use App\Http\Controllers\VehicleQrController;
+use App\Http\Controllers\VehiclePortalController;
+
+Route::middleware(['auth', 'XSS'])->prefix('vehicle-qr')->name('vehicle-qr.')->group(function () {
+    Route::get('/', [VehicleQrController::class, 'index'])->name('index');
+    Route::match(['get', 'post'], '/print', [VehicleQrController::class, 'print'])->name('print');
+    Route::post('/printed', [VehicleQrController::class, 'printed'])->name('printed');
+    Route::post('/assign/{vehicle}', [VehicleQrController::class, 'assign'])->name('assign');
+});
+
+Route::prefix('q/{token}')->where(['token' => '[a-f0-9]{64}'])->middleware('throttle:60,1')
+    ->withoutMiddleware(\App\Http\Middleware\Verify2FA::class)->name('vehicle-portal.')->group(function () {
+        Route::get('/', [VehiclePortalController::class, 'show'])->name('show');
+        Route::get('/invoice/{invoiceId}', [VehiclePortalController::class, 'invoice'])->whereNumber('invoiceId')->name('invoice');
+    });
 
 
 

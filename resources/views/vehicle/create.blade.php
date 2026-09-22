@@ -15,6 +15,7 @@
         </div>
     @endif
     <div class="row">
+        @include('vehicle_qr.select')
         <div class="form-group col-md-6">
             {{ Form::label('client', __('Client'), ['class' => 'form-label']) }}
             {!! Form::select('client', $clients, null, ['class' => 'form-control select2 ', 'required' => 'required']) !!}

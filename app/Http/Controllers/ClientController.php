@@ -18,6 +18,9 @@ use App\Models\VehicleBrand;
 use App\Models\VehicleType;
 use Illuminate\Http\Request;
 use Spatie\Permission\Models\Role;
+use App\Models\VehicleQrCode;
+use App\Services\VehicleQrPool;
+use Illuminate\Validation\Rule;
 
 class ClientController extends Controller
 {
@@ -35,6 +38,9 @@ class ClientController extends Controller
 
     public function create()
     {
+        abort_unless(auth()->user()->type !== 'client' && auth()->user()->can('create client') && auth()->user()->can('create vehicle'), 403);
+        app(VehicleQrPool::class)->replenish(parentId());
+        $qrCodes = VehicleQrCode::where('parent_id', parentId())->available()->whereNotNull('printed_at')->orderBy('id')->get();
         $gender = User::genderList();
         $types = VehicleType::where('parent_id', parentId())->get()->pluck('type', 'id');
         $types->prepend(__('Select Type'), '');
@@ -47,7 +53,7 @@ class ClientController extends Controller
         $serviceRates = ServiceType::where('parent_id', parentId())->pluck('rate', 'id');
 
         return view('client.create', compact(
-            'gender',
+            'qrCodes', 'gender',
             'types',
             'employees',
             'status',
@@ -59,6 +65,7 @@ class ClientController extends Controller
 
     public function store(Request $request)
     {
+        abort_unless(auth()->user()->type !== 'client' && auth()->user()->can('create vehicle'), 403);
         if (!\Auth::user()->can('create client')) {
             return redirect()->back()->with('error', __('Permission Denied.'));
         }
@@ -74,8 +81,9 @@ class ClientController extends Controller
             'state'        => 'required',
             'city'         => 'required',
             'zip_code'     => 'required',
-            'type'         => 'required',
-            'brand'        => 'required',
+            'type' => ['required', Rule::exists('vehicle_types', 'id')->where('parent_id', parentId())],
+            'brand' => ['required', Rule::exists('vehicle_brands', 'id')->where('parent_id', parentId())->where('type', $request->type)],
+            'qr_code_id' => 'required|integer',
             'model'        => 'required',
             'color'        => 'required',
             'license_plate' => 'required',
@@ -110,91 +118,95 @@ class ClientController extends Controller
         }
 
         $userRole = Role::where('name', 'client')->where('parent_id', parentId())->first();
-        $user                    = new User();
-        $user->name              = $request->name;
-        $user->email             = $request->email;
-        $user->phone_number      = $request->phone_number;
-        $user->password          = \Hash::make($request->password);
-        $user->type              = $userRole->name;
-        $user->profile           = 'avatar.png';
-        $user->lang              = 'english';
-        $user->email_verified_at = now();
-        $user->parent_id         = parentId();
-        $user->save();
-        $user->assignRole($userRole);
-        $client             = new Client();
-        $client->client_id  = $this->clientNumber();
-        $client->user_id    = $user->id;
-        $client->gender     = $request->gender;
-        $client->city       = $request->city;
-        $client->state      = $request->state;
-        $client->country    = $request->country;
-        $client->zip_code   = $request->zip_code;
-        $client->address    = $request->address;
-        $client->notes      = $request->notes;
-        $client->parent_id  = parentId();
-        $client->save();
-        $vehicle                      = new Vehicle();
-        $vehicle->vehicle_id          = $this->vehicleNumber();
-        $vehicle->client              = $user->id;
-        $vehicle->type                = $request->type;
-        $vehicle->brand               = $request->brand;
-        $vehicle->model               = $request->model;
-        $vehicle->color               = $request->color;
-        $vehicle->license_plate       = $request->license_plate;
-        $vehicle->engine_type         = $request->engine_type;
-        $vehicle->engine_no           = $request->engine_no;
-        $vehicle->fuel_type           = $request->fuel_type;
-        $vehicle->chassis_no          = $request->chassis_no;
-        $vehicle->mileage             = $request->mileage;
-        $vehicle->last_service_date   = $request->last_service_date;
-        $vehicle->next_service_due_date = $request->next_service_due_date;
-        $vehicle->insurance_details   = $request->insurance_details;
-        $vehicle->status              = $request->vehicle_status ?? 'active';
-        $vehicle->notes               = $request->vehicle_notes;
-        $vehicle->parent_id           = parentId();
-        $vehicle->save();
-        $service               = new Service();
-        $service->service_id   = $this->serviceNumber();
-        $service->vehicle      = $vehicle->id;
-        $service->client       = $user->id;
-        $service->service_date = $request->service_date;
-        $service->service_time = $request->service_time;
-        $service->due_date     = $request->due_date;
-        $service->due_time     = $request->due_time;
-        $service->assign       = $request->assign;
-        $service->status       = $request->status;
-        $service->notes        = $request->service_notes;
-        $service->parent_id    = parentId();
-        $service->save();
-        foreach ($request->types as $type) {
-            $serviceItem           = new ServiceItem();
-            $serviceItem->service_id = $service->id;
-            $serviceItem->type_id  = $type['service_type'];
-            $serviceItem->rate     = $type['rate'];
-            $serviceItem->tax      = !empty($type['tax']) ? implode(',', (array) $type['tax']) : '';
-            $serviceItem->note     = $type['note'] ?? '';
-            $serviceItem->parent_id = parentId();
-            $serviceItem->save();
-        }
-        $invoice               = new Invoice();
-        $invoice->invoice_id   = $this->invoiceNumber();
-        $invoice->invoice_date = $request->service_date;
-        $invoice->client       = $user->id;
-        $invoice->service      = $service->id;
-        $invoice->status       = 0;
-        $invoice->parent_id    = parentId();
-        $invoice->save();
-        foreach ($request->types as $type) {
-            $invoiceService               = new InvoiceService();
-            $invoiceService->invoice_id   = $invoice->id;
-            $invoiceService->tax          = !empty($type['tax']) ? implode(',', (array) $type['tax']) : null;
-            $invoiceService->service_type = $type['service_type'];
-            $invoiceService->rate         = $type['rate'];
-            $invoiceService->note         = $type['note'] ?? '';
-            $invoiceService->parent_id    = parentId();
-            $invoiceService->save();
-        }
+        $vehicle = app(VehicleQrPool::class)->createVehicle(parentId(), (int) $request->qr_code_id,
+            function () use ($request, $userRole, &$user, &$client, &$service, &$invoice) {
+                $user                    = new User();
+                $user->name              = $request->name;
+                $user->email             = $request->email;
+                $user->phone_number      = $request->phone_number;
+                $user->password          = \Hash::make($request->password);
+                $user->type              = $userRole->name;
+                $user->profile           = 'avatar.png';
+                $user->lang              = 'english';
+                $user->email_verified_at = now();
+                $user->parent_id         = parentId();
+                $user->save();
+                $user->assignRole($userRole);
+                $client             = new Client();
+                $client->client_id  = $this->clientNumber();
+                $client->user_id    = $user->id;
+                $client->gender     = $request->gender;
+                $client->city       = $request->city;
+                $client->state      = $request->state;
+                $client->country    = $request->country;
+                $client->zip_code   = $request->zip_code;
+                $client->address    = $request->address;
+                $client->notes      = $request->notes;
+                $client->parent_id  = parentId();
+                $client->save();
+                $vehicle                      = new Vehicle();
+                $vehicle->vehicle_id          = $this->vehicleNumber();
+                $vehicle->client              = $user->id;
+                $vehicle->type                = $request->type;
+                $vehicle->brand               = $request->brand;
+                $vehicle->model               = $request->model;
+                $vehicle->color               = $request->color;
+                $vehicle->license_plate       = $request->license_plate;
+                $vehicle->engine_type         = $request->engine_type;
+                $vehicle->engine_no           = $request->engine_no;
+                $vehicle->fuel_type           = $request->fuel_type;
+                $vehicle->chassis_no          = $request->chassis_no;
+                $vehicle->mileage             = $request->mileage;
+                $vehicle->last_service_date   = $request->last_service_date;
+                $vehicle->next_service_due_date = $request->next_service_due_date;
+                $vehicle->insurance_details   = $request->insurance_details;
+                $vehicle->status              = $request->vehicle_status ?? 'active';
+                $vehicle->notes               = $request->vehicle_notes;
+                $vehicle->parent_id           = parentId();
+                $vehicle->save();
+                $service               = new Service();
+                $service->service_id   = $this->serviceNumber();
+                $service->vehicle      = $vehicle->id;
+                $service->client       = $user->id;
+                $service->service_date = $request->service_date;
+                $service->service_time = $request->service_time;
+                $service->due_date     = $request->due_date;
+                $service->due_time     = $request->due_time;
+                $service->assign       = $request->assign;
+                $service->status       = $request->status;
+                $service->notes        = $request->service_notes;
+                $service->parent_id    = parentId();
+                $service->save();
+                foreach ($request->types as $type) {
+                    $serviceItem           = new ServiceItem();
+                    $serviceItem->service_id = $service->id;
+                    $serviceItem->type_id  = $type['service_type'];
+                    $serviceItem->rate     = $type['rate'];
+                    $serviceItem->tax      = !empty($type['tax']) ? implode(',', (array) $type['tax']) : '';
+                    $serviceItem->note     = $type['note'] ?? '';
+                    $serviceItem->parent_id = parentId();
+                    $serviceItem->save();
+                }
+                $invoice               = new Invoice();
+                $invoice->invoice_id   = $this->invoiceNumber();
+                $invoice->invoice_date = $request->service_date;
+                $invoice->client       = $user->id;
+                $invoice->service      = $service->id;
+                $invoice->status       = 0;
+                $invoice->parent_id    = parentId();
+                $invoice->save();
+                foreach ($request->types as $type) {
+                    $invoiceService               = new InvoiceService();
+                    $invoiceService->invoice_id   = $invoice->id;
+                    $invoiceService->tax          = !empty($type['tax']) ? implode(',', (array) $type['tax']) : null;
+                    $invoiceService->service_type = $type['service_type'];
+                    $invoiceService->rate         = $type['rate'];
+                    $invoiceService->note         = $type['note'] ?? '';
+                    $invoiceService->parent_id    = parentId();
+                    $invoiceService->save();
+                }
+                return $vehicle;
+        });
         $setting      = settings();
         $errorMessage = '';
         triggerN8n('create_client', [

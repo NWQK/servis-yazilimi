@@ -16,6 +16,7 @@
 
 
 @section('content')
+    @if ($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
     <div class="row">
         <div class="col-sm-12">
             <div class="card table-card">
@@ -25,6 +26,9 @@
                             <h5>{{ __('Vehicle List') }}</h5>
                         </div>
                         @if (Gate::check('create vehicle'))
+                            @if (auth()->user()->type !== 'client')
+                                <div class="col-auto"><a class="btn btn-outline-secondary" href="{{ route('vehicle-qr.index') }}">QR Etiketleri</a></div>
+                            @endif
                             <div class="col-auto">
                                 <a class="btn btn-secondary customModal" href="#" data-size="lg"
                                     data-url="{{ route('vehicle.create') }}" data-title="{{ __('Create Vehicle') }}"> <i
