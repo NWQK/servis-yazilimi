@@ -46,7 +46,6 @@
                                 <tr>
                                     <th>{{ __('ID') }}</th>
                                     <th>{{ __('Client') }}</th>
-                                    <th>{{ __('Type') }}</th>
                                     <th>{{ __('Brand') }}</th>
                                     <th>{{ __('Model') }}</th>
                                     <th>{{ __('License Plate') }}</th>
@@ -64,7 +63,6 @@
                                         <td>{{ !empty($vehicle->clients) ? $vehicle->clients->name : '-' }} </td>
                                         <td>{{ !empty($vehicle->types) ? $vehicle->types->type : '-' }} </td>
                                         <td>{{ !empty($vehicle->brands) ? $vehicle->brands->name : '-' }} </td>
-                                        <td>{{ $vehicle->model }} </td>
                                         <td>{{ $vehicle->license_plate }} </td>
                                         <td>{{ $vehicle->color }} </td>
                                         <td>{{ $vehicle->engine_type }} </td>

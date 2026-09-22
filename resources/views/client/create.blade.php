@@ -91,23 +91,11 @@
                                         </div>
                                         <div class="col-md-6">
                                             {{ Form::label('email', __('Email'), ['class' => 'form-label fw-semibold']) }}
-                                            {{ Form::text('email', old('email'), ['class' => 'form-control', 'placeholder' => __('Enter Email')]) }}
+                                            {{ Form::email('email', old('email'), ['class' => 'form-control', 'placeholder' => __('Enter Email')]) }}
                                         </div>
                                         <div class="col-md-6">
                                             {{ Form::label('phone_number', __('Phone Number'), ['class' => 'form-label fw-semibold']) }}
                                             {{ Form::text('phone_number', old('phone_number'), ['class' => 'form-control', 'placeholder' => __('e.g. +91XXXXXXXXXX'), 'required' => true]) }}
-                                        </div>
-                                        <div class="col-md-6">
-                                            {{ Form::label('password', __('Password'), ['class' => 'form-label fw-semibold']) }}
-                                            {{ Form::password('password', ['class' => 'form-control', 'placeholder' => __('Min 6 characters')]) }}
-                                        </div>
-                                        <div class="col-md-6">
-                                            {{ Form::label('gender', __('Gender'), ['class' => 'form-label fw-semibold']) }}
-                                            {!! Form::select('gender', $gender, old('gender'), ['class' => 'form-control select2']) !!}
-                                        </div>
-                                        <div class="col-md-6">
-                                            {{ Form::label('country', __('Country'), ['class' => 'form-label fw-semibold']) }}
-                                            {{ Form::text('country', old('country'), ['class' => 'form-control', 'placeholder' => __('Enter country')]) }}
                                         </div>
                                         <div class="col-md-6">
                                             {{ Form::label('state', __('State'), ['class' => 'form-label fw-semibold']) }}
@@ -148,7 +136,7 @@
                                     @endif
                                     <div class="row g-3">
                                         <div class="form-group col-md-6">
-                                            {{ Form::label('type', __('Type'), ['class' => 'form-label']) }}
+                                            {{ Form::label('type', __('Brand'), ['class' => 'form-label']) }}
                                             {!! Form::select('type', $types, null, [
                                                 'class' => 'form-control select2 ',
                                                 'id' => 'type_id',
@@ -156,20 +144,16 @@
                                             ]) !!}
                                         </div>
                                         <div class="form-group col-md-6 col-lg-6">
-                                            {{ Form::label('brand_id', __('Brand'), ['class' => 'form-label']) }}
+                                            {{ Form::label('brand_id', __('Model'), ['class' => 'form-label']) }}
                                             <div class="brand_div">
                                                 <select class="form-control select2 brand" id="brand" name="brand">
-                                                    <option value="">{{ __('Select Brand') }}</option>
+                                                    <option value="">{{ __('Select Model') }}</option>
                                                 </select>
                                             </div>
                                         </div>
                                         <div class="form-group col-md-6">
-                                            {{ Form::label('model', __('Model'), ['class' => 'form-label']) }}
-                                            {{ Form::text('model', null, ['class' => 'form-control', 'placeholder' => __('Enter model'), 'required' => 'required']) }}
-                                        </div>
-                                        <div class="form-group col-md-6">
                                             {{ Form::label('color', __('Color'), ['class' => 'form-label']) }}
-                                            {{ Form::text('color', null, ['class' => 'form-control', 'placeholder' => __('Enter color'), 'required' => 'required']) }}
+                                            {{ Form::text('color', null, ['class' => 'form-control', 'placeholder' => __('Enter color')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('license_plate', __('License Plate'), ['class' => 'form-label']) }}
@@ -177,39 +161,39 @@
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('engine_type', __('Engine Type'), ['class' => 'form-label']) }}
-                                            {{ Form::text('engine_type', null, ['class' => 'form-control', 'placeholder' => __('Enter engine type'), 'required' => 'required']) }}
+                                            {{ Form::text('engine_type', null, ['class' => 'form-control', 'placeholder' => __('Enter engine type')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('engine_no', __('Engine Number'), ['class' => 'form-label']) }}
-                                            {{ Form::text('engine_no', null, ['class' => 'form-control', 'placeholder' => __('Enter engine number'), 'required' => 'required']) }}
+                                            {{ Form::text('engine_no', null, ['class' => 'form-control', 'placeholder' => __('Enter engine number')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('fuel_type', __('Fuel Type'), ['class' => 'form-label']) }}
-                                            {{ Form::text('fuel_type', null, ['class' => 'form-control', 'placeholder' => __('Enter fuel type'), 'required' => 'required']) }}
+                                            {{ Form::text('fuel_type', null, ['class' => 'form-control', 'placeholder' => __('Enter fuel type')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('chassis_no', __('Chassis Number'), ['class' => 'form-label']) }}
-                                            {{ Form::text('chassis_no', null, ['class' => 'form-control', 'placeholder' => __('Enter chassis number'), 'required' => 'required']) }}
+                                            {{ Form::text('chassis_no', null, ['class' => 'form-control', 'placeholder' => __('Enter chassis number')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('mileage', __('Mileage'), ['class' => 'form-label']) }}
-                                            {{ Form::number('mileage', null, ['class' => 'form-control', 'placeholder' => __('Enter mileage'), 'required' => 'required']) }}
+                                            {{ Form::number('mileage', null, ['class' => 'form-control', 'placeholder' => __('Enter mileage')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('last_service_date', __('Last Service Date'), ['class' => 'form-label']) }}
-                                            {{ Form::date('last_service_date', null, ['class' => 'form-control', 'required' => 'required']) }}
+                                            {{ Form::date('last_service_date', null, ['class' => 'form-control']) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('next_service_due_date', __('Next Service Due Date'), ['class' => 'form-label']) }}
-                                            {{ Form::date('next_service_due_date', null, ['class' => 'form-control', 'required' => 'required']) }}
+                                            {{ Form::date('next_service_due_date', null, ['class' => 'form-control']) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('insurance_details', __('Insurance Details'), ['class' => 'form-label']) }}
                                             {{ Form::textarea('insurance_details', null, ['class' => 'form-control', 'placeholder' => __('Enter insurance details'), 'rows' => 2]) }}
                                         </div>
                                         <div class="form-group col-md-6">
-                                            {{ Form::label('notes', __('Notes'), ['class' => 'form-label']) }}
-                                            {{ Form::textarea('notes', null, ['class' => 'form-control', 'placeholder' => __('Enter notes'), 'rows' => 2, 'required' => 'required']) }}
+                                            {{ Form::label('vehicle_notes', __('Notes'), ['class' => 'form-label']) }}
+                                            {{ Form::textarea('vehicle_notes', null, ['class' => 'form-control', 'placeholder' => __('Enter notes'), 'rows' => 2]) }}
                                         </div>
                                     </div>
                                 </div>
@@ -257,8 +241,8 @@
                                                     {!! Form::select('status', $status, null, ['class' => 'form-control select2', 'required' => 'required']) !!}
                                                 </div>
                                                 <div class="form-group col-md-12 col-lg-12">
-                                                    {{ Form::label('notes', __('Notes'), ['class' => 'form-label']) }}
-                                                    {{ Form::textarea('notes', null, ['class' => 'form-control', 'placeholder' => __('Enter notes'), 'rows' => 2]) }}
+                                                    {{ Form::label('service_notes', __('Notes'), ['class' => 'form-label']) }}
+                                                    {{ Form::textarea('service_notes', null, ['class' => 'form-control', 'placeholder' => __('Enter notes'), 'rows' => 2]) }}
                                                 </div>
                                             </div>
                                         </div>
@@ -278,7 +262,7 @@
                                             <table class="display dataTable cell-border" data-repeater-list="types">
                                                 <thead>
                                                     <tr>
-                                                        <th>{{ __('Type') }}</th>
+                                                        <th>{{ __('Brand') }}</th>
                                                         <th>{{ __('Rate') }}</th>
                                                         <th>{{ __('Tax') }}</th>
                                                         <th>{{ __('Note') }}</th>
@@ -363,7 +347,7 @@
                 var typeId = $(this).val();
 
                 if (!typeId) {
-                    $('#brand').empty().append('<option value="">Select Brand</option>').trigger('change');
+                    $('#brand').empty().append('<option value="">Select Model</option>').trigger('change');
                     return;
                 }
 
@@ -378,7 +362,7 @@
                         console.log("Received brands:", data);
                         var brandSelect = $('#brand');
                         brandSelect.empty();
-                        brandSelect.append('<option value="">Select Brand</option>');
+                        brandSelect.append('<option value="">Select Model</option>');
                         $.each(data, function(key, value) {
                             brandSelect.append('<option value="' + key + '">' + value +
                                 '</option>');

@@ -230,19 +230,54 @@ class VehicleQrTest extends TestCase
         $this->post('/vehicle-qr/printed', ['ids' => [$code->id]])->assertSessionHasErrors('ids');
     }
 
-    public function test_vehicle_store_uses_qr_workflow()
+    public static function optionalVehicleCases()
+    {
+        return ['details provided' => ['provided'], 'details omitted' => ['omitted'], 'details blank' => ['blank']];
+    }
+
+    private function optionalVehicleFields()
+    {
+        return ['color', 'engine_type', 'engine_no', 'fuel_type', 'chassis_no', 'mileage',
+            'last_service_date', 'next_service_due_date', 'insurance_details'];
+    }
+
+    /** @dataProvider optionalVehicleCases */
+    public function test_vehicle_store_uses_qr_workflow($detailsCase)
     {
         $code = $this->ready();
         $client = User::create(['name' => 'Client', 'email' => 'client@example.test', 'password' => bcrypt('test'), 'type' => 'client', 'parent_id' => $this->owner->id]);
         $type = DB::table('vehicle_types')->insertGetId(['type' => 'Otomobil', 'parent_id' => $this->owner->id]);
         $brand = DB::table('vehicle_brands')->insertGetId(['name' => 'Test', 'type' => $type, 'parent_id' => $this->owner->id]);
         $data = ['client' => $client->id, 'type' => $type, 'brand' => $brand, 'qr_code_id' => $code->id,
-            'model' => 'Test Araç', 'color' => 'Beyaz', 'license_plate' => '34 QR 123', 'engine_type' => 'Test',
+            'color' => 'Beyaz', 'license_plate' => '34 QR 123', 'engine_type' => 'Test',
             'engine_no' => 'E123', 'chassis_no' => 'C123', 'fuel_type' => 'Benzin', 'mileage' => 10000];
+        if ($detailsCase !== 'provided') {
+            foreach (array_merge($this->optionalVehicleFields(), ['notes']) as $field) {
+                unset($data[$field]);
+                if ($detailsCase === 'blank') $data[$field] = '';
+            }
+        }
         $this->actingAs($this->owner)->post('/vehicle', $data)->assertRedirect(route('vehicle.index'));
         $this->assertSame(1, Vehicle::count());
+        if ($detailsCase !== 'provided') {
+            foreach (array_merge($this->optionalVehicleFields(), ['notes']) as $field) {
+                $this->assertNull(Vehicle::first()->$field);
+            }
+        }
         $this->assertSame(Vehicle::first()->id, $code->fresh()->vehicle_id);
+        $this->assertNull(Vehicle::first()->getRawOriginal('model'));
+        $this->assertSame('Otomobil Test', Vehicle::first()->display_name);
+        $this->get('/vehicle/' . Vehicle::first()->id . '/edit')->assertOk()->assertDontSee('name="model"', false);
+        $secondModel = DB::table('vehicle_brands')->insertGetId(['name' => 'Updated Model', 'type' => $type, 'parent_id' => $this->owner->id]);
+        $this->put('/vehicle/' . Vehicle::first()->id, array_merge($data, ['brand' => $secondModel, 'model' => 'Ignored free text']))->assertRedirect(route('vehicle.index'));
+        $this->assertSame('Updated Model', Vehicle::first()->model);
+        $this->assertNull(Vehicle::first()->getRawOriginal('model'));
         $this->assertSame(10, VehicleQrCode::available()->count());
+        $emptyDetails = array_fill_keys(array_merge($this->optionalVehicleFields(), ['notes']), '');
+        $this->put('/vehicle/' . Vehicle::first()->id, array_merge($data, $emptyDetails))->assertRedirect(route('vehicle.index'));
+        foreach (array_keys($emptyDetails) as $field) {
+            $this->assertNull(Vehicle::first()->$field);
+        }
         $this->post('/vehicle', $data)->assertSessionHasErrors('qr_code_id');
         $this->assertSame(1, Vehicle::count());
     }
@@ -263,11 +298,40 @@ class VehicleQrTest extends TestCase
         $code = $this->ready();
         $unprinted = VehicleQrCode::available()->whereNull('printed_at')->first();
         $this->actingAs($this->owner)->get('/vehicle-qr')->assertOk()->assertSee('10 boş QR');
-        $this->get('/vehicle/create')->assertOk()->assertSee($code->label)->assertDontSee($unprinted->label);
-        $this->get('/client/create')->assertOk()->assertSee($code->label)->assertDontSee($unprinted->label);
+        $this->get('/vehicle/create')->assertOk()->assertSee($code->label)->assertDontSee($unprinted->label)->assertDontSee('name="model"', false);
+        $this->get('/client/create')->assertOk()->assertSee($code->label)->assertDontSee($unprinted->label)
+            ->assertDontSee('name="password"', false)->assertDontSee('name="gender"', false)->assertDontSee('name="country"', false)->assertDontSee('name="model"', false);
     }
 
-    public function test_combined_client_wizard_creates_and_links_every_record_once()
+    public static function customerEmailCases()
+    {
+        return ['email provided' => ['provided'], 'email omitted' => ['omitted'], 'email blank' => ['blank']];
+    }
+
+    public function test_brand_catalogue_lists_only_models_for_the_selected_brand()
+    {
+        $this->actingAs($this->owner)->post('/vehicle-type', ['type' => 'Toyota'])->assertRedirect(route('vehicle-type.index'));
+        $make = DB::table('vehicle_types')->where('type', 'Toyota')->first();
+        $this->post('/vehicle-brand', ['name' => 'Corolla', 'type' => $make->id])->assertRedirect(route('vehicle-brand.index'));
+        $model = DB::table('vehicle_brands')->where('name', 'Corolla')->first();
+        $otherMake = DB::table('vehicle_types')->insertGetId(['type' => 'Ford', 'parent_id' => $this->owner->id]);
+        DB::table('vehicle_brands')->insert(['name' => 'Focus', 'type' => $otherMake, 'parent_id' => $this->owner->id]);
+        $this->get(route('vehicle.brand', $make->id))->assertExactJson([(string) $model->id => 'Corolla']);
+        $foreignOwner = $this->owner('foreign-catalogue@example.test');
+        $foreignMake = DB::table('vehicle_types')->insertGetId(['type' => 'Foreign', 'parent_id' => $foreignOwner->id]);
+        $this->post('/vehicle-brand', ['name' => 'Not allowed', 'type' => $foreignMake])->assertSessionHas('error');
+        $this->assertFalse(DB::table('vehicle_brands')->where('name', 'Not allowed')->exists());
+        $this->get('/vehicle-type')->assertOk()->assertSee('Vehicle Brand List');
+        $this->get('/vehicle-brand')->assertOk()->assertSee('Vehicle Model List');
+        $vehicle = Vehicle::create(['parent_id' => $this->owner->id, 'type' => $make->id, 'brand' => $model->id, 'license_plate' => '34 NEW 01']);
+        $this->assertSame('Toyota Corolla', $vehicle->fresh()->display_name);
+        $qr = $this->ready();
+        $this->pool->assignExisting($this->owner->id, $vehicle->id, $qr->id);
+        $this->get('/q/' . $qr->token)->assertOk()->assertSee('Toyota Corolla');
+    }
+
+    /** @dataProvider customerEmailCases */
+    public function test_combined_client_wizard_creates_and_links_every_record_once($emailCase)
     {
         $code = $this->ready();
         \Spatie\Permission\Models\Role::create(['name' => 'client', 'parent_id' => $this->owner->id, 'guard_name' => 'web']);
@@ -276,12 +340,42 @@ class VehicleQrTest extends TestCase
         $serviceType = DB::table('service_types')->insertGetId(['type' => 'Bakım', 'parent_id' => $this->owner->id]);
         $data = ['name' => 'Müşteri', 'email' => 'new@example.test', 'password' => 'test-password', 'phone_number' => '5551234567',
             'gender' => 'male', 'address' => 'Test', 'country' => 'Türkiye', 'state' => 'İstanbul', 'city' => 'İstanbul', 'zip_code' => '34000',
-            'type' => $type, 'brand' => $brand, 'qr_code_id' => $code->id, 'model' => 'Test Araç', 'color' => 'Beyaz',
+            'type' => $type, 'brand' => $brand, 'qr_code_id' => $code->id, 'color' => 'Beyaz',
             'license_plate' => '34 QR 123', 'engine_type' => 'Test', 'engine_no' => 'E123', 'chassis_no' => 'C123',
             'fuel_type' => 'Benzin', 'mileage' => 10000, 'assign' => $this->owner->id, 'service_date' => '2026-09-20',
             'service_time' => '09:00', 'due_date' => '2026-09-20', 'due_time' => '17:00', 'status' => 'scheduled',
             'types' => [['service_type' => $serviceType, 'rate' => 1500]]];
-        $this->actingAs($this->owner)->post('/client', $data)->assertRedirect()->assertSessionHasNoErrors();
+        unset($data['password'], $data['gender'], $data['country'], $data['address'], $data['state'], $data['city'], $data['zip_code']);
+        if ($emailCase === 'omitted') unset($data['email']);
+        if ($emailCase === 'blank') $data['email'] = '';
+        if ($emailCase !== 'provided') {
+            foreach (array_merge($this->optionalVehicleFields(), ['vehicle_notes']) as $field) {
+                unset($data[$field]);
+                if ($emailCase === 'blank') $data[$field] = '';
+            }
+        }
+        if ($emailCase === 'provided') {
+            $data['notes'] = 'Customer note';
+            $data['vehicle_notes'] = 'Vehicle note';
+            $data['service_notes'] = 'Service note';
+        }
+        $this->actingAs($this->owner)->post('/client', array_merge($data, ['email' => 'not-an-email']))->assertSessionHasErrors('email');
+        $this->assertSame(0, Vehicle::count());
+        $this->post('/client', $data)->assertRedirect()->assertSessionHasNoErrors();
+        $customer = User::where('type', 'client')->firstOrFail();
+        $this->assertSame($emailCase === 'provided' ? 'new@example.test' : null, $customer->email);
+        $this->assertFalse(\Hash::check('', $customer->password));
+        foreach (['gender', 'country', 'address', 'state', 'city', 'zip_code'] as $field) {
+            $this->assertNull($customer->clients->$field);
+        }
+        $this->assertSame($data['notes'] ?? null, $customer->clients->notes);
+        $this->assertSame(($data['vehicle_notes'] ?? null) ?: null, Vehicle::first()->notes);
+        $this->assertSame($data['service_notes'] ?? null, Service::first()->notes);
+        if ($emailCase !== 'provided') {
+            foreach (array_merge($this->optionalVehicleFields(), ['notes']) as $field) {
+                $this->assertNull(Vehicle::first()->$field);
+            }
+        }
         $this->assertSame(1, Vehicle::count());
         $this->assertSame(1, Service::count());
         $this->assertSame(1, Invoice::count());
@@ -292,5 +386,11 @@ class VehicleQrTest extends TestCase
         $this->post('/client', $data)->assertSessionHasErrors('qr_code_id');
         $this->assertFalse(User::where('email', 'retry@example.test')->exists());
         $this->assertSame(1, Invoice::count());
+        if ($emailCase !== 'provided') {
+            unset($data['email']);
+            $data['qr_code_id'] = $this->ready()->id;
+            $this->post('/client', $data)->assertRedirect()->assertSessionHasNoErrors();
+            $this->assertSame(2, User::where('type', 'client')->whereNull('email')->count());
+        }
     }
 }

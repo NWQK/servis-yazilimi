@@ -42,7 +42,7 @@ class VehicleTypeController extends Controller
             $vehicleType->type = $request->type;
             $vehicleType->parent_id = parentId();
             $vehicleType->save();
-            return redirect()->route('vehicle-type.index')->with('success', __('Vehicle type successfully created.'));
+            return redirect()->route('vehicle-type.index')->with('success', __('Vehicle brand successfully created.'));
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
         }
@@ -75,7 +75,7 @@ class VehicleTypeController extends Controller
             }
             $vehicleType->type = $request->type;
             $vehicleType->save();
-            return redirect()->route('vehicle-type.index')->with('success', __('Vehicle type successfully updated.'));
+            return redirect()->route('vehicle-type.index')->with('success', __('Vehicle brand successfully updated.'));
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
         }
@@ -86,7 +86,7 @@ class VehicleTypeController extends Controller
     {
         if (\Auth::user()->can('delete vehicle type') ) {
             $vehicleType->delete();
-            return redirect()->route('vehicle-type.index')->with('success', __('Vehicle type successfully deleted.'));
+            return redirect()->route('vehicle-type.index')->with('success', __('Vehicle brand successfully deleted.'));
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
         }

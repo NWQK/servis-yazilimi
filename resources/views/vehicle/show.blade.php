@@ -35,23 +35,17 @@
             </div>
             <div class="col-6">
                 <div class="detail-group">
-                    <h6>{{__('Vehicle Type')}}</h6>
+                    <h6>{{__('Vehicle Brand')}}</h6>
                     <p class="mb-20 text-muted">{{!empty($vehicle->types)?$vehicle->types->type:'-'}}</p>
                 </div>
             </div>
             <div class="col-6">
                 <div class="detail-group">
-                    <h6>{{__('Vehicle Brand')}}</h6>
+                    <h6>{{__('Vehicle Model')}}</h6>
                     <p class="mb-20 text-muted">{{ !empty($vehicle->brands)?$vehicle->brands->name:'-' }}</p>
                 </div>
             </div>
 
-            <div class="col-6">
-                <div class="detail-group">
-                    <h6>{{__('Vehicle Model')}}</h6>
-                    <p class="mb-20 text-muted">{{$vehicle->model}}</p>
-                </div>
-            </div>
             <div class="col-6">
                 <div class="detail-group">
                     <h6>{{__('Color')}}</h6>

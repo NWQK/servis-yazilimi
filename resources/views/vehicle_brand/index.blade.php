@@ -1,14 +1,14 @@
 @extends('layouts.app')
 
 @section('page-title')
-    {{ __('Vehicle Brand') }}
+    {{ __('Vehicle Model') }}
 @endsection
 @section('breadcrumb')
     <li class="breadcrumb-item">
         <a href="{{ route('dashboard') }}">{{ __('Dashboard') }}</a>
     </li>
     <li class="breadcrumb-item" aria-current="page">
-        {{ __('Vehicle Brand') }}
+        {{ __('Vehicle Model') }}
     </li>
 @endsection
 
@@ -21,14 +21,14 @@
                 <div class="card-header">
                     <div class="row align-items-center g-2">
                         <div class="col">
-                            <h5>{{ __('Vehicle Brand List') }}</h5>
+                            <h5>{{ __('Vehicle Model List') }}</h5>
                         </div>
                         @if (Gate::check('create vehicle brand'))
                             <div class="col-auto">
                                 <a class="btn btn-secondary customModal" href="#" data-size="md"
-                                    data-url="{{ route('vehicle-brand.create') }}" data-title="{{ __('Create Brand') }}"> <i
+                                    data-url="{{ route('vehicle-brand.create') }}" data-title="{{ __('Create Model') }}"> <i
                                         class="ti ti-circle-plus align-text-bottom"></i>
-                                    {{ __('Create Brand') }}
+                                    {{ __('Create Model') }}
                                 </a>
                             </div>
                         @endif
@@ -41,8 +41,8 @@
 
                                 <tr>
 
+                                    <th>{{ __('Model') }}</th>
                                     <th>{{ __('Brand') }}</th>
-                                    <th>{{ __('Type') }}</th>
                                     @if (Gate::check('edit vehicle brand') || Gate::check('delete vehicle brand'))
                                         <th class="text-right">{{ __('Action') }}</th>
                                     @endif
@@ -60,14 +60,14 @@
                                                 <div class="cart-action">
                                                     {!! Form::open(['method' => 'DELETE', 'route' => ['vehicle-brand.destroy', $brand->id]]) !!}
 
-                                                    @can('edit vehicle type')
+                                                    @can('edit vehicle brand')
                                                         <a class="avtar avtar-xs btn-link-secondary text-secondary customModal"
                                                             data-size="md" data-bs-toggle="tooltip"
                                                             data-bs-original-title="{{ __('Edit') }}" href="#"
                                                             data-url="{{ route('vehicle-brand.edit', $brand) }}"
-                                                            data-title="{{ __('Edit Type') }}"> <i data-feather="edit"></i></a>
+                                                            data-title="{{ __('Edit Model') }}"> <i data-feather="edit"></i></a>
                                                     @endcan
-                                                    @can('delete vehicle type')
+                                                    @can('delete vehicle brand')
                                                         <a class=" avtar avtar-xs btn-link-danger text-danger confirm_dialog"
                                                             data-bs-toggle="tooltip"
                                                             data-bs-original-title="{{ __('Detete') }}" href="#"> <i

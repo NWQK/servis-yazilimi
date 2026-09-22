@@ -279,9 +279,10 @@ class HomeController extends Controller
     $services = [];
     $serviceTypes = [];
 
+    $vehicleNames = Vehicle::with(['types', 'brands'])->whereIn('id', $data->pluck('id'))->get()->keyBy('id');
     foreach ($data as $row) {
 
-        $labels[] = ($row->model ?: 'Vehicle') . ' (' . $row->license_plate . ')';
+        $labels[] = ($vehicleNames->get($row->id)?->display_name ?: 'Vehicle') . ' (' . $row->license_plate . ')';
         $services[] = (int) $row->total_service;
 
         $typeIds = ServiceItem::join('services', 'services.id', '=', 'service_items.service_id')

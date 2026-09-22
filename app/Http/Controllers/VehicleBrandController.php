@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\VehicleBrand;
 use App\Models\VehicleType;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class VehicleBrandController extends Controller
 {
@@ -23,7 +24,7 @@ class VehicleBrandController extends Controller
     public function create()
     {
         $types = VehicleType::where('parent_id', parentId())->get()->pluck('type','id');
-        $types->prepend(__('Select Type'),'');
+        $types->prepend(__('Select Brand'),'');
         return view('vehicle_brand.create', compact('types'));
     }
 
@@ -34,7 +35,7 @@ class VehicleBrandController extends Controller
             $validator = \Validator::make(
                 $request->all(), [
                     'name' => 'required',
-                    'type' => 'required',
+                    'type' => ['required', Rule::exists('vehicle_types', 'id')->where('parent_id', parentId())],
                 ]
             );
             if ($validator->fails()) {
@@ -47,7 +48,7 @@ class VehicleBrandController extends Controller
             $vehicleBrand->type = $request->type;
             $vehicleBrand->parent_id = parentId();
             $vehicleBrand->save();
-            return redirect()->route('vehicle-brand.index')->with('success', __('Vehicle brand successfully created.'));
+            return redirect()->route('vehicle-brand.index')->with('success', __('Vehicle model successfully created.'));
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
         }
@@ -63,7 +64,7 @@ class VehicleBrandController extends Controller
     public function edit(VehicleBrand $vehicleBrand)
     {
         $types = VehicleType::where('parent_id', parentId())->get()->pluck('type','id');
-        $types->prepend(__('Select Type'),'');
+        $types->prepend(__('Select Brand'),'');
         return view('vehicle_brand.edit', compact('types','vehicleBrand'));
     }
 
@@ -74,7 +75,7 @@ class VehicleBrandController extends Controller
             $validator = \Validator::make(
                 $request->all(), [
                     'name' => 'required',
-                    'type' => 'required',
+                    'type' => ['required', Rule::exists('vehicle_types', 'id')->where('parent_id', parentId())],
                 ]
             );
             if ($validator->fails()) {
@@ -86,7 +87,7 @@ class VehicleBrandController extends Controller
             $vehicleBrand->name = $request->name;
             $vehicleBrand->type = $request->type;
             $vehicleBrand->save();
-            return redirect()->route('vehicle-brand.index')->with('success', __('Vehicle brand successfully updated.'));
+            return redirect()->route('vehicle-brand.index')->with('success', __('Vehicle model successfully updated.'));
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
         }
@@ -97,7 +98,7 @@ class VehicleBrandController extends Controller
     {
         if (\Auth::user()->can('delete vehicle brand') ) {
             $vehicleBrand->delete();
-            return redirect()->route('vehicle-brand.index')->with('success', __('Vehicle brand successfully deleted.'));
+            return redirect()->route('vehicle-brand.index')->with('success', __('Vehicle model successfully deleted.'));
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
         }

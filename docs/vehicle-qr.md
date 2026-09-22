@@ -15,6 +15,12 @@ Eski araçlar için **Araç ayrıntıları → Araca QR etiketi ata** kullanıla
 
 ## Kurulum
 
+Araç formlarında renk, motor tipi/numarası, yakıt tipi, şase numarası, kilometre, önceki/sonraki servis tarihleri, sigorta detayları ve not isteğe bağlıdır. Kilometre için yeni migration mevcut değerleri korur, boş değeri `NULL` olarak saklar; güncellemede `php artisan migrate` çalıştırılmalıdır. Girilen kilometre negatif olmayan tam sayı, girilen tarihler geçerli tarih olmalıdır.
+
+Müşteri kayıt formunda e-posta ve adres bilgileri isteğe bağlıdır; şifre, cinsiyet ve ülke alanları kaldırılmıştır. E-postasız müşteriler için yeni nullable e-posta migration'ını da `php artisan migrate` ile çalıştırın. E-posta girilirse biçim ve benzersizlik kontrol edilir.
+
+Araç kataloğu **marka → model** şeklindedir: eski `vehicle_types` kayıtları marka, bunlara bağlı `vehicle_brands` kayıtları model olarak kullanılır. Formlarda ayrıca serbest model girişi yoktur. Veritabanı ve yetki anahtarları uyumluluk için korunmuştur. Eski kayıtlar otomatik sınıflandırılmaz veya silinmez; önceden “Otomobil → Toyota” gibi girilmiş katalog kayıtlarını yönetim ekranından yeni anlama göre düzenleyin. Eski serbest model değerleri veritabanında korunur; gösterimde seçilen katalog modeli kullanılır.
+
 Mevcut uygulamanın veritabanı yedeğini alın ve normal Laravel dağıtım prosedürünü uygulayın. Bu değişiklik mevcut araç, servis ve faturaları yeniden oluşturmaz.
 
 ```sh

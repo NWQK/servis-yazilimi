@@ -6,25 +6,21 @@
             {!! Form::select('client', $clients,null,array('class' => 'form-control select2','required'=>'required')) !!}
         </div>
         <div class="form-group col-md-6">
-            {{ Form::label('type', __('Type'),['class'=>'form-label']) }}
+            {{ Form::label('type', __('Brand'),['class'=>'form-label']) }}
             {!! Form::select('type', $types,null,array('class' => 'form-control select2','id'=>'type_id','required'=>'required')) !!}
         </div>
         <div class="form-group col-md-6 col-lg-6">
             <input type="hidden" id="edit_brand" value="{{$vehicle->brand}}">
-            {{Form::label('brand_id',__('Brand'),array('class'=>'form-label'))}}
+            {{Form::label('brand_id',__('Model'),array('class'=>'form-label'))}}
             <div class="brand_div">
                 <select class="form-control select2 brand" id="brand" name="brand">
-                    <option value="">{{__('Select Brand')}}</option>
+                    <option value="">{{__('Select Model')}}</option>
                 </select>
             </div>
         </div>
         <div class="form-group col-md-6">
-            {{Form::label('model',__('Model'),array('class'=>'form-label')) }}
-            {{Form::text('model',null,array('class'=>'form-control','placeholder'=>__('Enter model'),'required'=>'required'))}}
-        </div>
-        <div class="form-group col-md-6">
             {{Form::label('color',__('Color'),array('class'=>'form-label')) }}
-            {{Form::text('color',null,array('class'=>'form-control','placeholder'=>__('Enter color'),'required'=>'required'))}}
+            {{Form::text('color',null,array('class'=>'form-control','placeholder'=>__('Enter color')))}}
         </div>
         <div class="form-group col-md-6">
             {{Form::label('license_plate',__('License Plate'),array('class'=>'form-label')) }}
@@ -32,31 +28,31 @@
         </div>
         <div class="form-group col-md-6">
             {{Form::label('engine_type',__('Engine Type'),array('class'=>'form-label')) }}
-            {{Form::text('engine_type',null,array('class'=>'form-control','placeholder'=>__('Enter engine type'),'required'=>'required'))}}
+            {{Form::text('engine_type',null,array('class'=>'form-control','placeholder'=>__('Enter engine type')))}}
         </div>
         <div class="form-group col-md-6">
             {{Form::label('engine_no',__('Engine Number'),array('class'=>'form-label')) }}
-            {{Form::text('engine_no',null,array('class'=>'form-control','placeholder'=>__('Enter engine number'),'required'=>'required'))}}
+            {{Form::text('engine_no',null,array('class'=>'form-control','placeholder'=>__('Enter engine number')))}}
         </div>
         <div class="form-group col-md-6">
             {{Form::label('fuel_type',__('Fuel Type'),array('class'=>'form-label')) }}
-            {{Form::text('fuel_type',null,array('class'=>'form-control','placeholder'=>__('Enter fuel type'),'required'=>'required'))}}
+            {{Form::text('fuel_type',null,array('class'=>'form-control','placeholder'=>__('Enter fuel type')))}}
         </div>
         <div class="form-group col-md-6">
             {{Form::label('chassis_no',__('Chassis Number'),array('class'=>'form-label')) }}
-            {{Form::text('chassis_no',null,array('class'=>'form-control','placeholder'=>__('Enter chassis number'),'required'=>'required'))}}
+            {{Form::text('chassis_no',null,array('class'=>'form-control','placeholder'=>__('Enter chassis number')))}}
         </div>
         <div class="form-group col-md-6">
             {{Form::label('mileage',__('Mileage'),array('class'=>'form-label')) }}
-            {{Form::number('mileage',null,array('class'=>'form-control','placeholder'=>__('Enter mileage'),'required'=>'required'))}}
+            {{Form::number('mileage',null,array('class'=>'form-control','placeholder'=>__('Enter mileage')))}}
         </div>
         <div class="form-group col-md-6">
             {{Form::label('last_service_date',__('Last Service Date'),array('class'=>'form-label')) }}
-            {{Form::date('last_service_date',null,array('class'=>'form-control','required'=>'required'))}}
+            {{Form::date('last_service_date',null,array('class'=>'form-control'))}}
         </div>
         <div class="form-group col-md-6">
             {{Form::label('next_service_due_date',__('Next Service Due Date'),array('class'=>'form-label')) }}
-            {{Form::date('next_service_due_date',null,array('class'=>'form-control','required'=>'required'))}}
+            {{Form::date('next_service_due_date',null,array('class'=>'form-control'))}}
         </div>
         <div class="form-group col-md-6">
             {{Form::label('insurance_details',__('Insurance Details'),array('class'=>'form-label')) }}
@@ -64,7 +60,7 @@
         </div>
         <div class="form-group col-md-6">
             {{Form::label('notes',__('Notes'),array('class'=>'form-label')) }}
-            {{Form::textarea('notes',null,array('class'=>'form-control','placeholder'=>__('Enter notes'),'rows'=>2,'required'=>'required'))}}
+            {{Form::textarea('notes',null,array('class'=>'form-control','placeholder'=>__('Enter notes'),'rows'=>2))}}
         </div>
     </div>
 </div>

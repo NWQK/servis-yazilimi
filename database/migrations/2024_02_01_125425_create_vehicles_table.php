@@ -25,7 +25,7 @@ return new class extends Migration {
             $table->string('fuel_type')->nullable();
             $table->string('engine_no')->nullable();
             $table->string('chassis_no')->nullable();
-            $table->integer('mileage')->default(0);
+            $table->integer('mileage')->nullable();
             $table->date('last_service_date')->nullable();
             $table->date('next_service_due_date')->nullable();
             $table->text('insurance_details')->nullable();

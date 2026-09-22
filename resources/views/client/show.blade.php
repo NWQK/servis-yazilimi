@@ -160,7 +160,7 @@
                                                             data-title="{{ __('Details') }}">
                                                             {{ vehiclePrefix() . $vehicle->vehicle_id }} </a>
                                                     </td>
-                                                    <td>{{ $vehicle->model }}</td>
+                                                    <td>{{ $vehicle->display_name }}</td>
                                                     <td>{{ $vehicle->license_plate }}</td>
                                                     <td>{{ $vehicle->color }}</td>
                                                 </tr>

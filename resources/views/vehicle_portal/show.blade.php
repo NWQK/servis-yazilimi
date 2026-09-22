@@ -1,7 +1,7 @@
 @extends('vehicle_portal.layout')
 @section('title', $vehicle->license_plate . ' — Servis Kaydı')
 @section('content')
-    <section class="hero"><span class="eyebrow">ARACINIZ</span><h1>{{ $vehicle->license_plate }}</h1><p>{{ $vehicle->model }} · {{ number_format($vehicle->mileage, 0, ',', '.') }} km</p><p>Son servis: {{ $vehicle->last_service_date ? \Carbon\Carbon::parse($vehicle->last_service_date)->format('d.m.Y') : '—' }} · Sonraki servis: {{ $vehicle->next_service_due_date ? \Carbon\Carbon::parse($vehicle->next_service_due_date)->format('d.m.Y') : '—' }}</p></section>
+    <section class="hero"><span class="eyebrow">ARACINIZ</span><h1>{{ $vehicle->license_plate }}</h1><p>{{ $vehicle->display_name }} · {{ $vehicle->mileage !== null ? number_format($vehicle->mileage, 0, ',', '.') . ' km' : 'Kilometre belirtilmedi' }}</p><p>Son servis: {{ $vehicle->last_service_date ? \Carbon\Carbon::parse($vehicle->last_service_date)->format('d.m.Y') : '—' }} · Sonraki servis: {{ $vehicle->next_service_due_date ? \Carbon\Carbon::parse($vehicle->next_service_due_date)->format('d.m.Y') : '—' }}</p></section>
     <nav class="tabs"><a href="#services">Servisler ({{ $services->total() }})</a><a href="#invoices">Faturalar ({{ $invoices->total() }})</a></nav>
     <section id="services"><h2>Servis geçmişi</h2>
         @forelse ($services as $service)

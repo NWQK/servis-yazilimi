@@ -4,7 +4,7 @@
 <div class="actions"><a href="{{ route('vehicle-portal.show', $code->token) }}#invoices">← Araç kayıtları</a><button id="print-invoice" type="button">Yazdır / PDF kaydet</button></div>
 <article class="card">
     <span class="eyebrow">FATURA</span><h1>{{ $settings['invoice_number_prefix'] . $invoice->invoice_id }}</h1>
-    <p>{{ $vehicle->license_plate }} · {{ $vehicle->model }}</p>
+    <p>{{ $vehicle->license_plate }} · {{ $vehicle->display_name }}</p>
     <p>{{ $invoice->invoice_date ? \Carbon\Carbon::parse($invoice->invoice_date)->format('d.m.Y') : '—' }} · {{ ['Ödenmedi', 'Kısmen ödendi', 'Ödendi'][$invoice->status] ?? '—' }}</p>
     <p>{{ $settings['company_address'] }} {{ $settings['company_phone'] }}</p>
     <div class="table-wrap"><table><thead><tr><th>İşlem / ürün</th><th>Miktar</th><th>Birim fiyat</th><th>Vergi</th><th>Tutar</th></tr></thead><tbody>

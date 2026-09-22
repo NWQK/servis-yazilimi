@@ -37,7 +37,7 @@ class VehicleController extends Controller
         app(VehicleQrPool::class)->replenish(parentId());
         $qrCodes = VehicleQrCode::where('parent_id', parentId())->available()->whereNotNull('printed_at')->orderBy('id')->get();
         $types = VehicleType::where('parent_id', parentId())->get()->pluck('type', 'id');
-        $types->prepend(__('Select Type'), '');
+        $types->prepend(__('Select Brand'), '');
         $clients = User::where('parent_id', parentId())->where('type', 'client')->get()->pluck('name', 'id');
         return view('vehicle.create', compact('types', 'clients', 'qrCodes'));
     }
@@ -54,14 +54,17 @@ class VehicleController extends Controller
                     'type' => ['required', Rule::exists('vehicle_types', 'id')->where('parent_id', parentId())],
                     'brand' => ['required', Rule::exists('vehicle_brands', 'id')->where('parent_id', parentId())->where('type', $request->type)],
                     'qr_code_id' => 'required|integer',
-                    'model' => 'required',
-                    'color' => 'required',
+                    'color' => 'nullable|string|max:255',
                     'license_plate' => 'required',
-                    'engine_type' => 'required',
-                    'engine_no' => 'required',
-                    'chassis_no' => 'required',
-                    'fuel_type' => 'required',
-                    'mileage' => 'required',
+                    'engine_type' => 'nullable|string|max:255',
+                    'engine_no' => 'nullable|string|max:255',
+                    'chassis_no' => 'nullable|string|max:255',
+                    'fuel_type' => 'nullable|string|max:255',
+                    'mileage' => 'nullable|integer|min:0|max:2147483647',
+                    'last_service_date' => 'nullable|date',
+                    'next_service_due_date' => 'nullable|date',
+                    'insurance_details' => 'nullable|string',
+                    'notes' => 'nullable|string',
                 ]
             );
             if ($validator->fails()) {
@@ -75,7 +78,6 @@ class VehicleController extends Controller
                 $vehicle->client = $request->client;
                 $vehicle->type = $request->type;
                 $vehicle->brand = $request->brand;
-                $vehicle->model = $request->model;
                 $vehicle->license_plate = $request->license_plate;
                 $vehicle->engine_type = $request->engine_type;
                 $vehicle->engine_no = $request->engine_no;
@@ -106,7 +108,7 @@ class VehicleController extends Controller
                 $data['module'] = $module;
                 $data['logo'] = $setting['company_logo'];
                 $to = $vehicle->clients->email;
-                if ($notification->enabled_email == 1) {
+                if ($notification->enabled_email == 1 && !empty($to)) {
                     $response = commonEmailSend($to, $data);
                     if ($response['status'] == 'error') {
                         $errorMessage = $response['message'];
@@ -148,7 +150,7 @@ class VehicleController extends Controller
     {
         abort_unless(auth()->user()->can('edit vehicle') && (int) $vehicle->parent_id === (int) parentId() && auth()->user()->type !== 'client', 403);
         $types = VehicleType::where('parent_id', parentId())->get()->pluck('type', 'id');
-        $types->prepend(__('Select Type'), '');
+        $types->prepend(__('Select Brand'), '');
         $clients = User::where('parent_id', parentId())->where('type', 'client')->get()->pluck('name', 'id');
         return view('vehicle.edit', compact('types', 'clients', 'vehicle'));
     }
@@ -164,14 +166,17 @@ class VehicleController extends Controller
                     'client' => ['required', Rule::exists('users', 'id')->where('parent_id', parentId())->where('type', 'client')],
                     'type' => ['required', Rule::exists('vehicle_types', 'id')->where('parent_id', parentId())],
                     'brand' => ['required', Rule::exists('vehicle_brands', 'id')->where('parent_id', parentId())->where('type', $request->type)],
-                    'model' => 'required',
-                    'color' => 'required',
+                    'color' => 'nullable|string|max:255',
                     'license_plate' => 'required',
-                    'engine_type' => 'required',
-                    'engine_no' => 'required',
-                    'chassis_no' => 'required',
-                    'fuel_type' => 'required',
-                    'mileage' => 'required',
+                    'engine_type' => 'nullable|string|max:255',
+                    'engine_no' => 'nullable|string|max:255',
+                    'chassis_no' => 'nullable|string|max:255',
+                    'fuel_type' => 'nullable|string|max:255',
+                    'mileage' => 'nullable|integer|min:0|max:2147483647',
+                    'last_service_date' => 'nullable|date',
+                    'next_service_due_date' => 'nullable|date',
+                    'insurance_details' => 'nullable|string',
+                    'notes' => 'nullable|string',
                 ]
             );
             if ($validator->fails()) {
@@ -183,7 +188,6 @@ class VehicleController extends Controller
             $vehicle->client = $request->client;
             $vehicle->type = $request->type;
             $vehicle->brand = $request->brand;
-            $vehicle->model = $request->model;
             $vehicle->license_plate = $request->license_plate;
             $vehicle->engine_type = $request->engine_type;
             $vehicle->engine_no = $request->engine_no;

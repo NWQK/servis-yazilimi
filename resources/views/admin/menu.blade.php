@@ -314,7 +314,7 @@
                         <li class="pc-item {{ in_array($routeName, ['vehicle-type.index']) ? 'active' : '' }} ">
                             <a href="{{ route('vehicle-type.index') }}" class="pc-link">
                                 <span class="pc-micon"><i class="ti ti-stack"></i></span>
-                                <span class="pc-mtext">{{ __('Vehicle Type') }}</span>
+                                <span class="pc-mtext">{{ __('Vehicle Brand') }}</span>
                             </a>
                         </li>
                     @endif
@@ -323,7 +323,7 @@
                         <li class="pc-item {{ in_array($routeName, ['vehicle-brand.index']) ? 'active' : '' }} ">
                             <a href="{{ route('vehicle-brand.index') }}" class="pc-link">
                                 <span class="pc-micon"><i class="ti ti-clipboard"></i></span>
-                                <span class="pc-mtext">{{ __('Vehicle Brand') }}</span>
+                                <span class="pc-mtext">{{ __('Vehicle Model') }}</span>
                             </a>
                         </li>
                     @endif

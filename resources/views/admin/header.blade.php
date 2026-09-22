@@ -89,14 +89,14 @@
 
                             <a href="#" class="dropdown-item customModal"
                                 data-url="{{ route('vehicle-type.create') }}"
-                                data-title="{{ __('Create Vehicle Type') }}" data-size="lg">
-                                <i class="ti ti-stack"></i>{{ __('Create Vehicle Type') }}
+                                data-title="{{ __('Create Vehicle Brand') }}" data-size="lg">
+                                <i class="ti ti-stack"></i>{{ __('Create Vehicle Brand') }}
                             </a>
 
                             <a href="#" class="dropdown-item customModal"
                                 data-url="{{ route('vehicle-brand.create') }}"
-                                data-title="{{ __('Create Vehicle Brand') }}" data-size="lg">
-                                <i class="ti ti-clipboard"></i> {{ __('Create Vehicle Brand') }}
+                                data-title="{{ __('Create Vehicle Model') }}" data-size="lg">
+                                <i class="ti ti-clipboard"></i> {{ __('Create Vehicle Model') }}
                             </a>
 
                             <a href="#" class="dropdown-item customModal"

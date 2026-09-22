@@ -1,7 +1,7 @@
 @extends('layouts.app')
 
 @section('page-title')
-    {{ __('Vehicle Type') }}
+    {{ __('Vehicle Brand') }}
 @endsection
 @section('breadcrumb')
     <li class="breadcrumb-item">
@@ -9,7 +9,7 @@
     </li>
     <li class="breadcrumb-item" aria-current="page">
 
-        {{ __('Vehicle Type') }}
+        {{ __('Vehicle Brand') }}
     </li>
 @endsection
 
@@ -22,14 +22,14 @@
                 <div class="card-header">
                     <div class="row align-items-center g-2">
                         <div class="col">
-                            <h5>{{ __('Vehicle Type List') }}</h5>
+                            <h5>{{ __('Vehicle Brand List') }}</h5>
                         </div>
                         @if (Gate::check('create vehicle type'))
                             <div class="col-auto">
                                 <a class="btn btn-secondary customModal" href="#" data-size="md"
-                                    data-url="{{ route('vehicle-type.create') }}" data-title="{{ __('Create Type') }}"> <i
+                                    data-url="{{ route('vehicle-type.create') }}" data-title="{{ __('Create Brand') }}"> <i
                                         class="ti ti-circle-plus align-text-bottom"></i>
-                                    {{ __('Create Type') }}
+                                    {{ __('Create Brand') }}
                                 </a>
                             </div>
                         @endif
@@ -41,7 +41,7 @@
                             <thead>
 
                                 <tr>
-                                    <th>{{ __('Type') }}</th>
+                                    <th>{{ __('Brand') }}</th>
                                     @if (Gate::check('edit vehicle type') || Gate::check('delete vehicle type'))
                                         <th class="text-right">{{ __('Action') }}</th>
                                     @endif
@@ -63,7 +63,7 @@
                                                             data-size="md" data-bs-toggle="tooltip"
                                                             data-bs-original-title="{{ __('Edit') }}" href="#"
                                                             data-url="{{ route('vehicle-type.edit', $type) }}"
-                                                            data-title="{{ __('Edit Type') }}"> <i data-feather="edit"></i></a>
+                                                            data-title="{{ __('Edit Brand') }}"> <i data-feather="edit"></i></a>
                                                     @endcan
                                                     @can('delete vehicle type')
                                                         <a class=" avtar avtar-xs btn-link-danger text-danger confirm_dialog"

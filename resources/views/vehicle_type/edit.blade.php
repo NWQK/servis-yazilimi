@@ -2,8 +2,8 @@
 <div class="modal-body">
     <div class="row">
         <div class="form-group col-md-12">
-            {{Form::label('type',__('Type'),array('class'=>'form-label')) }}
-            {{Form::text('type',null,array('class'=>'form-control','placeholder'=>__('Enter type'),'required'=>'required'))}}
+            {{Form::label('type',__('Brand'),array('class'=>'form-label')) }}
+            {{Form::text('type',null,array('class'=>'form-control','placeholder'=>__('Enter brand'),'required'=>'required'))}}
         </div>
     </div>
 </div>

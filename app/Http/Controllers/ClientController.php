@@ -41,9 +41,8 @@ class ClientController extends Controller
         abort_unless(auth()->user()->type !== 'client' && auth()->user()->can('create client') && auth()->user()->can('create vehicle'), 403);
         app(VehicleQrPool::class)->replenish(parentId());
         $qrCodes = VehicleQrCode::where('parent_id', parentId())->available()->whereNotNull('printed_at')->orderBy('id')->get();
-        $gender = User::genderList();
         $types = VehicleType::where('parent_id', parentId())->get()->pluck('type', 'id');
-        $types->prepend(__('Select Type'), '');
+        $types->prepend(__('Select Brand'), '');
         $employees = User::where('parent_id', parentId())->where('type', 'employee')->get()->pluck('name', 'id');
         $employees->prepend(__('Select Employee'), '');
         $status = Service::status();
@@ -53,7 +52,7 @@ class ClientController extends Controller
         $serviceRates = ServiceType::where('parent_id', parentId())->pluck('rate', 'id');
 
         return view('client.create', compact(
-            'qrCodes', 'gender',
+            'qrCodes',
             'types',
             'employees',
             'status',
@@ -72,26 +71,27 @@ class ClientController extends Controller
 
         $validator = \Validator::make($request->all(), [
             'name'         => 'required',
-            'email'        => 'required|email|unique:users',
-            'password'     => 'required|min:6',
+            'email'        => 'nullable|email|max:255|unique:users',
             'phone_number' => 'required',
-            'gender'       => 'required',
-            'address'      => 'required',
-            'country'      => 'required',
-            'state'        => 'required',
-            'city'         => 'required',
-            'zip_code'     => 'required',
+            'address'      => 'nullable|string',
+            'state'        => 'nullable|string|max:255',
+            'city'         => 'nullable|string|max:255',
+            'zip_code'     => 'nullable|string|max:255',
+            'notes'        => 'nullable|string',
             'type' => ['required', Rule::exists('vehicle_types', 'id')->where('parent_id', parentId())],
             'brand' => ['required', Rule::exists('vehicle_brands', 'id')->where('parent_id', parentId())->where('type', $request->type)],
             'qr_code_id' => 'required|integer',
-            'model'        => 'required',
-            'color'        => 'required',
+            'color'        => 'nullable|string|max:255',
             'license_plate' => 'required',
-            'engine_type'  => 'required',
-            'engine_no'    => 'required',
-            'chassis_no'   => 'required',
-            'fuel_type'    => 'required',
-            'mileage'      => 'required|numeric',
+            'engine_type'  => 'nullable|string|max:255',
+            'engine_no'    => 'nullable|string|max:255',
+            'chassis_no'   => 'nullable|string|max:255',
+            'fuel_type'    => 'nullable|string|max:255',
+            'mileage'      => 'nullable|integer|min:0|max:2147483647',
+            'last_service_date' => 'nullable|date',
+            'next_service_due_date' => 'nullable|date',
+            'insurance_details' => 'nullable|string',
+            'vehicle_notes' => 'nullable|string',
             'assign'       => 'required',
             'service_date' => 'required|date',
             'service_time' => 'required',
@@ -122,23 +122,22 @@ class ClientController extends Controller
             function () use ($request, $userRole, &$user, &$client, &$service, &$invoice) {
                 $user                    = new User();
                 $user->name              = $request->name;
-                $user->email             = $request->email;
+                $user->email             = $request->filled('email') ? $request->email : null;
                 $user->phone_number      = $request->phone_number;
-                $user->password          = \Hash::make($request->password);
+                // Customer registration does not collect or distribute login credentials.
+                $user->password          = \Hash::make(\Illuminate\Support\Str::random(64));
                 $user->type              = $userRole->name;
                 $user->profile           = 'avatar.png';
                 $user->lang              = 'english';
-                $user->email_verified_at = now();
+                $user->email_verified_at = null;
                 $user->parent_id         = parentId();
                 $user->save();
                 $user->assignRole($userRole);
                 $client             = new Client();
                 $client->client_id  = $this->clientNumber();
                 $client->user_id    = $user->id;
-                $client->gender     = $request->gender;
                 $client->city       = $request->city;
                 $client->state      = $request->state;
-                $client->country    = $request->country;
                 $client->zip_code   = $request->zip_code;
                 $client->address    = $request->address;
                 $client->notes      = $request->notes;
@@ -149,7 +148,6 @@ class ClientController extends Controller
                 $vehicle->client              = $user->id;
                 $vehicle->type                = $request->type;
                 $vehicle->brand               = $request->brand;
-                $vehicle->model               = $request->model;
                 $vehicle->color               = $request->color;
                 $vehicle->license_plate       = $request->license_plate;
                 $vehicle->engine_type         = $request->engine_type;
@@ -214,13 +212,10 @@ class ClientController extends Controller
             'name'         => $user->name,
             'email'        => $user->email,
             'phone'        => $user->phone_number,
-            'password'     => $request->password,
             'role'         => $userRole->name,
-            'gender'       => $request->gender,
             'address'      => $request->address,
             'city'         => $request->city,
             'state'        => $request->state,
-            'country'      => $request->country,
             'zip_code'     => $request->zip_code,
             'company_name' => $setting['company_name'],
             'company_email' => $setting['company_email'],
@@ -235,7 +230,7 @@ class ClientController extends Controller
                 'module'  => 'client_create',
                 'logo'    => $setting['company_logo'],
             ];
-            if ($clientNotification->enabled_email == 1) {
+            if ($clientNotification->enabled_email == 1 && !empty($user->email)) {
                 $r = commonEmailSend($user->email, $data);
                 if ($r['status'] == 'error') $errorMessage = $r['message'];
             }
@@ -255,7 +250,7 @@ class ClientController extends Controller
                 'module'  => 'vehicle_create',
                 'logo'    => $setting['company_logo'],
             ];
-            if ($vehicleNotification->enabled_email == 1) {
+            if ($vehicleNotification->enabled_email == 1 && !empty($user->email)) {
                 $r = commonEmailSend($user->email, $data);
                 if ($r['status'] == 'error') $errorMessage = $r['message'];
             }
@@ -307,7 +302,7 @@ class ClientController extends Controller
         if (!empty($serviceCreateNotif)) {
             $resp = MessageReplace($serviceCreateNotif, $service->id);
             $data = ['subject' => $resp['subject'], 'message' => $resp['message'], 'module' => 'service_create', 'logo' => $setting['company_logo']];
-            if ($serviceCreateNotif->enabled_email == 1) {
+            if ($serviceCreateNotif->enabled_email == 1 && !empty($user->email)) {
                 $r = commonEmailSend($user->email, $data);
                 if ($r['status'] == 'error') $errorMessage = $r['message'];
             }
@@ -361,7 +356,7 @@ class ClientController extends Controller
         $service = Service::where('client', $user->id)->with('types')->first();
         $gender = User::genderList();
         $types = VehicleType::where('parent_id', parentId())->pluck('type', 'id');
-        $types->prepend(__('Select Type'), '');
+        $types->prepend(__('Select Brand'), '');
         $employees = User::where('parent_id', parentId())->where('type', 'employee')->pluck('name', 'id');
         $employees->prepend(__('Select Employee'), '');
         $status = Service::status();
@@ -369,7 +364,7 @@ class ClientController extends Controller
         $serviceTypes = ServiceType::where('parent_id', parentId())->pluck('type', 'id');
         $serviceTypes->prepend(__('Select Service Type'), '');
         $serviceRates = ServiceType::where('parent_id', parentId())->pluck('rate', 'id');
-        $brands = VehicleBrand::pluck('name', 'id');
+        $brands = VehicleBrand::where('parent_id', parentId())->where('type', $vehicle->type ?? null)->pluck('name', 'id');
         return view('client.edit', compact('client', 'user', 'vehicle', 'service', 'gender', 'types', 'employees', 'status', 'taxes', 'serviceTypes', 'serviceRates', 'brands'));
     }
 
@@ -378,24 +373,26 @@ class ClientController extends Controller
         if (\Auth::user()->can('edit client')) {
             $validator = \Validator::make($request->all(), [
                 'name'          => 'required',
-                'email'         => 'required|email|unique:users,email,' . $id,
+                'email'         => 'nullable|email|max:255|unique:users,email,' . $id,
                 'phone_number'  => 'required',
-                'gender'        => 'required',
-                'address'       => 'required',
-                'country'       => 'required',
-                'state'         => 'required',
-                'city'          => 'required',
-                'zip_code'      => 'required',
-                'type'          => 'required',
-                'brand'         => 'required',
-                'model'         => 'required',
-                'color'         => 'required',
+                'address'       => 'nullable|string',
+                'state'         => 'nullable|string|max:255',
+                'city'          => 'nullable|string|max:255',
+                'zip_code'      => 'nullable|string|max:255',
+                'notes'         => 'nullable|string',
+                'type' => ['required', Rule::exists('vehicle_types', 'id')->where('parent_id', parentId())],
+                'brand' => ['required', Rule::exists('vehicle_brands', 'id')->where('parent_id', parentId())->where('type', $request->type)],
+                'color'         => 'nullable|string|max:255',
                 'license_plate' => 'required',
-                'engine_type'   => 'required',
-                'engine_no'     => 'required',
-                'fuel_type'     => 'required',
-                'chassis_no'    => 'required',
-                'mileage'       => 'required',
+                'engine_type'   => 'nullable|string|max:255',
+                'engine_no'     => 'nullable|string|max:255',
+                'fuel_type'     => 'nullable|string|max:255',
+                'chassis_no'    => 'nullable|string|max:255',
+                'mileage'       => 'nullable|integer|min:0|max:2147483647',
+                'last_service_date' => 'nullable|date',
+                'next_service_due_date' => 'nullable|date',
+                'insurance_details' => 'nullable|string',
+                'vehicle_notes' => 'nullable|string',
                 'assign'        => 'required',
                 'service_date'  => 'required',
                 'service_time'  => 'required',
@@ -409,14 +406,12 @@ class ClientController extends Controller
             $user = User::findOrFail($id);
             $user->update([
                 'name'         => $request->name,
-                'email'        => $request->email,
+                'email'        => $request->filled('email') ? $request->email : null,
                 'phone_number' => $request->phone_number,
             ]);
             $client = Client::where('user_id', $id)->first();
             if ($client) {
                 $client->update([
-                    'gender'    => $request->gender,
-                    'country'   => $request->country,
                     'state'     => $request->state,
                     'city'      => $request->city,
                     'zip_code'  => $request->zip_code,
@@ -429,7 +424,6 @@ class ClientController extends Controller
                 $vehicle->update([
                     'type'                  => $request->type,
                     'brand'                 => $request->brand,
-                    'model'                 => $request->model,
                     'color'                 => $request->color,
                     'license_plate'         => $request->license_plate,
                     'engine_type'           => $request->engine_type,
@@ -502,7 +496,7 @@ class ClientController extends Controller
         $vehicleData = [];
         foreach ($vehicles as $vehicle) {
             $veh['id'] = $vehicle->id;
-            $veh['name'] = vehiclePrefix() . $vehicle->vehicle_id . ' | ' . $vehicle->brands->name . ' | ' . $vehicle->model . ' | ' . $vehicle->license_plate;
+            $veh['name'] = vehiclePrefix() . $vehicle->vehicle_id . ' | ' . $vehicle->display_name . ' | ' . $vehicle->license_plate;
             $vehicleData[] = $veh;
         }
 

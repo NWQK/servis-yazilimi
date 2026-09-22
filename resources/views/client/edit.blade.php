@@ -93,7 +93,7 @@
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('email', __('Email'), ['class' => 'form-label']) }}
-                                            {{ Form::text('email', null, ['class' => 'form-control', 'placeholder' => __('Enter Email'), 'required' => 'required']) }}
+                                            {{ Form::email('email', null, ['class' => 'form-control', 'placeholder' => __('Enter Email')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('phone_number', __('Phone Number'), ['class' => 'form-label']) }}
@@ -103,28 +103,20 @@
                                             </small>
                                         </div>
                                         <div class="form-group col-md-6">
-                                            {{ Form::label('gender', __('Gender'), ['class' => 'form-label']) }}
-                                            {!! Form::select('gender', $gender, null, ['class' => 'form-control select2 ', 'required' => 'required']) !!}
-                                        </div>
-                                        <div class="form-group col-md-6">
-                                            {{ Form::label('country', __('Country'), ['class' => 'form-label']) }}
-                                            {{ Form::text('country', !empty($client) ? $client->country : '', ['class' => 'form-control', 'placeholder' => __('Enter country'), 'required' => 'required']) }}
-                                        </div>
-                                        <div class="form-group col-md-6">
                                             {{ Form::label('state', __('State'), ['class' => 'form-label']) }}
-                                            {{ Form::text('state', !empty($client) ? $client->state : '', ['class' => 'form-control', 'placeholder' => __('Enter state'), 'required' => 'required']) }}
+                                            {{ Form::text('state', !empty($client) ? $client->state : '', ['class' => 'form-control', 'placeholder' => __('Enter state')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('city', __('City'), ['class' => 'form-label']) }}
-                                            {{ Form::text('city', !empty($client) ? $client->city : '', ['class' => 'form-control', 'placeholder' => __('Enter city'), 'required' => 'required']) }}
+                                            {{ Form::text('city', !empty($client) ? $client->city : '', ['class' => 'form-control', 'placeholder' => __('Enter city')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('zip_code', __('Zip Code'), ['class' => 'form-label']) }}
-                                            {{ Form::text('zip_code', !empty($client) ? $client->zip_code : '', ['class' => 'form-control', 'placeholder' => __('Enter zip code'), 'required' => 'required']) }}
+                                            {{ Form::text('zip_code', !empty($client) ? $client->zip_code : '', ['class' => 'form-control', 'placeholder' => __('Enter zip code')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('address', __('Address'), ['class' => 'form-label']) }}
-                                            {{ Form::textarea('address', !empty($client) ? $client->address : '', ['class' => 'form-control', 'placeholder' => __('Enter address'), 'rows' => 2, 'required' => 'required']) }}
+                                            {{ Form::textarea('address', !empty($client) ? $client->address : '', ['class' => 'form-control', 'placeholder' => __('Enter address'), 'rows' => 2]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('notes', __('Notes'), ['class' => 'form-label']) }}
@@ -137,7 +129,7 @@
 
                                     <div class="row g-3">
                                         <div class="form-group col-md-6">
-                                            {{ Form::label('type', __('Type'), ['class' => 'form-label']) }}
+                                            {{ Form::label('type', __('Brand'), ['class' => 'form-label']) }}
                                             {!! Form::select('type', $types, $vehicle->type ?? '', [
                                                 'class' => 'form-control select2',
                                                 'id' => 'type_id',
@@ -145,7 +137,7 @@
                                             ]) !!}
                                         </div>
                                         <div class="form-group col-md-6 col-lg-6">
-                                            {{ Form::label('brand_id', __('Brand'), ['class' => 'form-label']) }}
+                                            {{ Form::label('brand_id', __('Model'), ['class' => 'form-label']) }}
 
                                             {!! Form::select('brand', $brands, $vehicle->brand ?? '', [
                                                 'class' => 'form-control select2 brand',
@@ -153,12 +145,8 @@
                                             ]) !!}
                                         </div>
                                         <div class="form-group col-md-6">
-                                            {{ Form::label('model', __('Model'), ['class' => 'form-label']) }}
-                                            {{ Form::text('model', $vehicle->model ?? '', ['class' => 'form-control', 'placeholder' => __('Enter model'), 'required' => 'required']) }}
-                                        </div>
-                                        <div class="form-group col-md-6">
                                             {{ Form::label('color', __('Color'), ['class' => 'form-label']) }}
-                                            {{ Form::text('color', $vehicle->color ?? '', ['class' => 'form-control', 'placeholder' => __('Enter color'), 'required' => 'required']) }}
+                                            {{ Form::text('color', $vehicle->color ?? '', ['class' => 'form-control', 'placeholder' => __('Enter color')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('license_plate', __('License Plate'), ['class' => 'form-label']) }}
@@ -166,39 +154,39 @@
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('engine_type', __('Engine Type'), ['class' => 'form-label']) }}
-                                            {{ Form::text('engine_type', $vehicle->engine_type ?? '', ['class' => 'form-control', 'placeholder' => __('Enter engine type'), 'required' => 'required']) }}
+                                            {{ Form::text('engine_type', $vehicle->engine_type ?? '', ['class' => 'form-control', 'placeholder' => __('Enter engine type')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('engine_no', __('Engine Number'), ['class' => 'form-label']) }}
-                                            {{ Form::text('engine_no', $vehicle->engine_no ?? '', ['class' => 'form-control', 'placeholder' => __('Enter engine number'), 'required' => 'required']) }}
+                                            {{ Form::text('engine_no', $vehicle->engine_no ?? '', ['class' => 'form-control', 'placeholder' => __('Enter engine number')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('fuel_type', __('Fuel Type'), ['class' => 'form-label']) }}
-                                            {{ Form::text('fuel_type', $vehicle->fuel_type ?? '', ['class' => 'form-control', 'placeholder' => __('Enter fuel type'), 'required' => 'required']) }}
+                                            {{ Form::text('fuel_type', $vehicle->fuel_type ?? '', ['class' => 'form-control', 'placeholder' => __('Enter fuel type')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('chassis_no', __('Chassis Number'), ['class' => 'form-label']) }}
-                                            {{ Form::text('chassis_no', $vehicle->chassis_no ?? '', ['class' => 'form-control', 'placeholder' => __('Enter chassis number'), 'required' => 'required']) }}
+                                            {{ Form::text('chassis_no', $vehicle->chassis_no ?? '', ['class' => 'form-control', 'placeholder' => __('Enter chassis number')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('mileage', __('Mileage'), ['class' => 'form-label']) }}
-                                            {{ Form::number('mileage', $vehicle->mileage ?? '', ['class' => 'form-control', 'placeholder' => __('Enter mileage'), 'required' => 'required']) }}
+                                            {{ Form::number('mileage', $vehicle->mileage ?? '', ['class' => 'form-control', 'placeholder' => __('Enter mileage')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('last_service_date', __('Last Service Date'), ['class' => 'form-label']) }}
-                                            {{ Form::date('last_service_date', $vehicle->last_service_date ?? '', ['class' => 'form-control', 'required' => 'required']) }}
+                                            {{ Form::date('last_service_date', $vehicle->last_service_date ?? '', ['class' => 'form-control']) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('next_service_due_date', __('Next Service Due Date'), ['class' => 'form-label']) }}
-                                            {{ Form::date('next_service_due_date', $vehicle->next_service_due_date ?? '', ['class' => 'form-control', 'required' => 'required']) }}
+                                            {{ Form::date('next_service_due_date', $vehicle->next_service_due_date ?? '', ['class' => 'form-control']) }}
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('insurance_details', __('Insurance Details'), ['class' => 'form-label']) }}
                                             {{ Form::textarea('insurance_details', $vehicle->insurance_details ?? '', ['class' => 'form-control', 'placeholder' => __('Enter insurance details'), 'rows' => 2]) }}
                                         </div>
                                         <div class="form-group col-md-6">
-                                            {{ Form::label('notes', __('Notes'), ['class' => 'form-label']) }}
-                                            {{ Form::textarea('notes', $vehicle->insurance_details ?? '', ['class' => 'form-control', 'placeholder' => __('Enter notes'), 'rows' => 2, 'required' => 'required']) }}
+                                            {{ Form::label('vehicle_notes', __('Notes'), ['class' => 'form-label']) }}
+                                            {{ Form::textarea('vehicle_notes', $vehicle->notes ?? '', ['class' => 'form-control', 'placeholder' => __('Enter notes'), 'rows' => 2]) }}
                                         </div>
                                     </div>
                                 </div>
@@ -239,8 +227,8 @@
                                                     ]) !!}
                                                 </div>
                                                 <div class="form-group col-md-12 col-lg-12">
-                                                    {{ Form::label('notes', __('Notes'), ['class' => 'form-label']) }}
-                                                    {{ Form::textarea('notes', $service->notes ?? '', ['class' => 'form-control', 'placeholder' => __('Enter notes'), 'rows' => 2]) }}
+                                                    {{ Form::label('service_notes', __('Notes'), ['class' => 'form-label']) }}
+                                                    {{ Form::textarea('service_notes', $service->notes ?? '', ['class' => 'form-control', 'placeholder' => __('Enter notes'), 'rows' => 2]) }}
                                                 </div>
                                             </div>
                                         </div>
@@ -260,7 +248,7 @@
                                             <table class="display dataTable cell-border" data-repeater-list="types">
                                                 <thead>
                                                     <tr>
-                                                        <th>{{ __('Type') }}</th>
+                                                        <th>{{ __('Brand') }}</th>
                                                         <th>{{ __('Rate') }}</th>
                                                         <th>{{ __('Tax') }}</th>
                                                         <th>{{ __('Note') }}</th>
