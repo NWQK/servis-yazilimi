@@ -280,6 +280,8 @@ Route::group(
 
 
 //-------------------------------Item-------------------------------------------
+Route::resource('item-category', \App\Http\Controllers\ItemCategoryController::class)->except('show')->middleware(['auth', 'XSS']);
+
 Route::resource('item', ItemController::class)->middleware(
     [
         'auth',

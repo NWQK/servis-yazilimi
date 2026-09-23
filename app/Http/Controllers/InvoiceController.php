@@ -53,7 +53,7 @@ class InvoiceController extends Controller
         $types = ServiceType::where('parent_id', parentId())->pluck('type', 'id');
         $types->prepend(__('Select service type'), '');
 
-        return view('invoice.create', compact('clients', 'invoiceId', 'items', 'taxs', 'types'));
+        return view('invoice.create', compact('clients', 'invoiceId', 'items', 'taxs', 'types') + $this->itemSelectionData());
     }
 
 
@@ -210,7 +210,7 @@ class InvoiceController extends Controller
             $serviceData[] = $serv;
         }
 
-        return view('invoice.edit', compact('clients', 'invoice', 'invoiceId', 'taxs', 'items', 'types', 'existingTypes', 'selectedService', 'serviceData'));
+        return view('invoice.edit', compact('clients', 'invoice', 'invoiceId', 'taxs', 'items', 'types', 'existingTypes', 'selectedService', 'serviceData') + $this->itemSelectionData($invoice));
     }
 
 
@@ -392,7 +392,7 @@ class InvoiceController extends Controller
             $invoicePayment->description = $request->description;
             $invoicePayment->parent_id = parentId();
             $invoicePayment->save();
-            $invoice = Invoice::where('id', $invoice_id)->first();
+            $invoice = Invoice::where('parent_id', parentId())->findOrFail($invoice_id);
             $due = $invoice->getInvoiceTotalDueAmount();
 
 
@@ -473,7 +473,7 @@ class InvoiceController extends Controller
     {
         if (\Auth::user()->can('delete invoice payment')) {
             InvoicePayment::where('id', $payment_id)->delete();
-            $invoice = Invoice::where('id', $invoice_id)->first();
+            $invoice = Invoice::where('parent_id', parentId())->findOrFail($invoice_id);
             $due = $invoice->getInvoiceTotalDueAmount();
             $total = $invoice->getInvoiceAllTotalAmount();
             if ($due > 0 && $total != $due) {
@@ -488,13 +488,29 @@ class InvoiceController extends Controller
         }
     }
 
+    private function itemSelectionData(?Invoice $invoice = null): array
+    {
+        $itemCategories = \App\Models\ItemCategory::where('parent_id', parentId())->orderBy('name')->pluck('name', 'id');
+        $itemCatalog = Item::where('parent_id', parentId())->orderBy('title')->get()->map(fn ($item) => [
+            'id' => $item->id, 'title' => $item->title, 'category' => $item->category_id ?: 'uncategorized', 'available' => true,
+        ])->keyBy('id');
+        foreach ($invoice?->items ?? [] as $line) {
+            if (!$itemCatalog->has($line->item)) {
+                $category = $line->item_snapshot['category_id'] ?? null;
+                $itemCatalog->put($line->item, ['id' => $line->item, 'title' => $line->item_title,
+                    'category' => $itemCategories->has($category) ? $category : 'uncategorized', 'available' => false]);
+            }
+        }
+        return ['itemCategories' => $itemCategories, 'itemCatalog' => $itemCatalog->values()];
+    }
+
     public function invoiceItem($invoice_id)
     {
         if (\Auth::user()->can('create invoice')) {
-            $invoice = Invoice::where('id', $invoice_id)->first();
+            $invoice = Invoice::where('parent_id', parentId())->findOrFail($invoice_id);
             $invoiceItems = Item::where('parent_id', parentId())->get()->pluck('title', 'id');
             $invoiceItems->prepend(__('Select Item'), '');
-            return view('invoice.create_item', compact('invoice', 'invoiceItems'));
+            return view('invoice.create_item', compact('invoice', 'invoiceItems') + $this->itemSelectionData());
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
         }

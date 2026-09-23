@@ -3,6 +3,12 @@
         <div class="row">
             <div class="col-6">
                 <div class="detail-group">
+                    <h6>Ürün Kategorisi</h6>
+                    <p class="mb-20 text-muted">{{ $item->category?->name ?? 'Kategorisiz' }}</p>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="detail-group">
                     <h6>{{__('Title')}}</h6>
                     <p class="mb-20 text-muted">{{ $item->title}}</p>
                 </div>

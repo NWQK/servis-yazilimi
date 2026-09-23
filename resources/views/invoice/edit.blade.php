@@ -163,11 +163,12 @@
                             @if (!empty($invoice->items->toArray()) && count($invoice->items->toArray()) > 0)
                                 @foreach ($invoice->items as $key => $item)
                                     <div class="row location_list">
+                                    @include('invoice.item_category')
                                         <div class="form-group col-md-3 col-lg-3">
                                             {{ Form::label('item', __('Item'), ['class' => 'form-label']) }}
                                             {!! Form::select('item[' . $key . ']', $items, $item->item, [
                                                 'class' => 'form-control select2 item_name_select',
-                                                'id' => 'item_id',
+                                                'aria-label' => 'Ürün',
                                             ]) !!}
                                             {{ Form::hidden('item_id[' . $key . ']', $item->id) }}
                                         </div>
@@ -186,7 +187,7 @@
                                                 'multiple' => true,
                                             ]) !!}
                                         </div>
-                                        <div class="form-group col-md-4 col-lg-4">
+                                        <div class="form-group col-md-2 col-lg-2">
                                             {{ Form::label('description', __('Description'), ['class' => 'form-label']) }}
                                             {{ Form::textarea('description[' . $key . ']', $item->description, ['class' => 'form-control description', 'rows' => 2]) }}
                                         </div>
@@ -200,11 +201,12 @@
                                 @endforeach
                             @else
                                 <div class="row location_list">
+                                    @include('invoice.item_category')
                                     <div class="form-group col-md-3 col-lg-3">
                                         {{ Form::label('item', __('Item'), ['class' => 'form-label']) }}
                                         {!! Form::select('item[0]', $items, null, [
                                             'class' => 'form-control select2 item_name_select',
-                                            'id' => 'item_id',
+                                            'aria-label' => 'Ürün',
                                         ]) !!}
                                     </div>
                                     <div class="form-group col-md-1 col-lg-1">
@@ -227,7 +229,7 @@
                                             ],
                                         ) !!}
                                     </div>
-                                    <div class="form-group col-md-4 col-lg-4">
+                                    <div class="form-group col-md-2 col-lg-2">
                                         {{ Form::label('description', __('Description'), ['class' => 'form-label']) }}
                                         {{ Form::textarea('description[0]', null, ['class' => 'form-control description', 'rows' => 2]) }}
                                     </div>
@@ -444,7 +446,7 @@
         });
     </script>
     <script>
-        $(document).on('change', '#item_id', function() {
+        $(document).on('change', '.location .item_name_select', function() {
             var invoiceItemId = $(this).val();
             if (!invoiceItemId) return;
             $.ajax({
@@ -459,6 +461,7 @@
                 cache: false,
                 context: this,
                 success: function(data) {
+                    if ($(this).val() !== invoiceItemId) return;
                     var item = JSON.parse(data);
                     $(this).parents('.location_list').find('.quantity').val(1);
                     $(this).parents('.location_list').find('.amount').val(item.item.sales_price);
@@ -496,6 +499,7 @@
             clonedlocation.find('input[type="hidden"][name^="item_id"]').val('');
             clonedlocation.find('.select2-container').remove();
             $('.location_list_results').append(clonedlocation);
+            window.initItemCategories(clonedlocation, true);
 
             $('.location_list').each(function(index) {
                 $(this).find('input, textarea, select').each(function() {

@@ -16,6 +16,10 @@
     @endif
     <div class="row">
         <div class="form-group col-md-6">
+            {{ Form::label('category_id', 'Ürün Kategorisi', ['class' => 'form-label']) }}
+            {{ Form::select('category_id', $categories, null, ['class' => 'form-control select2']) }}
+        </div>
+        <div class="form-group col-md-6">
             {{ Form::label('title', __('Title'), ['class' => 'form-label']) }}
             {{ Form::text('title', null, ['class' => 'form-control', 'placeholder' => __('Enter title'), 'required' => 'required']) }}
         </div>

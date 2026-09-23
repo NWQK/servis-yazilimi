@@ -391,6 +391,7 @@
 
 <script src="{{ asset('js/custom.js') }}"></script>
 <script src="{{ asset('assets/js/select2/select2.js') }}"></script>
+<script src="{{ asset('js/item-categories.js') }}"></script>
 @stack('script-page')
 <script>
     var successImg = '{{ asset('assets/images/notification/ok-48.png') }}';

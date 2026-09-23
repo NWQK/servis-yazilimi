@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Item;
+use App\Models\ItemCategory;
+use Illuminate\Validation\Rule;
 use App\Models\Tax;
 use App\Models\Unit;
 use Illuminate\Http\Request;
@@ -11,22 +13,27 @@ use App\Services\InventoryAccounting;
 class ItemController extends Controller
 {
 
-    public function index()
+    public function index(Request $request)
     {
         if (\Auth::user()->can('manage item')) {
-            $items = Item::where('parent_id', '=', parentId())->orderBy('id', 'desc')->get();
+            $query = Item::where('parent_id', parentId())->with(['category', 'unit']);
+            if ($request->input('category') === 'uncategorized') $query->whereNull('category_id');
+            elseif ($request->filled('category')) $query->where('category_id', $request->input('category'));
+            $items = $query->orderByDesc('id')->get();
+            $categories = ItemCategory::where('parent_id', parentId())->orderBy('name')->pluck('name', 'id');
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
         }
-        return view('item.index', compact('items'));
+        return view('item.index', compact('items', 'categories'));
     }
 
     public function create()
     {
+        $categories = ItemCategory::where('parent_id', parentId())->orderBy('name')->pluck('name', 'id')->prepend('Kategorisiz', '');
         $units = Unit::where('parent_id', parentId())->get()->pluck('unit', 'id');
         $taxs = Tax::where('parent_id', parentId())->get()->pluck('title', 'id');
 
-        return view('item.create', compact('units', 'taxs'));
+        return view('item.create', compact('units', 'taxs', 'categories'));
     }
 
     public function store(Request $request)
@@ -35,6 +42,7 @@ class ItemController extends Controller
             $validator = \Validator::make(
                 $request->all(), [
                     'title' => 'required',
+                    'category_id' => ['nullable', 'integer', Rule::exists('item_categories', 'id')->where('parent_id', parentId())],
                     'item_code' => 'required',
                     'quantity' => 'required|integer|min:0|max:100000000',
                     'units' => 'required',
@@ -61,14 +69,19 @@ class ItemController extends Controller
 
     public function show(Item $item)
     {
+        abort_unless(auth()->user()->can('show item'), 403);
+        abort_unless((int) $item->parent_id === (int) parentId(), 404);
         return view('item.show', compact('item'));
     }
 
     public function edit(Item $item)
     {
+        abort_unless(auth()->user()->can('edit item'), 403);
+        abort_unless((int) $item->parent_id === (int) parentId(), 404);
+        $categories = ItemCategory::where('parent_id', parentId())->orderBy('name')->pluck('name', 'id')->prepend('Kategorisiz', '');
         $units = Unit::where('parent_id', parentId())->get()->pluck('unit', 'id');
         $taxs = Tax::where('parent_id', parentId())->get()->pluck('title', 'id');
-        return view('item.edit', compact('units', 'taxs', 'item'));
+        return view('item.edit', compact('units', 'taxs', 'item', 'categories'));
     }
 
     public function update(Request $request, Item $item)
@@ -77,6 +90,7 @@ class ItemController extends Controller
             $validator = \Validator::make(
                 $request->all(), [
                     'title' => 'required',
+                    'category_id' => ['nullable', 'integer', Rule::exists('item_categories', 'id')->where('parent_id', parentId())],
                     'item_code' => 'required',
                     'quantity' => 'required|integer|min:0|max:100000000',
                     'units' => 'required',

@@ -1,21 +1,22 @@
 {{ Form::open(array('route' => array('invoice.item.store', $invoice->id),'method'=>'post')) }}
 <div class="modal-body">
-    <div class="row">
+    <div class="row location_list invoice-item-modal">
+        @include('invoice.item_category', ['categoryColumn' => 'col-md-12'])
         <div class="form-group col-md-12">
             {{ Form::label('item', __('Item'),['class'=>'form-label']) }}
-            {!! Form::select('item', $invoiceItems,null,array('class' => 'form-control select2','id'=>'item_id','required'=>'required')) !!}
+            {!! Form::select('item', $invoiceItems,null,array('class' => 'form-control select2 item_name_select','id'=>'modal_item_id','required'=>'required')) !!}
         </div>
         <div class="form-group  col-md-12">
             {{ Form::label('quantity', __('Quantity'),['class'=>'form-label']) }}
-            {{ Form::text('quantity',null, array('class' => 'form-control','required'=>'required')) }}
+            {{ Form::number('quantity',null, array('class' => 'form-control quantity','min' => 1, 'step' => 1, 'required'=>'required')) }}
         </div>
         <div class="form-group  col-md-12">
             {{ Form::label('amount', __('Amount'),['class'=>'form-label']) }}
-            {{ Form::text('amount',null, array('class' => 'form-control','readonly' => true, 'required'=>'required')) }}
+            {{ Form::text('amount',null, array('class' => 'form-control amount','readonly' => true, 'required'=>'required')) }}
         </div>
         <div class="form-group  col-md-12">
             {{ Form::label('description', __('Description'),['class'=>'form-label']) }}
-            {{ Form::textarea('description', '', array('class' => 'form-control','rows'=>3)) }}
+            {{ Form::textarea('description', '', array('class' => 'form-control description','rows'=>3)) }}
         </div>
     </div>
 </div>
@@ -25,8 +26,11 @@
 {{Form::close()}}
 <script>
 
-    $(document).on('change', '#item_id', function () {
+    window.initItemCategories($('.invoice-item-modal'));
+    $(document).off('change.invoiceItemModal', '#modal_item_id').on('change.invoiceItemModal', '#modal_item_id', function () {
         var invoiceItemId = $(this).val();
+        if (!invoiceItemId) return;
+        var row = $(this).closest(".location_list");
         $.ajax({
             url: "{{route('invoice.item')}}",
             type: 'post',
@@ -38,10 +42,11 @@
             },
             cache: false,
             success: function (data) {
+                if (row.find(".item_name_select").val() !== invoiceItemId) return;
                 var item = JSON.parse(data);
-                $('#quantity').val(1);
-                $('#amount').val(item.item.sales_price);
-                $('#description').val(item.item.notes);
+                row.find('.quantity').val(1);
+                row.find('.amount').val(item.item.sales_price);
+                row.find('.description').val(item.item.notes);
             },
         });
     });

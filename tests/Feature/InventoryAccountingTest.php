@@ -39,6 +39,63 @@ class InventoryAccountingTest extends TestCase
             'units' => 1, 'purchase_price' => '200.00', 'sales_price' => '300.00', 'purchase_date' => '2026-09-23'];
     }
 
+    public function test_categories_can_be_managed_and_filter_products_without_creating_purchase_expenses()
+    {
+        $this->post('/item-category', ['name' => ' Motor Yağları '])->assertRedirect(route('item-category.index'));
+        $category = \App\Models\ItemCategory::firstOrFail();
+        $this->assertSame('Motor Yağları', $category->name);
+        $this->post('/item-category', ['name' => 'Motor Yağları'])->assertSessionHasErrors('name');
+        $item = $this->purchase();
+        $this->put('/item/' . $item->id, $this->attributes() + ['category_id' => $category->id])->assertRedirect();
+        $this->assertSame(1, Expense::count());
+        $this->assertEquals($category->id, $item->fresh()->category_id);
+        $other = $this->purchase();
+        $this->get('/item?category=' . $category->id)->assertOk()->assertViewHas('items', fn ($items) => $items->pluck('id')->all() === [$item->id]);
+        $this->get('/item?category=uncategorized')->assertOk()->assertViewHas('items', fn ($items) => $items->pluck('id')->all() === [$other->id]);
+        $this->get('/item-category')->assertOk()->assertSee('Motor Yağları');
+        $this->get('/item-category/' . $category->id . '/edit')->assertOk();
+        $this->put('/item-category/' . $category->id, ['name' => 'Yağlar'])->assertRedirect();
+        $this->delete('/item-category/' . $category->id)->assertSessionHas('error');
+        $this->assertNotNull($category->fresh());
+        $this->put('/item/' . $item->id, $this->attributes() + ['category_id' => ''])->assertRedirect();
+        $this->delete('/item-category/' . $category->id)->assertRedirect();
+        $this->assertNull($category->fresh());
+    }
+
+    public function test_categories_are_tenant_scoped_in_crud_product_assignment_and_invoice_catalog()
+    {
+        $foreign = new \App\Models\ItemCategory(['name' => 'Private category']);
+        $foreign->parent_id = $this->owner->id + 100;
+        $foreign->save();
+        $this->get('/item-category/' . $foreign->id . '/edit')->assertNotFound();
+        $this->put('/item-category/' . $foreign->id, ['name' => 'Changed'])->assertNotFound();
+        $this->delete('/item-category/' . $foreign->id)->assertNotFound();
+        $this->post('/item', $this->attributes() + ['category_id' => $foreign->id])->assertSessionHas('error');
+        $this->assertSame(0, Item::count());
+        $this->get('/invoice/create')->assertOk()->assertViewHas('itemCategories', fn ($categories) => !$categories->has($foreign->id));
+        $this->owner->type = 'employee';
+        $this->owner->save();
+        $this->get('/item-category')->assertForbidden();
+        $this->post('/item-category', ['name' => 'Unauthorized'])->assertForbidden();
+    }
+
+    public function test_deleted_product_and_category_can_be_returned_as_uncategorized()
+    {
+        $this->post('/item-category', ['name' => 'Oil']);
+        $category = \App\Models\ItemCategory::firstOrFail();
+        $item = $this->stock->savePurchase($this->owner->id, $this->attributes(1) + ['category_id' => $category->id]);
+        $invoice = $this->invoice();
+        $line = $this->stock->add($invoice, ['item' => $item->id, 'quantity' => 1]);
+        $item->delete();
+        $this->delete('/item-category/' . $category->id)->assertRedirect();
+        $this->get('/invoice/' . encrypt($invoice->id) . '/edit')->assertOk()
+            ->assertViewHas('itemCatalog', fn ($items) => $items->first()['category'] === 'uncategorized' && !$items->first()['available']);
+        $this->stock->remove($this->owner->id, $invoice->id, $line->id);
+        $this->assertNull(Item::firstOrFail()->category_id);
+        $this->assertSame(1, (int) Item::first()->quantity);
+        $this->assertSame(1, Expense::count());
+    }
+
     private function purchase(int $quantity = 5): Item
     {
         return $this->stock->savePurchase($this->owner->id, $this->attributes($quantity));

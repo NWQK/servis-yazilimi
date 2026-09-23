@@ -18,6 +18,14 @@ Gelir yalnızca tahsilattır. Ürün satışı otomatik ödeme kaydı oluşturma
 
 ## Kurulum ve mevcut veriler
 
+### Ürün kategorileri
+
+Menüdeki **Ürün Kategorileri** ekranından kategori eklenir, düzenlenir ve boş kategoriler silinir. Bu işlemler mevcut ürün yönetimi yetkilerini kullanır. Kategori isimleri işletme içinde benzersizdir. Ürün bulunan kategori silinmez; önce ürünler başka kategoriye veya Kategorisiz seçeneğine taşınmalıdır.
+
+Ürün ekleme/düzenleme formunda kategori seçilebilir. Mevcut ürünler migration sonrasında Kategorisiz kalır; fiyat, stok ve geçmiş muhasebe kayıtları değişmez. Ürün listesinde kategori filtresi bulunur. Fatura oluşturma, düzenleme ve ürün ekleme penceresinde önce kategori, sonra o kategoriye ait ürün seçilir. Kategori değişince önceki ürün, miktar ve fiyat temizlenir. Silinmiş ürünün kategorisi de silinmişse stok iadesinde ürün Kategorisiz olarak geri oluşturulur.
+
+Bu güncelleme için `php artisan migrate` ve `php artisan view:clear` çalıştırılmalıdır; seeder gerekmez.
+
 `php artisan migrate` ve `php artisan view:clear` çalıştırılır. Seeder gerekmez. Yeni migration ürün kimliğini, fatura satırındaki tarihsel ürün bilgilerini, stok hareketlerini ve otomatik gider bağlantısını ekler. Gider tutarı kuruşlu değerleri korur.
 
 Eski ürünler için geriye dönük alım gideri oluşturulmaz. Daha önceki sürüm faturalarda stok düşmediği için eski satırlar silinince hayali stok iadesi yapılmaz. Eski satırın adedi artırılırsa yalnızca yeni eklenen adet stoktan düşer; sonraki iadede yalnızca gerçekten düşülmüş miktar geri gelir. Eski ve zaten silinmiş bir ürünün hiç kaydedilmemiş tarihsel bilgileri yeniden üretilemez.

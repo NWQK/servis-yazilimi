@@ -36,11 +36,26 @@
                     </div>
                 </div>
                 <div class="card-body pt-0">
+                    <form method="get" action="{{ route('item.index') }}" class="row g-2 mb-3">
+                        <div class="col-md-4">
+                            <label for="category-filter" class="form-label">Ürün Kategorisi</label>
+                            <select id="category-filter" name="category" class="form-control select2">
+                                <option value="">Tüm kategoriler</option>
+                                <option value="uncategorized" @selected(request('category') === 'uncategorized')>Kategorisiz</option>
+                                @foreach($categories as $id => $name)
+                                    <option value="{{ $id }}" @selected((string) request('category') === (string) $id)>{{ $name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div class="col-auto align-self-end"><button class="btn btn-secondary">Filtrele</button>
+                            <a href="{{ route('item.index') }}" class="btn btn-light">Temizle</a></div>
+                    </form>
                     <div class="dt-responsive table-responsive">
                         <table class="table table-hover advance-datatable">
                             <thead>
                                 <tr>
                                     <th>{{ __('Title') }}</th>
+                                    <th>Ürün Kategorisi</th>
                                     <th>{{ __('Item Code') }}</th>
                                     <th>{{ __('Quantity') }}</th>
                                     <th>{{ __('Units') }}</th>
@@ -56,6 +71,7 @@
                                 @foreach ($items as $item)
                                     <tr>
                                         <td>{{ $item->title }}</td>
+                                        <td>{{ $item->category?->name ?? 'Kategorisiz' }}</td>
                                         <td>{{ $item->item_code }}</td>
                                         <td>{{ $item->quantity }}</td>
                                         <td>{{ !empty($item->unit) ? $item->unit->unit : '-' }} </td>

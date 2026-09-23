@@ -118,6 +118,12 @@
                         </li>
                     @endif
                     @if (Gate::check('manage item'))
+                        <li class="pc-item {{ str_starts_with($routeName, 'item-category.') ? 'active' : '' }}">
+                            <a href="{{ route('item-category.index') }}" class="pc-link">
+                                <span class="pc-micon"><i class="ti ti-folder"></i></span>
+                                <span class="pc-mtext">Ürün Kategorileri</span>
+                            </a>
+                        </li>
                         <li class="pc-item {{ in_array($routeName, ['item.index']) ? 'active' : '' }}">
                             <a href="{{ route('item.index') }}" class="pc-link">
                                 <span class="pc-micon"><i class="ti ti-shopping-cart"></i></span>

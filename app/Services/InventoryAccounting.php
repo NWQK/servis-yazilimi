@@ -23,6 +23,9 @@ class InventoryAccounting
         return $this->transaction($tenant, function () use ($tenant, $attributes, $id) {
             $item = $id ? Item::where('parent_id', $tenant)->lockForUpdate()->findOrFail($id) : new Item();
             $previousQuantity = $item->exists ? (int) $item->quantity : 0;
+            if (!empty($attributes['category_id']) && !\App\Models\ItemCategory::where('parent_id', $tenant)->whereKey($attributes['category_id'])->exists()) {
+                $this->invalid('Geçersiz ürün kategorisi.');
+            }
             $item->fill($attributes);
             $item->parent_id = $tenant;
             $item->inventory_key = $item->inventory_key ?: (string) Str::uuid();
@@ -202,6 +205,9 @@ class InventoryAccounting
         if (!$item) {
             $item = new Item();
             $item->fill($snapshot);
+            if ($item->category_id && !\App\Models\ItemCategory::where('parent_id', $line->parent_id)->whereKey($item->category_id)->exists()) {
+                $item->category_id = null;
+            }
             $item->parent_id = $line->parent_id;
             $item->inventory_key = $snapshot['inventory_key'];
             $item->quantity = 0;

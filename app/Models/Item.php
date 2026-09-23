@@ -10,6 +10,7 @@ class Item extends Model
     use HasFactory;
     protected $fillable=[
         'title',
+        'category_id',
         'item_code',
         'quantity',
         'units',
@@ -22,6 +23,11 @@ class Item extends Model
         'notes',
         'parent_id',
     ];
+
+    public function category()
+    {
+        return $this->belongsTo(ItemCategory::class, 'category_id');
+    }
 
     public function unit()
     {
