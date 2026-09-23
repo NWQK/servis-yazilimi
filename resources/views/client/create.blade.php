@@ -262,7 +262,7 @@
                                             <table class="display dataTable cell-border" data-repeater-list="types">
                                                 <thead>
                                                     <tr>
-                                                        <th>{{ __('Brand') }}</th>
+                                                        <th>{{ __('Service Type') }}</th>
                                                         <th>{{ __('Rate') }}</th>
                                                         <th>{{ __('Tax') }}</th>
                                                         <th>{{ __('Note') }}</th>
@@ -272,7 +272,7 @@
                                                 <tbody data-repeater-item>
                                                     <tr>
                                                         <td width="30%">
-                                                            {!! Form::select('service_type', $types, null, [
+                                                            {!! Form::select('service_type', $serviceTypes, null, [
                                                                 'class' => 'form-control select2 service-type',
                                                             ]) !!}
                                                         </td>

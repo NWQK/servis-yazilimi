@@ -248,7 +248,7 @@
                                             <table class="display dataTable cell-border" data-repeater-list="types">
                                                 <thead>
                                                     <tr>
-                                                        <th>{{ __('Brand') }}</th>
+                                                        <th>{{ __('Service Type') }}</th>
                                                         <th>{{ __('Rate') }}</th>
                                                         <th>{{ __('Tax') }}</th>
                                                         <th>{{ __('Note') }}</th>

@@ -308,6 +308,30 @@ class VehicleQrTest extends TestCase
         return ['email provided' => ['provided'], 'email omitted' => ['omitted'], 'email blank' => ['blank']];
     }
 
+    public function test_client_wizard_service_selector_uses_service_types_not_vehicle_brands()
+    {
+        DB::table('vehicle_types')->insert(['type' => 'Toyota catalogue brand', 'parent_id' => $this->owner->id]);
+        $serviceId = DB::table('service_types')->insertGetId(['type' => 'Oil change service', 'parent_id' => $this->owner->id]);
+        $otherOwner = $this->owner('other-service-owner@example.test');
+        DB::table('service_types')->insert(['type' => 'Foreign service', 'parent_id' => $otherOwner->id]);
+        $response = $this->actingAs($this->owner)->get('/client/create')->assertOk();
+        $dom = new \DOMDocument();
+        @$dom->loadHTML($response->getContent());
+        $xpath = new \DOMXPath($dom);
+        $select = $xpath->query('//select[@name="service_type"]')->item(0);
+        $this->assertNotNull($select);
+        $options = [];
+        foreach ($xpath->query('option', $select) as $option) {
+            $options[$option->getAttribute('value')] = $option->textContent;
+        }
+        $this->assertSame('Oil change service', $options[(string) $serviceId]);
+        $this->assertCount(2, $options);
+        $this->assertNotContains('Toyota catalogue brand', $options);
+        $this->assertNotContains('Foreign service', $options);
+        $this->assertStringContainsString('Select Service', $options['']);
+        $this->assertSame('Service Type', trim($xpath->query('//table[@data-repeater-list="types"]/thead/tr/th')->item(0)->textContent));
+    }
+
     public function test_brand_catalogue_lists_only_models_for_the_selected_brand()
     {
         $this->actingAs($this->owner)->post('/vehicle-type', ['type' => 'Toyota'])->assertRedirect(route('vehicle-type.index'));
