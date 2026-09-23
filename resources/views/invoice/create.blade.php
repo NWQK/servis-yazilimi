@@ -126,7 +126,7 @@
                                 </div>
                                 <div class="form-group col-md-1 col-lg-1">
                                     {{ Form::label('amount', __('Amount'), ['class' => 'form-label']) }}
-                                    {{ Form::number('amount[0]', null, ['class' => 'form-control amount', 'step' => '0.01', 'required' => 'required']) }}
+                                    {{ Form::number('amount[0]', null, ['class' => 'form-control amount', 'step' => '0.01', 'readonly' => true, 'required' => 'required']) }}
                                 </div>
                                 <div class="form-group col-md-2 col-lg-2">
                                     {{ Form::label('tax', __('Tax'), ['class' => 'form-label']) }}
@@ -351,6 +351,7 @@
     <script>
         $(document).on('change', '#item_id', function() {
             var invoiceItemId = $(this).val();
+            if (!invoiceItemId) return;
             $.ajax({
                 url: "{{ route('invoice.item') }}",
                 type: 'post',
@@ -367,7 +368,7 @@
                     $(this).parents('.location_list').find('.quantity').val(1);
                     $(this).parents('.location_list').find('.amount').val(item.item.sales_price);
                     $(this).parents('.location_list').find('.description').val(item.item.notes);
-                    $(this).parents('.location_list').find('.tax_id').val(item.item.taxs.split(","));
+                    $(this).parents('.location_list').find('.tax_id').val((item.item.taxs || '').split(","));
                     select2();
                 },
             });

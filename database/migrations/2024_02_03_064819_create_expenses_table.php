@@ -17,7 +17,7 @@ return new class extends Migration
             $table->id();
             $table->string('title')->nullable();
             $table->date('date')->nullable();
-            $table->integer('amount')->default(0);
+            $table->decimal('amount', 15, 2)->default(0);
             $table->string('receipt')->nullable();
             $table->text('notes')->nullable();
             $table->integer('parent_id')->default(0);

@@ -218,10 +218,10 @@
                                                 <tr>
                                                     <td>
                                                         {{ __('Code') }} :
-                                                        {{ !empty($item->items) ? $item->items->item_code : '-' }}
+                                                        {{ $item->item_snapshot['item_code'] ?? $item->items?->item_code ?? '-' }}
                                                         <br>
                                                         {{ __('Item') }} :
-                                                        {{ !empty($item->items) ? $item->items->title : '-' }}
+                                                        {{ $item->item_title }}
                                                         <br>
                                                         {{ __('Quantity') }} : {{ $item->quantity }}
                                                     </td>

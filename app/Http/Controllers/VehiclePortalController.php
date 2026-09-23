@@ -88,7 +88,7 @@ class VehiclePortalController extends Controller
                 'quantity' => 1, 'price' => (float) $item->rate, 'tax_ids' => $item->tax]);
         }
         foreach ($invoice->items as $item) {
-            $lines->push(['name' => $item->items->title ?? 'Parça / ürün', 'description' => $item->description,
+            $lines->push(['name' => $item->item_title, 'description' => $item->description,
                 'quantity' => (float) $item->quantity, 'price' => (float) $item->amount, 'tax_ids' => $item->tax]);
         }
         $lines = $lines->map(function ($line) use ($taxes) {

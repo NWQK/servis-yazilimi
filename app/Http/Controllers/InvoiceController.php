@@ -14,6 +14,7 @@ use App\Models\ServiceType;
 use App\Models\Tax;
 use App\Models\User;
 use Illuminate\Http\Request;
+use App\Services\InventoryAccounting;
 use Illuminate\Support\Facades\Crypt;
 use Srmklive\PayPal\Services\PayPal;
 use Stripe\Charge;
@@ -72,6 +73,7 @@ class InvoiceController extends Controller
                 return redirect()->back()->with('error', $messages->first());
             }
 
+            $invoice = app(InventoryAccounting::class)->transaction(parentId(), function () use ($request) {
             $invoice = new Invoice();
             $invoice->invoice_id = $this->invoiceNumber();
             $invoice->invoice_date = $request->invoice_date;
@@ -83,30 +85,22 @@ class InvoiceController extends Controller
 
             $totalAmount = 0;
 
-            foreach ($request->item as $key => $value) {
-                $invoiceItem = new InvoiceItem();
-                $invoiceItem->invoice_id = $invoice->id;
-                $invoiceItem->item = $value ?? 0;
-                $invoiceItem->tax = !empty($request->tax[$key]) ? implode(',', $request->tax[$key]) : 0;
-                $invoiceItem->quantity = $request->quantity[$key];
-                $invoiceItem->amount = $request->amount[$key];
-                $invoiceItem->description = $request->description[$key];
-                $invoiceItem->parent_id = parentId();
-                $invoiceItem->save();
+            app(InventoryAccounting::class)->sync($invoice, $this->stockRows($request));
 
-            }
-
-            $serviceType = $request->types;
+            $serviceType = $request->types ?? [];
             for ($i = 0; $i < count($serviceType); $i++) {
                 $invoiceService = new InvoiceService();
                 $invoiceService->invoice_id = $invoice->id;
                 $invoiceService->tax = !empty($serviceType[$i]['tax']) ? implode(',', (array) $serviceType[$i]['tax']) : null;
                 $invoiceService->service_type = $serviceType[$i]['service_type'];
                 $invoiceService->rate = $serviceType[$i]['rate'];
-                $invoiceService->note = $serviceType[$i]['note'];
+                $invoiceService->note = $serviceType[$i]['note'] ?? null;
                 $invoiceService->parent_id = parentId();
                 $invoiceService->save();
             }
+
+                return $invoice;
+            });
 
             $setting = settings();
 
@@ -138,7 +132,7 @@ class InvoiceController extends Controller
                 $data['logo'] = $setting['company_logo'];
                 $to = $invoice->clients->email;
 
-                if ($notification->enabled_email == 1) {
+                if ($notification->enabled_email == 1 && !empty($to)) {
                     $response = commonEmailSend($to, $data);
                     if ($response['status'] == 'error') {
                         $errorMessage = $response['message'];
@@ -169,7 +163,7 @@ class InvoiceController extends Controller
     public function show($ids)
     {
         $id = Crypt::decrypt($ids);
-        $invoice = Invoice::find($id);
+        $invoice = Invoice::where('parent_id', parentId())->findOrFail($id);
         $settings = settings();
         $status = Invoice::statues();
         $invoicePaymentSettings = invoicePaymentSettings(auth()->user()->parent_id);
@@ -183,11 +177,14 @@ class InvoiceController extends Controller
         if (!\Auth::user()->can('edit invoice')) {
             return redirect()->back()->with('error', 'Permission denied');
         }
-        $invoice = Invoice::find($id);
+        $invoice = Invoice::where('parent_id', parentId())->findOrFail($id);
         $clients = User::where('type', 'client')->where('parent_id', parentId())->get()->pluck('name', 'id');
         $clients->prepend(__('Select Client'), '');
 
         $items = Item::where('parent_id', parentId())->get()->pluck('title', 'id');
+        foreach ($invoice->items as $line) {
+            if (!$items->has($line->item)) $items->put($line->item, $line->item_title);
+        }
         $items->prepend(__('Select Item'), '');
 
         $invoiceId = $this->invoiceNumber();
@@ -236,17 +233,12 @@ class InvoiceController extends Controller
                 return redirect()->back()->with('error', $messages->first());
             }
 
-            $invoice = Invoice::find($id);
-            $previousItemAmount = InvoiceItem::where('invoice_id', $invoice->id)->sum('amount');
-            $previousServiceAmount = InvoiceService::where('invoice_id', $invoice->id)->sum('rate');
-
-            $previousTotalAmount = $previousItemAmount + $previousServiceAmount;
-
-            $invoice->client = $request->client;
-            $invoice->service = $request->service;
-            $invoice->invoice_date = $request->invoice_date;
-            $invoice->save();
-
+            $invoice = app(InventoryAccounting::class)->transaction(parentId(), function () use ($request, $id) {
+                $invoice = Invoice::where('parent_id', parentId())->lockForUpdate()->findOrFail($id);
+                $invoice->client = $request->client;
+                $invoice->service = $request->service;
+                $invoice->invoice_date = $request->invoice_date;
+                $invoice->save();
             $existingTypeIds = InvoiceService::where('invoice_id', $invoice->id)->pluck('id')->toArray();
             $updatedTypeIds = [];
 
@@ -279,47 +271,11 @@ class InvoiceController extends Controller
             if (!empty($typesToDelete)) {
                 InvoiceService::whereIn('id', $typesToDelete)->delete();
             }
-            $existingItemIds = InvoiceItem::where('invoice_id', $invoice->id)->pluck('id')->toArray();
-            $updatedItemIds = [];
 
-            foreach ($request->item as $key => $value) {
-                $itemId = $request->item_id[$key] ?? null;
-
-                $invoiceItem = InvoiceItem::updateOrCreate(
-                    [
-                        'id' => $itemId,
-                        'invoice_id' => $invoice->id,
-                    ],
-                    [
-                        'item' => $value,
-                        'tax' => !empty($request->tax[$key]) ? implode(',', $request->tax[$key]) : 0,
-                        'quantity' => $request->quantity[$key],
-                        'amount' => $request->amount[$key],
-                        'description' => $request->description[$key],
-                        'parent_id' => parentId(),
-                    ]
-                );
-
-                $updatedItemIds[] = $invoiceItem->id;
-            }
-
-            $itemsToDelete = array_diff($existingItemIds, $updatedItemIds);
-            if (!empty($itemsToDelete)) {
-                InvoiceItem::whereIn('id', $itemsToDelete)->delete();
-            }
-
-            $newItemAmount = InvoiceItem::where('invoice_id', $invoice->id)->sum('amount');
-            $newServiceAmount = InvoiceService::where('invoice_id', $invoice->id)->sum('rate');
-
-            $newTotalAmount = $newItemAmount + $newServiceAmount;
-
-            if ($invoice->status == 2) {
-                $invoice->status = 1;
-            } elseif ($invoice->status == 1) {
-                $invoice->status = $newTotalAmount > $previousTotalAmount ? 1 : 0;
-            }
-
-            $invoice->save();
+                app(InventoryAccounting::class)->sync($invoice, $this->stockRows($request));
+                app(InventoryAccounting::class)->refreshStatus($invoice);
+                return $invoice;
+            });
 
             return redirect()->route('invoice.index', $invoice->id)
                 ->with('success', __('Invoice successfully updated.'));
@@ -332,14 +288,17 @@ class InvoiceController extends Controller
 
     public function destroy(Invoice $invoice)
     {
-        if (\Auth::user()->can('delete invoice')) {
+        abort_unless(auth()->user()->can('delete invoice'), 403);
+        app(InventoryAccounting::class)->transaction(parentId(), function () use ($invoice) {
+            $invoice = Invoice::where('parent_id', parentId())->lockForUpdate()->findOrFail($invoice->id);
+            app(InventoryAccounting::class)->sync($invoice, []);
+            $invoice->types()->delete();
+            $invoice->payments()->delete();
             $invoice->delete();
-            InvoiceItem::where('invoice_id', '=', $invoice->id)->delete();
-            return redirect()->route('invoice.index')->with('success', __('Invoice successfully deleted.'));
-        } else {
-            return redirect()->back()->with('error', __('Permission denied.'));
-        }
+        });
+        return redirect()->route('invoice.index')->with('success', __('Invoice successfully deleted.'));
     }
+
 
     function invoiceNumber()
     {
@@ -353,7 +312,7 @@ class InvoiceController extends Controller
     public function item(Request $request)
     {
 
-        $itemData['item'] = $itemDetails = Item::find($request->item_id);
+        $itemData['item'] = $itemDetails = Item::where('parent_id', parentId())->findOrFail($request->item_id);
         $itemData['unit'] = (!empty($itemDetails->unit)) ? $itemDetails->unit->name : '';
         $itemData['taxRate'] = $itemDetails->taxRate($itemDetails->taxs);
         $itemData['taxes'] = $itemDetails->taxes($itemDetails->taxs);
@@ -365,20 +324,23 @@ class InvoiceController extends Controller
 
     public function product(Request $request)
     {
-        $itemDetails = InvoiceItem::where('invoice_id', $request->invoice_id)->where('item', $request->item_id)->first();
+        $itemDetails = InvoiceItem::where('parent_id', parentId())->where('invoice_id', $request->invoice_id)->where('item', $request->item_id)->first();
         return json_encode($itemDetails);
     }
 
     public function itemDestroy(Request $request)
     {
-        InvoiceItem::where('id', $request->id)->delete();
+        abort_unless(auth()->user()->can('edit invoice') || auth()->user()->can('delete invoice'), 403);
+        $line = InvoiceItem::where('parent_id', parentId())->find($request->id);
+        if ($line) app(InventoryAccounting::class)->remove(parentId(), $line->invoice_id, $line->id);
         return redirect()->back()->with('success', __('Invoice item successfully deleted.'));
     }
+
 
     public function statusChange(Request $request, $id)
     {
         $status = $request->status;
-        $invoice = Invoice::find($id);
+        $invoice = Invoice::where('parent_id', parentId())->findOrFail($id);
         $invoice->status = $status;
         $invoice->save();
         return redirect()->back()->with('success', __('Invoice status changed successfully.'));
@@ -388,7 +350,7 @@ class InvoiceController extends Controller
     {
         if (\Auth::user()->can('create invoice payment')) {
 
-            $invoice = Invoice::where('id', $invoice_id)->first();
+            $invoice = Invoice::where('parent_id', parentId())->findOrFail($invoice_id);
             if (auth()->user()->type == 'client') {
                 $settings = invoicePaymentSettings(auth()->user()->parent_id);
                 return view('invoice.client_payment', compact('invoice', 'settings'));
@@ -483,7 +445,7 @@ class InvoiceController extends Controller
                 $data['logo'] = $setting['company_logo'];
                 $to = $invoice->clients->email;
 
-                if ($notification->enabled_email == 1) {
+                if ($notification->enabled_email == 1 && !empty($to)) {
                     $response = commonEmailSend($to, $data);
                     if ($response['status'] == 'error') {
                         $errorMessage = $response['message'];
@@ -540,54 +502,24 @@ class InvoiceController extends Controller
 
     public function invoiceItemStore(Request $request, $invoice_id)
     {
-        if (\Auth::user()->can('create invoice')) {
-            $validator = \Validator::make(
-                $request->all(),
-                [
-                    'item' => 'required',
-                    'quantity' => 'required',
-                    'amount' => 'required',
-                ]
-            );
-            if ($validator->fails()) {
-                $messages = $validator->getMessageBag();
-
-                return redirect()->back()->with('error', $messages->first());
-            }
-
-            $itemDetails = Item::find($request->item);
-            $invoiceItem = new InvoiceItem();
-            $invoiceItem->invoice_id = $invoice_id;
-            $invoiceItem->item = $request->item;
-            $invoiceItem->quantity = $request->quantity;
-            $invoiceItem->amount = $request->amount;
-            $invoiceItem->tax = !empty($itemDetails->taxs) ? $itemDetails->taxs : null;
-            $invoiceItem->description = $request->description;
-            $invoiceItem->parent_id = parentId();
-            $invoiceItem->save();
-
-            return redirect()->back()->with('success', __('Invoice item successfully created.'));
-        }
+        abort_unless(auth()->user()->can('create invoice'), 403);
+        $request->validate(['item' => 'required|integer', 'quantity' => 'required|integer|min:1', 'description' => 'nullable|string|max:255']);
+        app(InventoryAccounting::class)->transaction(parentId(), function () use ($request, $invoice_id) {
+            $invoice = Invoice::where('parent_id', parentId())->lockForUpdate()->findOrFail($invoice_id);
+            app(InventoryAccounting::class)->add($invoice, $request->only(['item', 'quantity', 'description']));
+            app(InventoryAccounting::class)->refreshStatus($invoice);
+        });
+        return redirect()->back()->with('success', __('Invoice item successfully created.'));
     }
+
 
     public function invoiceItemDestroy(Request $request, $invoice_id, $itemId)
     {
-        if (\Auth::user()->can('delete invoice')) {
-            InvoiceItem::where('id', $itemId)->delete();
-            $invoice = Invoice::where('id', $invoice_id)->first();
-            $due = $invoice->getInvoiceTotalDueAmount();
-            $total = $invoice->getInvoiceAllTotalAmount();
-            if ($due > 0 && $total != $due) {
-                $invoice->status = 2;
-            } else {
-                $invoice->status = 0;
-            }
-            $invoice->save();
-            return redirect()->back()->with('success', __('Invoice item successfully deleted.'));
-        } else {
-            return redirect()->back()->with('error', __('Permission denied.'));
-        }
+        abort_unless(auth()->user()->can('delete invoice'), 403);
+        app(InventoryAccounting::class)->remove(parentId(), (int) $invoice_id, (int) $itemId);
+        return redirect()->back()->with('success', __('Invoice item successfully deleted.'));
     }
+
 
     public function paymentSettings()
     {
@@ -599,7 +531,7 @@ class InvoiceController extends Controller
     {
         $settings = $this->paymentSettings();
         $id = decrypt($ids);
-        $invoice = Invoice::find($id);
+        $invoice = Invoice::where('parent_id', parentId())->findOrFail($id);
         $amount = $request->amount;
         if ($invoice) {
             try {
@@ -900,7 +832,7 @@ class InvoiceController extends Controller
         $payment_setting = $this->paymentSettings();
         $currency = $payment_setting['CURRENCY'] ?? 'USD';
         $id = Crypt::decrypt($ids);
-        $invoice = Invoice::find($id);
+        $invoice = Invoice::where('parent_id', parentId())->findOrFail($id);
 
         if (!$invoice) {
             return response()->json([
@@ -980,5 +912,25 @@ class InvoiceController extends Controller
         $serviceTypes = ServiceType::whereIn('id', $typeIds)->get();
 
         return response()->json($serviceTypes);
+    }
+
+    private function stockRows(Request $request): array
+    {
+        $request->validate([
+            'item' => 'nullable|array', 'item.*' => 'nullable|integer',
+            'quantity' => 'nullable|array', 'item_id' => 'nullable|array',
+            'item_id.*' => 'nullable|integer', 'description.*' => 'nullable|string|max:255',
+        ]);
+        $rows = [];
+        foreach ($request->input('item', []) as $key => $item) {
+            if (empty($item)) continue;
+            $rows[] = [
+                'id' => $request->input("item_id.$key"),
+                'item' => $item, 'quantity' => $request->input("quantity.$key"),
+                'tax' => implode(',', (array) $request->input("tax.$key", [])),
+                'description' => $request->input("description.$key"),
+            ];
+        }
+        return $rows;
     }
 }

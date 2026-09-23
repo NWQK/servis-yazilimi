@@ -86,6 +86,7 @@
                                     <th> {{ __('Service') }}</th>
                                     <th> {{ __('Invoice Date') }}</th>
                                     <th> {{ __('Total Amount') }}</th>
+                                    <th>Tahsil edilen gelir</th>
                                     <th> {{ __('Status') }}</th>
                                        @if ( Gate::check('show invoice'))
                                         <th class="text-right"> {{ __('Action') }}</th>
@@ -102,6 +103,7 @@
                                         </td>
                                         <td>{{ dateFormat($invoice->invoice_date) }}</td>
                                         <td>{{ priceFormat($invoice->getInvoiceAllTotalAmount()) }}</td>
+                                        <td>{{ priceFormat($invoice->payments_sum_amount ?? 0) }}</td>
                                         <td>
                                             @if ($invoice->status == 0)
                                                 <span

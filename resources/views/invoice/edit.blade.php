@@ -169,6 +169,7 @@
                                                 'class' => 'form-control select2 item_name_select',
                                                 'id' => 'item_id',
                                             ]) !!}
+                                            {{ Form::hidden('item_id[' . $key . ']', $item->id) }}
                                         </div>
                                         <div class="form-group col-md-1 col-lg-1">
                                             {{ Form::label('quantity', __('Quantity'), ['class' => 'form-label']) }}
@@ -176,7 +177,7 @@
                                         </div>
                                         <div class="form-group col-md-1 col-lg-1">
                                             {{ Form::label('amount', __('Amount'), ['class' => 'form-label']) }}
-                                            {{ Form::number('amount[' . $key . ']', $item->amount, ['class' => 'form-control amount', 'step' => '0.01', 'required' => 'required']) }}
+                                            {{ Form::number('amount[' . $key . ']', $item->amount, ['class' => 'form-control amount', 'step' => '0.01', 'readonly' => true, 'required' => 'required']) }}
                                         </div>
                                         <div class="form-group col-md-2 col-lg-2">
                                             {{ Form::label('tax', __('Tax'), ['class' => 'form-label']) }}
@@ -212,7 +213,7 @@
                                     </div>
                                     <div class="form-group col-md-1 col-lg-1">
                                         {{ Form::label('amount', __('Amount'), ['class' => 'form-label']) }}
-                                        {{ Form::number('amount[0]', null, ['class' => 'form-control amount', 'step' => '0.01', 'required' => 'required']) }}
+                                        {{ Form::number('amount[0]', null, ['class' => 'form-control amount', 'step' => '0.01', 'readonly' => true, 'required' => 'required']) }}
                                     </div>
                                     <div class="form-group col-md-2 col-lg-2">
                                         {{ Form::label('tax', __('Tax'), ['class' => 'form-label']) }}
@@ -445,6 +446,7 @@
     <script>
         $(document).on('change', '#item_id', function() {
             var invoiceItemId = $(this).val();
+            if (!invoiceItemId) return;
             $.ajax({
                 url: "{{ route('invoice.item') }}",
                 type: 'post',
@@ -461,7 +463,7 @@
                     $(this).parents('.location_list').find('.quantity').val(1);
                     $(this).parents('.location_list').find('.amount').val(item.item.sales_price);
                     $(this).parents('.location_list').find('.description').val(item.item.notes);
-                    $(this).parents('.location_list').find('.tax_id').val(item.item.taxs.split(","));
+                    $(this).parents('.location_list').find('.tax_id').val((item.item.taxs || '').split(","));
                     select2();
                 },
             });
@@ -472,23 +474,26 @@
         $(document).ready(function() {
             $('.location_list_remove').show();
             if ($('.location_list').length == 1) {
-                $('.location_list_remove').hide();
+                $('.location_list_remove').show();
             }
         });
 
         $('.location').on('click', '.location_list_remove', function() {
             if ($('.location_list').length > 1) {
                 $(this).parent().parent().remove();
+            } else {
+                $(this).closest('.location_list').find('input, textarea, select').val('').prop('required', false).trigger('change');
             }
             $('.location_list_remove').show();
             if ($('.location_list').length == 1) {
-                $('.location_list_remove').hide();
+                $('.location_list_remove').show();
             }
         });
 
         $('.location').on('click', '.location_clone', function() {
             var clonedlocation = $('.location_clone').closest('.location').find('.location_list').first().clone();
             clonedlocation.find('input[type="number"], input[type="text"], textarea, select').val('');
+            clonedlocation.find('input[type="hidden"][name^="item_id"]').val('');
             clonedlocation.find('.select2-container').remove();
             $('.location_list_results').append(clonedlocation);
 
@@ -504,7 +509,7 @@
 
             $('.location_list_remove').show();
             if ($('.location_list').length === 1) {
-                $('.location_list_remove').hide();
+                $('.location_list_remove').show();
             }
             select2();
         });

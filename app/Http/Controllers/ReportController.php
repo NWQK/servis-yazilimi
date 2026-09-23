@@ -61,7 +61,7 @@ class ReportController extends Controller
             $clients->prepend(__('Select Client'), '');
 
             $status = Invoice::statues();
-            $invoices = Invoice::where('parent_id', parentId());
+            $invoices = Invoice::where('parent_id', parentId())->withSum('payments', 'amount');
 
             if ($request->filled('client') && $request->client != 0) {
                 $invoices->where('client', $request->client);
@@ -105,6 +105,7 @@ class ReportController extends Controller
         $incomeQuery = DB::table('invoice_payments')
             ->selectRaw('MONTH(invoice_payments.payment_date) as month, SUM(invoice_payments.amount) as income')
             ->join('invoices', 'invoices.id', '=', 'invoice_payments.invoice_id')
+            ->where('invoice_payments.parent_id', parentId())
             ->whereYear('invoice_payments.payment_date', $year);
 
 
@@ -114,6 +115,7 @@ class ReportController extends Controller
 
         // ✅ Expenses
         $expenseQuery = Expense::selectRaw('MONTH(date) as month, SUM(amount) as expense')
+            ->where('parent_id', parentId())
             ->whereYear('date', $year);
 
             $expenseData = $expenseQuery->groupBy('month')->pluck('expense', 'month');

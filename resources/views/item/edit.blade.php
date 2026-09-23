@@ -29,11 +29,11 @@
 
         <div class="form-group col-md-6">
             {{Form::label('purchase_price',__('Purchase Price'),array('class'=>'form-label')) }}
-            {{Form::number('purchase_price',null,array('class'=>'form-control','placeholder'=>__('Enter purchase price'),'required'=>'required'))}}
+            {{Form::number('purchase_price',null,array('class'=>'form-control','placeholder'=>__('Enter purchase price'),'step' => '0.01', 'min' => 0, 'required'=>'required'))}}
         </div>
         <div class="form-group col-md-6">
             {{Form::label('sales_price',__('Sales Price'),array('class'=>'form-label')) }}
-            {{Form::number('sales_price',null,array('class'=>'form-control','placeholder'=>__('Enter sales price'),'required'=>'required'))}}
+            {{Form::number('sales_price',null,array('class'=>'form-control','placeholder'=>__('Enter sales price'),'step' => '0.01', 'min' => 0, 'required'=>'required'))}}
         </div>
         <div class="form-group col-md-6">
             {{Form::label('manufacturer_by',__('Manufacturer By'),array('class'=>'form-label')) }}

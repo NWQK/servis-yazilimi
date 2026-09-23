@@ -41,7 +41,7 @@ class Item extends Model
         foreach($taxArr as $tax)
         {
             $tax     = Tax::find($tax);
-            $taxRate += $tax->rate;
+            $taxRate += $tax?->rate ?? 0;
         }
 
         return $taxRate;

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit bootstrap="vendor/autoload.php" colors="true">
-    <testsuites><testsuite name="Vehicle QR"><file>tests/Feature/VehicleQrTest.php</file></testsuite></testsuites>
+    <testsuites><testsuite name="Vehicle QR and inventory"><file>tests/Feature/VehicleQrTest.php</file><file>tests/Feature/InventoryAccountingTest.php</file></testsuite></testsuites>
     <php>
         <env name="APP_ENV" value="testing" force="true"/>
         <env name="APP_KEY" value="base64:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=" force="true"/>

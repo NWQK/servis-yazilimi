@@ -9,6 +9,13 @@ class InvoiceItem extends Model
 {
     use HasFactory;
 
+    protected $casts = ['item_snapshot' => 'array', 'stock_quantity' => 'integer'];
+
+    public function getItemTitleAttribute()
+    {
+        return $this->item_snapshot['title'] ?? $this->items?->title ?? $this->description ?? 'Ürün';
+    }
+
     protected $fillable=[
         'invoice_id',
         'item',

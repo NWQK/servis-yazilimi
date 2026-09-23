@@ -6,6 +6,7 @@ use App\Models\Item;
 use App\Models\Tax;
 use App\Models\Unit;
 use Illuminate\Http\Request;
+use App\Services\InventoryAccounting;
 
 class ItemController extends Controller
 {
@@ -35,11 +36,11 @@ class ItemController extends Controller
                 $request->all(), [
                     'title' => 'required',
                     'item_code' => 'required',
-                    'quantity' => 'required',
+                    'quantity' => 'required|integer|min:0|max:100000000',
                     'units' => 'required',
-                    'purchase_price' => 'required',
-                    'sales_price' => 'required',
-                    'purchase_date' => 'required',
+                    'purchase_price' => 'required|numeric|min:0|max:9999999.99',
+                    'sales_price' => 'required|numeric|min:0|max:9999999.99',
+                    'purchase_date' => 'required|date',
                 ]
             );
             if ($validator->fails()) {
@@ -47,20 +48,9 @@ class ItemController extends Controller
                 return redirect()->back()->with('error', $messages->first());
             }
 
-            $item = new Item();
-            $item->title = $request->title;
-            $item->item_code = $request->item_code;
-            $item->quantity = $request->quantity;
-            $item->units = $request->units;
-            $item->purchase_price = $request->purchase_price;
-            $item->sales_price = $request->sales_price;
-            $item->manufacturer_by = $request->manufacturer_by;
-            $item->taxs = !empty($request->taxs) ? implode(',', $request->taxs) : '';
-            $item->purchase_date = $request->purchase_date;
-            $item->warranty_information = $request->warranty_information;
-            $item->notes = $request->notes;
-            $item->parent_id = parentId();
-            $item->save();
+            $attributes = $request->only((new Item())->getFillable());
+            $attributes['taxs'] = !empty($request->taxs) ? implode(',', $request->taxs) : '';
+            app(InventoryAccounting::class)->savePurchase(parentId(), $attributes);
 
             return redirect()->route('item.index')->with('success', __('Item successfully created.'));
         } else {
@@ -83,34 +73,25 @@ class ItemController extends Controller
 
     public function update(Request $request, Item $item)
     {
-        if (\Auth::user()->can('create item')) {
+        if (\Auth::user()->can('edit item')) {
             $validator = \Validator::make(
                 $request->all(), [
                     'title' => 'required',
                     'item_code' => 'required',
-                    'quantity' => 'required',
+                    'quantity' => 'required|integer|min:0|max:100000000',
                     'units' => 'required',
-                    'purchase_price' => 'required',
-                    'sales_price' => 'required',
-                    'purchase_date' => 'required',
+                    'purchase_price' => 'required|numeric|min:0|max:9999999.99',
+                    'sales_price' => 'required|numeric|min:0|max:9999999.99',
+                    'purchase_date' => 'required|date',
                 ]
             );
             if ($validator->fails()) {
                 $messages = $validator->getMessageBag();
                 return redirect()->back()->with('error', $messages->first());
             }
-            $item->title = $request->title;
-            $item->item_code = $request->item_code;
-            $item->quantity = $request->quantity;
-            $item->units = $request->units;
-            $item->purchase_price = $request->purchase_price;
-            $item->sales_price = $request->sales_price;
-            $item->manufacturer_by = $request->manufacturer_by;
-            $item->taxs = !empty($request->taxs) ? implode(',', $request->taxs) : '';
-            $item->purchase_date = $request->purchase_date;
-            $item->warranty_information = $request->warranty_information;
-            $item->notes = $request->notes;
-            $item->save();
+            $attributes = $request->only((new Item())->getFillable());
+            $attributes['taxs'] = !empty($request->taxs) ? implode(',', $request->taxs) : '';
+            app(InventoryAccounting::class)->savePurchase(parentId(), $attributes, $item->id);
             return redirect()->route('item.index')->with('success', __('Item successfully updated.'));
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
@@ -121,7 +102,9 @@ class ItemController extends Controller
     public function destroy(Item $item)
     {
         if (\Auth::user()->can('delete item')) {
-            $item->delete();
+            app(InventoryAccounting::class)->transaction(parentId(), function () use ($item) {
+                Item::where('parent_id', parentId())->lockForUpdate()->findOrFail($item->id)->delete();
+            });
             return redirect()->route('item.index')->with('success', __('Item successfully deleted.'));
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
