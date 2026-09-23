@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Models\{Expense, Invoice, InvoiceItem, Item, User};
+use App\Models\{Expense, Invoice, InvoiceItem, InvoicePayment, Item, User};
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
@@ -50,6 +50,7 @@ class InventoryAccounting
         $this->transaction($invoice->parent_id, function () use ($invoice, $rows) {
             $invoice = Invoice::where('parent_id', $invoice->parent_id)->lockForUpdate()->findOrFail($invoice->id);
             $existing = $invoice->items()->lockForUpdate()->get()->keyBy('id');
+            $previousTotal = $invoice->getInvoiceAllTotalAmount();
             $seen = [];
             foreach ($rows as $row) {
                 if (!empty($row['id'])) {
@@ -65,8 +66,13 @@ class InventoryAccounting
             }
             foreach ($rows as $row) {
                 $line = !empty($row['id']) ? $existing->get($row['id']) : new InvoiceItem();
+                if ($line->exists && filter_var($row['quantity'] ?? null, FILTER_VALIDATE_INT) === 0) {
+                    $this->release($line);
+                    continue;
+                }
                 $this->writeLine($invoice, $line, $row);
             }
+            $this->adjustReturnedIncome($invoice, $previousTotal);
         });
     }
 
@@ -85,9 +91,36 @@ class InventoryAccounting
         $this->transaction($tenant, function () use ($tenant, $invoiceId, $lineId) {
             $invoice = Invoice::where('parent_id', $tenant)->lockForUpdate()->findOrFail($invoiceId);
             $line = $invoice->items()->lockForUpdate()->find($lineId);
+            $previousTotal = $invoice->getInvoiceAllTotalAmount();
             if ($line) $this->release($line); // Repeated removal never returns stock twice.
+            $this->adjustReturnedIncome($invoice, $previousTotal);
             $this->refreshStatus($invoice);
         });
+    }
+
+    private function adjustReturnedIncome(Invoice $invoice, $previousTotal): void
+    {
+        $invoice->unsetRelation('items')->unsetRelation('types')->unsetRelation('payments');
+        $newTotal = (int) round($invoice->getInvoiceAllTotalAmount() * 100);
+        $reduction = max(0, (int) round($previousTotal * 100) - $newTotal);
+        if ($reduction === 0) return;
+
+        $paid = (int) round($invoice->payments()->sum('amount') * 100);
+        // A partial payment still covered by the remaining invoice is retained.
+        // Never reverse unpaid income or repeat an already-recorded correction.
+        $correction = min($reduction, max(0, $paid - $newTotal));
+        if ($correction === 0) return;
+
+        $payment = new InvoicePayment();
+        $payment->invoice_id = $invoice->id;
+        $payment->parent_id = $invoice->parent_id;
+        $payment->transaction_id = 'return-' . Str::uuid();
+        $payment->payment_type = 'Invoice adjustment';
+        $payment->payment_status = 'success';
+        $payment->payment_date = now()->toDateString();
+        $payment->amount = -$correction / 100;
+        $payment->description = 'Ürün iadesi / adet azaltımı nedeniyle otomatik gelir düzeltmesi. Banka işlemi değildir.';
+        $payment->save();
     }
 
     public function refreshStatus(Invoice $invoice): void

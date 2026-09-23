@@ -20,6 +20,12 @@ class InventoryAccountingTest extends TestCase
         DB::purge('sqlite');
         $paths = array_values(array_filter(glob(database_path('migrations/*.php')), fn ($p) => !str_contains($p, 'version_1_7_filled')));
         $this->artisan('migrate', ['--path' => $paths, '--realpath' => true, '--force' => true])->assertExitCode(0);
+        // Payment columns from the MySQL-only version_1_7 migration skipped above.
+        \Illuminate\Support\Facades\Schema::table('invoice_payments', function ($table) {
+            foreach (['transaction_id', 'receipt', 'payment_type', 'payment_status'] as $column) {
+                $table->string($column)->nullable();
+            }
+        });
         $this->owner = User::create(['name' => 'Shop', 'email' => 'stock@example.test', 'password' => bcrypt('test'), 'type' => 'owner', 'lang' => 'english']);
         Gate::before(fn ($user) => $user->type === 'owner' ? true : null);
         $this->actingAs($this->owner);
@@ -192,7 +198,48 @@ class InventoryAccountingTest extends TestCase
         $response = $this->get(route('report.income'))->assertOk();
         $this->assertEquals(150, $response->viewData('invoices')->first()->payments_sum_amount);
         $this->stock->sync($invoice, []);
-        $this->assertEquals(150, $invoice->payments()->sum('amount')); // No automatic refund or duplicate revenue.
+        $this->assertEquals(0, $invoice->payments()->sum('amount'));
+        $this->assertEquals(150, $invoice->payments()->where('amount', '>', 0)->sum('amount'));
+        $response = $this->get(route('report.income'))->assertOk();
+        $this->assertEquals(0, $response->viewData('invoices')->first()->payments_sum_amount);
+    }
+
+    public function test_paid_quantity_reduction_reverses_income_and_preserves_service_payment()
+    {
+        $item = $this->purchase();
+        $invoice = $this->invoice();
+        $invoice->types()->create(['parent_id' => $this->owner->id, 'rate' => 100]);
+        $line = $this->stock->add($invoice, ['item' => $item->id, 'quantity' => 2]);
+        DB::table('invoice_payments')->insert(['invoice_id' => $invoice->id, 'parent_id' => $this->owner->id, 'amount' => 700, 'payment_date' => now()->toDateString()]);
+        foreach ([1 => 400, 0 => 100] as $quantity => $income) {
+            $this->stock->sync($invoice, [['id' => $line->id, 'item' => $item->id, 'quantity' => $quantity]]);
+            $this->stock->refreshStatus($invoice);
+            $this->assertEquals($income, $invoice->payments()->sum('amount'));
+            $this->assertSame(5 - $quantity, (int) $item->fresh()->quantity);
+            $this->assertSame(2, (int) $invoice->fresh()->status);
+            $report = app(\App\Http\Controllers\ReportController::class)->incomeByMonth(now()->year);
+            $this->assertEquals($income, $report['income'][now()->month - 1]);
+        }
+        $this->stock->sync($invoice, []);
+        $this->assertSame(3, $invoice->payments()->count());
+        $this->assertEquals(700, $invoice->payments()->where('amount', '>', 0)->sum('amount'));
+        $this->assertEquals(-600, $invoice->payments()->where('amount', '<', 0)->sum('amount'));
+    }
+
+    public function test_paid_removal_is_idempotent_and_includes_tax_and_cents()
+    {
+        $item = $this->stock->savePurchase($this->owner->id, array_merge($this->attributes(), ['sales_price' => '300.25']));
+        $taxId = DB::table('taxes')->insertGetId(['title' => 'KDV', 'rate' => 20, 'parent_id' => $this->owner->id]);
+        $invoice = $this->invoice();
+        $line = $this->stock->add($invoice, ['item' => $item->id, 'quantity' => 2, 'tax' => (string) $taxId]);
+        DB::table('invoice_payments')->insert(['invoice_id' => $invoice->id, 'parent_id' => $this->owner->id, 'amount' => 720.60, 'payment_date' => now()->toDateString()]);
+        $this->stock->sync($invoice, [['id' => $line->id, 'item' => $item->id, 'quantity' => 1]]);
+        $this->assertEqualsWithDelta(360.30, $invoice->payments()->sum('amount'), 0.001);
+        $this->stock->remove($this->owner->id, $invoice->id, $line->id);
+        $this->stock->remove($this->owner->id, $invoice->id, $line->id);
+        $this->assertEqualsWithDelta(0, $invoice->payments()->sum('amount'), 0.001);
+        $this->assertSame(3, $invoice->payments()->count());
+        $this->assertSame(5, (int) $item->fresh()->quantity);
     }
 
     public function test_invoice_routes_deduct_restore_and_only_payments_count_as_income()

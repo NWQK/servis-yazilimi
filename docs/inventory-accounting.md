@@ -14,7 +14,7 @@
 
 Gelir yalnızca tahsilattır. Ürün satışı otomatik ödeme kaydı oluşturmaz. Gelir raporunda fatura tutarı ile **Tahsil edilen gelir** ayrı gösterilir. Kâr/zarar raporu ödeme tarihine göre tahsilatları ve giderleri kullanır; başka işletmelerin kayıtlarını içermez.
 
-Ödeme alınmış bir faturadan ürün çıkarmak gerçekleşmiş tahsilatı silmez veya otomatik para iadesi yapmaz. Gerekli tahsilat/iade düzeltmesi ayrıca yapılmalıdır.
+Ödeme alınmış faturada ürün adedi azaltılınca veya satır kaldırılınca, yeni fatura toplamını aşan tahsilat için otomatik eksi gelir düzeltmesi oluşturulur. Düzeltme, fatura tutarındaki azalmayı aşmaz; kısmi ödeme kalan fatura tutarını aşmıyorsa korunur. Mevcut ürün satırının adedi sıfıra indirilebilir. İlk tahsilat kaydı korunur, düzeltme işlem gününe yazılır ve kâr/zarara yansır. Tekrar kaydetmek aynı iadeyi tekrar düşmez. Bu kayıt sistem içindeki hesap düzeltmesidir; bankadan para göndermez. Önceden hatalı kalan tahsilatlar geriye dönük değiştirilmez.
 
 ## Kurulum ve mevcut veriler
 
