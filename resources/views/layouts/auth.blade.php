@@ -55,6 +55,7 @@
         <link rel="stylesheet" id="Pstylesheet" href="{{ asset('assets/css/style-preset.css') }}" />
     @endif
     <link href="{{ asset('css/custom.css') }} " rel="stylesheet">
+    <link rel="stylesheet" href="{{ asset('css/bike-and-more.css') }}">
 </head>
 
 <body

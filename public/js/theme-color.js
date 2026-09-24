@@ -45,13 +45,6 @@ function hexToRgb(hex) {
 // Get the color picker input element
 const colorPicker = document.getElementById("colorChange");
 
-// Initialize with the default color from local storage, if available
-const savedColor = localStorage.getItem("primaryColor");
-if (savedColor) {
-    setColorAndSave(savedColor);
-    colorPicker.value = savedColor;
-}
-
 // Listen for changes in the color picker
 if (colorPicker) {
     colorPicker.addEventListener("input", function (event) {
@@ -59,8 +52,6 @@ if (colorPicker) {
         $("#custom_color_code").val(selectedColor);
         setColorAndSave(selectedColor);
     });
-} else {
-    console.error("colorPicker element not found!");
 }
 
 $(document).on("click", ".color_type", function () {
@@ -70,7 +61,12 @@ $(document).on("click", ".color_type", function () {
     $("#color_type").val(val);
     if (val == "custom") {
         $("#Pstylesheet").attr("href", custom_color);
+        setColorAndSave($("#custom_color_code").val());
     } else {
         $("#Pstylesheet").attr("href", style_preset);
+        localStorage.removeItem("primaryColor");
+        ["--pc-sidebar-active-color-rgb", "--pc-sidebar-active-color", "--bs-secondary"].forEach(function (property) {
+            document.documentElement.style.removeProperty(property);
+        });
     }
 });

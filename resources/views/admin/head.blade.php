@@ -63,4 +63,5 @@
     <link href="{{ asset('css/custom.css') }}" rel="stylesheet">
 
 
+    <link rel="stylesheet" href="{{ asset('css/bike-and-more.css') }}">
 </head>

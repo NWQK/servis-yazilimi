@@ -198,6 +198,13 @@
                                         class="color_type {{ $settings['color_type'] == 'preset' && $settings['accent_color'] == 'preset-6' ? 'active' : '' }}"><i
                                             class="ti ti-check"></i></a>
 
+                                    <a href="#!" data-color-type="preset" data-value="bike-and-more"
+                                        aria-label="Bike & More: siyah, beyaz ve kırmızı tema"
+                                        class="color_type bike-more-option {{ $settings['color_type'] == 'preset' && $settings['accent_color'] == 'bike-and-more' ? 'active' : '' }}">
+                                        <span class="bike-more-swatch" aria-hidden="true"></span>
+                                        <span>Bike &amp; More</span>
+                                    </a>
+
                                     <input
                                         class="color_type cutom_colorr {{ $settings['color_type'] == 'custom' ? 'active' : '' }}"
                                         data-color-type="custom" data-value="preset-8"

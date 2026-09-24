@@ -350,10 +350,8 @@ document.addEventListener('DOMContentLoaded', function () {
         for (var h = 0; h < preset_color.length; h++) {
             var c = preset_color[h];
             c.addEventListener('click', function (event) {
-                var targetElement = event.target;
-                if (targetElement.tagName == 'SPAN') {
-                    targetElement = targetElement.parentNode;
-                }
+                event.preventDefault();
+                var targetElement = event.currentTarget;
                 var temp = targetElement.getAttribute('data-value');
                 preset_change(temp);
             });
@@ -439,7 +437,8 @@ function preset_change(value) {
     setTimeout(function () {
         var control = document.querySelector('.pct-offcanvas');
         if (control) {
-            document.querySelector('.preset-color > a.active').classList.remove('active');
+            var activePreset = document.querySelector('.preset-color > a.active');
+            if (activePreset) activePreset.classList.remove('active');
             document.querySelector(".preset-color > a[data-value='" + value + "']").classList.add('active');
         }
     }, 300);

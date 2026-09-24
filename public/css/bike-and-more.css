@@ -1,0 +1,977 @@
+/* Bike & More: scoped preset, including existing component and dark-mode variants. */
+[data-pc-preset=bike-and-more] {
+--pc-sidebar-active-color: #b00512;
+    --bs-blue: #252525;
+    --bs-primary: #252525;
+    --bs-primary-rgb: 37, 37, 37;
+    --bs-primary-light: #e9e9e9;
+    --bs-secondary: #b00512;
+    --bs-secondary-rgb: 176, 5, 18;
+    --bs-secondary-light: #fca5ac;
+    --bs-link-color: #252525;
+    --bs-link-color-rgb: 37, 37, 37;
+    --bs-link-hover-color: #1e1e1e;
+    --bs-link-hover-color-rgb: 170, 0, 18;
+    --dt-row-selected: 37, 37, 37;
+    --bs-body-bg: #f2f2f2;
+}
+
+[data-pc-preset=bike-and-more] .bg-primary-dark {
+background: #1c1c1c;
+    color: #1c1c1c;
+}
+
+[data-pc-preset=bike-and-more] .bg-secondary-dark {
+background: #98050f;
+    color: #98050f;
+}
+
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-item.active>.pc-link,
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-item:focus>.pc-link,
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-item:hover>.pc-link {
+color: #b00512;
+}
+
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-item.active>.pc-link .pc-micon i,
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-item.active>.pc-link .pc-micon svg,
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-item:focus>.pc-link .pc-micon i,
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-item:focus>.pc-link .pc-micon svg,
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-item:hover>.pc-link .pc-micon i,
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-item:hover>.pc-link .pc-micon svg {
+color: #b00512;
+}
+
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-submenu .pc-item:hover:before,
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-submenu .pc-item.active:before {
+background: #b00512;
+}
+
+[data-pc-preset=bike-and-more] .btn-link {
+--bs-btn-color: #252525;
+    --bs-btn-hover-color: #1e1e1e;
+    --bs-btn-active-color: #1e1e1e;
+}
+
+[data-pc-preset=bike-and-more] .accordion {
+--bs-accordion-btn-focus-border-color: #252525;
+    --bs-accordion-btn-focus-box-shadow: 0 0 0 0.2rem rgba(37, 37, 37, 0.25);
+    --bs-accordion-active-color: #252525;
+    --bs-accordion-active-bg: #e9e9e9;
+    --bs-accordion-btn-active-icon: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%230a2342'%3e%3cpath fill-rule=' evenodd' d=' M1.646 4.646a.5.5 0 0 1 .708 0L8 10.293l5.646-5.647a.5.5 0 0 1 .708.708l-6 6a.5.5 0 0 1-.708 0l-6-6a.5.5 0 0 1 0-.708z'/%3e%3c/svg%3e");
+}
+
+[data-pc-preset=bike-and-more] .list-group {
+--bs-list-group-active-bg: #252525;
+    --bs-list-group-active-border-color: #252525;
+}
+
+[data-pc-preset=bike-and-more] .nav {
+--bs-nav-link-hover-color: #1e1e1e;
+}
+
+[data-pc-preset=bike-and-more] .nav-pills {
+--bs-nav-pills-link-active-bg: #252525;
+}
+
+[data-pc-preset=bike-and-more] .pagination {
+--bs-pagination-hover-color: #1e1e1e;
+    --bs-pagination-focus-color: #1e1e1e;
+    --bs-pagination-focus-box-shadow: 0 0 0 0.2rem rgba(37, 37, 37, 0.25);
+    --bs-pagination-active-bg: #252525;
+    --bs-pagination-active-border-color: #252525;
+}
+
+[data-pc-preset=bike-and-more] .progress {
+--bs-progress-bar-bg: #252525;
+}
+
+[data-pc-preset=bike-and-more] .slider-selection {
+background-image: linear-gradient(to bottom, #636363 0, #636363 100%);
+}
+
+[data-pc-preset=bike-and-more] .slider-selection.tick-slider-selection {
+background-image: linear-gradient(to bottom, #575757 0, #575757 100%);
+}
+
+[data-pc-preset=bike-and-more] .swal-button:not([disabled]):hover {
+background-color: #191919;
+}
+
+[data-pc-preset=bike-and-more] .swal-button:active {
+background-color: #191919;
+}
+
+[data-pc-preset=bike-and-more] .swal-button:focus {
+box-shadow: 0 0 0 1px #fff, 0 0 0 3px rgba(37, 37, 37, 0.29);
+}
+
+[data-pc-preset=bike-and-more] .swal-content__input:focus {
+border-color: rgba(37, 37, 37, 0.29);
+}
+
+[data-pc-preset=bike-and-more] .swal-content__textarea:focus {
+border-color: rgba(37, 37, 37, 0.29);
+}
+
+[data-pc-preset=bike-and-more] .swal2-styled:focus {
+box-shadow: 0 0 0 1px #fff, 0 0 0 3px rgba(37, 37, 37, 0.4) !important;
+}
+
+[data-pc-preset=bike-and-more] .slider-tick.in-selection {
+background-image: linear-gradient(to bottom, #575757 0, #575757 100%);
+}
+
+[data-pc-preset=bike-and-more] .pc-header .pc-head-link.head-link-primary {
+background: #d3d3d3;
+    color: #252525;
+}
+
+[data-pc-preset=bike-and-more] .pc-header .pc-head-link.head-link-primary>i {
+color: #252525;
+}
+
+[data-pc-preset=bike-and-more] .pc-header .pc-head-link.head-link-primary:hover {
+background: #252525;
+    color: #fff;
+}
+
+[data-pc-preset=bike-and-more] .pc-header .pc-head-link.head-link-primary:hover>i {
+color: #fff;
+}
+
+[data-pc-preset=bike-and-more] .bg-light-primary {
+background: #d3d3d3;
+    color: #252525;
+}
+
+[data-pc-preset=bike-and-more] .link-primary {
+color: #252525 !important;
+}
+
+[data-pc-preset=bike-and-more] .link-primary:hover,
+[data-pc-preset=bike-and-more] .link-primary:focus {
+color: #1e1e1e !important;
+}
+
+[data-pc-preset=bike-and-more] .btn-primary {
+--bs-btn-color: #ffffff;
+    --bs-btn-bg: #252525;
+    --bs-btn-border-color: #252525;
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: #202020;
+    --bs-btn-hover-border-color: #1e1e1e;
+    --bs-btn-focus-shadow-rgb: 70, 70, 70;
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-bg: #1e1e1e;
+    --bs-btn-active-border-color: #1c1c1c;
+    --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+    --bs-btn-disabled-color: #ffffff;
+    --bs-btn-disabled-bg: #252525;
+    --bs-btn-disabled-border-color: #252525;
+}
+
+[data-pc-preset=bike-and-more] .btn-outline-primary {
+--bs-btn-color: #252525;
+    --bs-btn-border-color: #252525;
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: #252525;
+    --bs-btn-hover-border-color: #252525;
+    --bs-btn-focus-shadow-rgb: 37, 37, 37;
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-bg: #252525;
+    --bs-btn-active-border-color: #252525;
+    --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+    --bs-btn-disabled-color: #252525;
+    --bs-btn-disabled-bg: transparent;
+    --bs-btn-disabled-border-color: #252525;
+    --bs-gradient: none;
+}
+
+[data-pc-preset=bike-and-more] .text-bg-primary {
+color: #ffffff !important;
+    background-color: RGBA(37, 37, 37, var(--bs-bg-opacity, 1)) !important;
+}
+
+[data-pc-preset=bike-and-more] .alert-primary {
+--bs-alert-color: #161616;
+    --bs-alert-bg: #d3d3d3;
+    --bs-alert-border-color: #bebebe;
+    --bs-alert-link-color: #121212;
+}
+
+[data-pc-preset=bike-and-more] .list-group-item-primary {
+color: #252525;
+    background-color: #d3d3d3;
+}
+
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-primary:checked {
+border-color: #252525;
+    background-color: #252525;
+}
+
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-light-primary:checked {
+border-color: #d3d3d3;
+    background-color: #d3d3d3;
+}
+
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-light-primary:checked[type=checkbox] {
+background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%230a2342' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3l6-6'/%3e%3c/svg%3e");
+}
+
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-light-primary:checked[type=radio] {
+background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%230a2342'/%3e%3c/svg%3e");
+}
+
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-primary:focus[type=checkbox],
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-primary:focus[type=radio],
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-light-primary:focus[type=checkbox],
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-light-primary:focus[type=radio] {
+box-shadow: 0 0 0 0.2rem rgba(37, 37, 37, 0.25);
+    border-color: #252525;
+}
+
+[data-pc-preset=bike-and-more] .form-check.form-switch .form-check-input.input-light-primary:checked {
+background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%230a2342'/%3e%3c/svg%3e");
+}
+
+[data-pc-preset=bike-and-more] .btn-light-primary {
+background: #d3d3d3;
+    color: #252525;
+    border-color: #d3d3d3;
+}
+
+[data-pc-preset=bike-and-more] .btn-light-primary .material-icons-two-tone {
+background-color: #252525;
+}
+
+[data-pc-preset=bike-and-more] .btn-light-primary:hover {
+background: #252525;
+    color: #fff;
+    border-color: #252525;
+}
+
+[data-pc-preset=bike-and-more] .btn-light-primary:hover .material-icons-two-tone {
+background-color: #fff;
+}
+
+[data-pc-preset=bike-and-more] .btn-light-primary.focus,
+[data-pc-preset=bike-and-more] .btn-light-primary:focus {
+background: #252525;
+    color: #fff;
+    border-color: #252525;
+}
+
+[data-pc-preset=bike-and-more] .btn-light-primary.focus .material-icons-two-tone,
+[data-pc-preset=bike-and-more] .btn-light-primary:focus .material-icons-two-tone {
+background-color: #fff;
+}
+
+[data-pc-preset=bike-and-more] .btn-light-primary:not(:disabled):not(.disabled).active,
+[data-pc-preset=bike-and-more] .btn-light-primary:not(:disabled):not(.disabled):active,
+.show>[data-pc-preset=bike-and-more] .btn-light-primary.dropdown-toggle {
+background: #252525;
+    color: #fff;
+    border-color: #252525;
+}
+
+[data-pc-preset=bike-and-more] .btn-light-primary:not(:disabled):not(.disabled).active .material-icons-two-tone,
+[data-pc-preset=bike-and-more] .btn-light-primary:not(:disabled):not(.disabled):active .material-icons-two-tone,
+.show>[data-pc-preset=bike-and-more] .btn-light-primary.dropdown-toggle .material-icons-two-tone {
+background-color: #fff;
+}
+
+[data-pc-preset=bike-and-more] .btn-check:active+.btn-light-primary,
+[data-pc-preset=bike-and-more] .btn-check:checked+.btn-light-primary {
+background: #252525;
+    color: #fff;
+    border-color: #252525;
+}
+
+[data-pc-preset=bike-and-more] .btn-link-primary {
+background: transparent;
+    color: #252525;
+    border-color: transparent;
+}
+
+[data-pc-preset=bike-and-more] .btn-link-primary .material-icons-two-tone {
+background-color: #252525;
+}
+
+[data-pc-preset=bike-and-more] .btn-link-primary:hover {
+background: #d3d3d3;
+    color: #252525;
+    border-color: #d3d3d3;
+}
+
+[data-pc-preset=bike-and-more] .btn-link-primary.focus,
+[data-pc-preset=bike-and-more] .btn-link-primary:focus {
+background: #d3d3d3;
+    color: #252525;
+    border-color: #d3d3d3;
+}
+
+[data-pc-preset=bike-and-more] .btn-link-primary:not(:disabled):not(.disabled).active,
+[data-pc-preset=bike-and-more] .btn-link-primary:not(:disabled):not(.disabled):active,
+.show>[data-pc-preset=bike-and-more] .btn-link-primary.dropdown-toggle {
+background: #d3d3d3;
+    color: #252525;
+    border-color: #d3d3d3;
+}
+
+[data-pc-preset=bike-and-more] .btn-check:active+.btn-link-primary,
+[data-pc-preset=bike-and-more] .btn-check:checked+.btn-link-primary {
+background: #d3d3d3;
+    color: #252525;
+    border-color: #d3d3d3;
+}
+
+[data-pc-preset=bike-and-more] .material-icons-two-tone.text-primary {
+background-color: #252525;
+}
+
+[data-pc-preset=bike-and-more] .table-primary {
+--bs-table-color: #ffffff;
+    --bs-table-bg: #252525;
+    --bs-table-border-color: #3b3b3b;
+    --bs-table-striped-bg: #303030;
+    --bs-table-striped-color: #ffffff;
+    --bs-table-active-bg: #3b3b3b;
+    --bs-table-active-color: #ffffff;
+    --bs-table-hover-bg: #292929;
+    --bs-table-hover-color: #ffffff;
+    color: var(--bs-table-color);
+    border-color: var(--bs-table-border-color);
+}
+
+[data-pc-preset=bike-and-more] .pc-header .pc-head-link.head-link-secondary {
+background: #fb8c94;
+    color: #b00512;
+}
+
+[data-pc-preset=bike-and-more] .pc-header .pc-head-link.head-link-secondary>i {
+color: #b00512;
+}
+
+[data-pc-preset=bike-and-more] .pc-header .pc-head-link.head-link-secondary:hover {
+background: #b00512;
+    color: #fff;
+}
+
+[data-pc-preset=bike-and-more] .pc-header .pc-head-link.head-link-secondary:hover>i {
+color: #fff;
+}
+
+[data-pc-preset=bike-and-more] .bg-light-secondary {
+color: var(--bs-secondary);
+    background: rgba(var(--bs-secondary-rgb), 0.2);
+}
+
+[data-pc-preset=bike-and-more] .link-secondary {
+color: #b00512 !important;
+}
+
+[data-pc-preset=bike-and-more] .link-secondary:hover,
+[data-pc-preset=bike-and-more] .link-secondary:focus {
+color: #8d040e !important;
+}
+
+[data-pc-preset=bike-and-more] .btn-secondary {
+--bs-btn-color: #ffffff;
+    --bs-btn-bg: #b00512;
+    --bs-btn-border-color: #b00512;
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: #95050f;
+    --bs-btn-hover-border-color: #8d040e;
+    --bs-btn-focus-shadow-rgb: 215, 7, 22;
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-bg: #8d040e;
+    --bs-btn-active-border-color: #84040d;
+    --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+    --bs-btn-disabled-color: #ffffff;
+    --bs-btn-disabled-bg: #b00512;
+    --bs-btn-disabled-border-color: #b00512;
+}
+
+[data-pc-preset=bike-and-more] .btn-outline-secondary {
+--bs-btn-color: #b00512;
+    --bs-btn-border-color: #b00512;
+    --bs-btn-hover-color: #ffffff;
+    --bs-btn-hover-bg: #b00512;
+    --bs-btn-hover-border-color: #b00512;
+    --bs-btn-focus-shadow-rgb: 176, 5, 18;
+    --bs-btn-active-color: #ffffff;
+    --bs-btn-active-bg: #b00512;
+    --bs-btn-active-border-color: #b00512;
+    --bs-btn-active-shadow: inset 0 3px 5px rgba(0, 0, 0, 0.125);
+    --bs-btn-disabled-color: #b00512;
+    --bs-btn-disabled-bg: transparent;
+    --bs-btn-disabled-border-color: #b00512;
+    --bs-gradient: none;
+}
+
+[data-pc-preset=bike-and-more] .text-bg-secondary {
+color: #ffffff !important;
+    background-color: RGBA(37, 37, 37, var(--bs-bg-opacity, 1)) !important;
+}
+
+[data-pc-preset=bike-and-more] .alert-secondary {
+--bs-alert-color: #69030b;
+    --bs-alert-bg: #fb8c94;
+    --bs-alert-border-color: #fb737d;
+    --bs-alert-link-color: #540308;
+}
+
+[data-pc-preset=bike-and-more] .list-group-item-secondary {
+color: #b00512;
+    background-color: #fb8c94;
+}
+
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-secondary:checked {
+border-color: #b00512;
+    background-color: #b00512;
+}
+
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-light-secondary:checked {
+border-color: #fb8c94;
+    background-color: #fb8c94;
+}
+
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-light-secondary:checked[type=checkbox] {
+background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3e%3cpath fill='none' stroke='%232ca58d' stroke-linecap='round' stroke-linejoin='round' stroke-width='3' d='M6 10l3 3l6-6'/%3e%3c/svg%3e");
+}
+
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-light-secondary:checked[type=radio] {
+background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='2' fill='%232ca58d'/%3e%3c/svg%3e");
+}
+
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-secondary:focus[type=checkbox],
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-secondary:focus[type=radio],
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-light-secondary:focus[type=checkbox],
+[data-pc-preset=bike-and-more] .form-check .form-check-input.input-light-secondary:focus[type=radio] {
+box-shadow: 0 0 0 0.2rem rgba(176, 5, 18, 0.25);
+    border-color: #b00512;
+}
+
+[data-pc-preset=bike-and-more] .form-check.form-switch .form-check-input.input-light-secondary:checked {
+background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='-4 -4 8 8'%3e%3ccircle r='3' fill='%232ca58d'/%3e%3c/svg%3e");
+}
+
+[data-pc-preset=bike-and-more] .btn-light-secondary {
+background: #fb8c94;
+    color: #b00512;
+    border-color: #fb8c94;
+}
+
+[data-pc-preset=bike-and-more] .btn-light-secondary .material-icons-two-tone {
+background-color: #b00512;
+}
+
+[data-pc-preset=bike-and-more] .btn-light-secondary:hover {
+background: #b00512;
+    color: #fff;
+    border-color: #b00512;
+}
+
+[data-pc-preset=bike-and-more] .btn-light-secondary:hover .material-icons-two-tone {
+background-color: #fff;
+}
+
+[data-pc-preset=bike-and-more] .btn-light-secondary.focus,
+[data-pc-preset=bike-and-more] .btn-light-secondary:focus {
+background: #b00512;
+    color: #fff;
+    border-color: #b00512;
+}
+
+[data-pc-preset=bike-and-more] .btn-light-secondary.focus .material-icons-two-tone,
+[data-pc-preset=bike-and-more] .btn-light-secondary:focus .material-icons-two-tone {
+background-color: #fff;
+}
+
+[data-pc-preset=bike-and-more] .btn-light-secondary:not(:disabled):not(.disabled).active,
+[data-pc-preset=bike-and-more] .btn-light-secondary:not(:disabled):not(.disabled):active,
+.show>[data-pc-preset=bike-and-more] .btn-light-secondary.dropdown-toggle {
+background: #b00512;
+    color: #fff;
+    border-color: #b00512;
+}
+
+[data-pc-preset=bike-and-more] .btn-light-secondary:not(:disabled):not(.disabled).active .material-icons-two-tone,
+[data-pc-preset=bike-and-more] .btn-light-secondary:not(:disabled):not(.disabled):active .material-icons-two-tone,
+.show>[data-pc-preset=bike-and-more] .btn-light-secondary.dropdown-toggle .material-icons-two-tone {
+background-color: #fff;
+}
+
+[data-pc-preset=bike-and-more] .btn-check:active+.btn-light-secondary,
+[data-pc-preset=bike-and-more] .btn-check:checked+.btn-light-secondary {
+background: #b00512;
+    color: #fff;
+    border-color: #b00512;
+}
+
+[data-pc-preset=bike-and-more] .btn-link-secondary {
+background: transparent;
+    color: #b00512;
+    border-color: transparent;
+}
+
+[data-pc-preset=bike-and-more] .btn-link-secondary .material-icons-two-tone {
+background-color: #b00512;
+}
+
+[data-pc-preset=bike-and-more] .btn-link-secondary:hover {
+background: #fb8c94;
+    color: #b00512;
+    border-color: #fb8c94;
+}
+
+[data-pc-preset=bike-and-more] .btn-link-secondary.focus,
+[data-pc-preset=bike-and-more] .btn-link-secondary:focus {
+background: #fb8c94;
+    color: #b00512;
+    border-color: #fb8c94;
+}
+
+[data-pc-preset=bike-and-more] .btn-link-secondary:not(:disabled):not(.disabled).active,
+[data-pc-preset=bike-and-more] .btn-link-secondary:not(:disabled):not(.disabled):active,
+.show>[data-pc-preset=bike-and-more] .btn-link-secondary.dropdown-toggle {
+background: #fb8c94;
+    color: #b00512;
+    border-color: #fb8c94;
+}
+
+[data-pc-preset=bike-and-more] .btn-check:active+.btn-link-secondary,
+[data-pc-preset=bike-and-more] .btn-check:checked+.btn-link-secondary {
+background: #fb8c94;
+    color: #b00512;
+    border-color: #fb8c94;
+}
+
+[data-pc-preset=bike-and-more] .material-icons-two-tone.text-secondary {
+background-color: #b00512;
+}
+
+[data-pc-preset=bike-and-more] .table-secondary {
+--bs-table-color: #ffffff;
+    --bs-table-bg: #b00512;
+    --bs-table-border-color: #ca0614;
+    --bs-table-striped-bg: #be0613;
+    --bs-table-striped-color: #ffffff;
+    --bs-table-active-bg: #ca0614;
+    --bs-table-active-color: #ffffff;
+    --bs-table-hover-bg: #b50612;
+    --bs-table-hover-color: #ffffff;
+    color: var(--bs-table-color);
+    border-color: var(--bs-table-border-color);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] {
+--bs-dark-body-bg: #151515;
+    --bs-primary: #252525;
+    --bs-body-bg: #151515;
+    background: #212121;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .bg-primary-dark {
+background: #1c1c1c;
+    color: #1c1c1c;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .bg-secondary-dark {
+background: #98050f;
+    color: #98050f;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .frameworks-card {
+background: #1a1a1a !important;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .testaments-cards::after {
+background: linear-gradient(0deg, #212121, transparent);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .dropdown-menu {
+--bs-dropdown-bg: #2d2d2d;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .datatable-pagination a,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .datatable-pagination button {
+background-color: transparent;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .datatable-pagination .datatable-active a,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .datatable-pagination .datatable-active a:focus,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .datatable-pagination .datatable-active a:hover,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .datatable-pagination .datatable-active button,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .datatable-pagination .datatable-active button:focus,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .datatable-pagination .datatable-active button:hover {
+background-color: #2d2d2d;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .offcanvas,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .offcanvas-xxl,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .offcanvas-xl,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .offcanvas-lg,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .offcanvas-md,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .offcanvas-sm {
+--bs-offcanvas-bg: #212121;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .pc-container {
+background: #151515;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .bg-body {
+background: #151515 !important;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .auth-wrapper.v2 {
+background: #212121;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .form-control,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .datatable-input,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .sticky-action,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .card:not([class*=bg-]),
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .page-header,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .pc-header,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .pc-sidebar {
+background: #212121;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .card {
+--bs-card-bg: #242424;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .datatable-selector,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .dataTable-selector,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .custom-select,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .form-select {
+background-color: #212121;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .pct-customizer .pct-c-content {
+background: #232323;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .pct-customizer .pct-c-content {
+box-shadow: -1px 0 1px 0px rgba(21, 21, 21, 0.5);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .pc-header .pc-head-link.head-link-primary {
+background: rgba(37, 37, 37, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .pc-header .pc-head-link.head-link-secondary {
+background: rgba(176, 5, 18, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .pc-header .dropdown-notification .list-group-item-action:active,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .pc-header .dropdown-notification .list-group-item-action:hover,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .pc-header .dropdown-notification .list-group-item-action:focus {
+background: rgba(37, 37, 37, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .pc-sidebar .pc-navbar>li>.pc-submenu::before {
+background: rgba(37, 37, 37, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more][data-pc-layout=horizontal] .pc-sidebar .pc-navbar .pc-submenu {
+background: #212121;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more][data-pc-layout=horizontal] .pc-sidebar .pc-navbar .pc-submenu .pc-item.active>.pc-link,
+[data-pc-theme=dark][data-pc-preset=bike-and-more][data-pc-layout=horizontal] .pc-sidebar .pc-navbar .pc-submenu .pc-item:focus>.pc-link,
+[data-pc-theme=dark][data-pc-preset=bike-and-more][data-pc-layout=horizontal] .pc-sidebar .pc-navbar .pc-submenu .pc-item:hover>.pc-link {
+color: #b00512;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .page-link:hover {
+background: rgba(37, 37, 37, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .list-group {
+--bs-list-group-action-hover-bg: rgba(37, 37, 37, 0.2);
+    --bs-list-group-action-hover-color: #252525;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .modal {
+--bs-modal-bg: #212121;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .toast {
+--bs-toast-bg: #212121;
+    --bs-toast-header-bg: #262626;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .swal2-popup {
+background: #262626;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .accordion-button:not(.collapsed) {
+color: #b00512;
+    background: rgba(176, 5, 18, 0.1);
+    --bs-accordion-btn-focus-box-shadow: 0 0 0 0.2rem rgba(176, 5, 18, 0.25);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .dropdown-item:hover,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .dropdown-item:focus {
+--bs-dropdown-link-hover-color: var(--bs-dropdown-link-color);
+    --bs-dropdown-link-hover-bg: rgba(176, 5, 18, 0.2);
+    color: var(--bs-dropdown-link-color);
+    background: rgba(176, 5, 18, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .kanban-tabs .nav-item .nav-link.active,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .kanban-tabs .nav-item.show .nav-link,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .profile-tabs .nav-item .nav-link.active,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .profile-tabs .nav-item.show .nav-link {
+color: #b00512;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .kanban-tabs .nav-item .nav-link.active .material-icons-two-tone,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .kanban-tabs .nav-item.show .nav-link .material-icons-two-tone,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .profile-tabs .nav-item .nav-link.active .material-icons-two-tone,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .profile-tabs .nav-item.show .nav-link .material-icons-two-tone {
+background-color: #b00512;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .kanban-tabs .nav-item .nav-link.active::after,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .kanban-tabs .nav-item.show .nav-link::after,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .profile-tabs .nav-item .nav-link.active::after,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .profile-tabs .nav-item.show .nav-link::after {
+background: #b00512;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .kanban-tabs .nav-item .nav-link:hover,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .profile-tabs .nav-item .nav-link:hover {
+color: #b00512;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .kanban-tabs .nav-item .nav-link:hover .material-icons-two-tone,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .profile-tabs .nav-item .nav-link:hover .material-icons-two-tone {
+background-color: #b00512;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .account-tabs .nav-item.show .nav-link h5,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .account-tabs .nav-link:hover h5,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .account-tabs .nav-link.active h5 {
+color: #b00512;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .account-tabs .nav-item.show .nav-link .material-icons-two-tone,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .account-tabs .nav-link:hover .material-icons-two-tone,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .account-tabs .nav-link.active .material-icons-two-tone {
+background-color: #b00512;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .mail-option .mail-buttons {
+background: #151515;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .auth-main .auth-wrapper.v1 .auth-form {
+background: #151515;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .auth-main .auth-wrapper.v2 .auth-sidecontent {
+background: #151515;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .auth-main .auth-wrapper.v3 .auth-form {
+background: #151515;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .auth-main .auth-wrapper .saprator:after {
+background: #3a3a3a;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .auth-main .auth-wrapper .saprator span {
+color: var(--bs-body-color);
+    background: #212121;
+    outline-color: #3a3a3a;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .price-card h2::after,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .price-card .h2::after {
+background: #b00512;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .price-card.active {
+border-color: #b00512;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .navbar.navbar-light .navbar-toggler-icon {
+filter: invert(1) grayscale(100%) brightness(200%);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more].layout-2 {
+--pc-sidebar-background: #151515;
+    --pc-header-background: #151515;
+    background: #151515;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more].layout-2 .pc-header,
+[data-pc-theme=dark][data-pc-preset=bike-and-more].layout-2 .pc-sidebar {
+background: #151515;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more].layout-2 .pc-container {
+background: #1d1d1d;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more].layout-2 .pc-container .page-header,
+[data-pc-theme=dark][data-pc-preset=bike-and-more].layout-2 .pc-container .card {
+background: #212121;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .form-check .form-check-input.input-light-primary:checked {
+border-color: rgba(37, 37, 37, 0.2);
+    background-color: rgba(37, 37, 37, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .alert-primary {
+color: #252525;
+    background: rgba(37, 37, 37, 0.2);
+    border-color: rgba(37, 37, 37, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .alert-primary .alert-link {
+color: #252525;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .badge.bg-light-primary {
+background: rgba(37, 37, 37, 0.2);
+    color: #252525;
+    border-color: rgba(37, 37, 37, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .icon-svg-primary {
+fill: rgba(37, 37, 37, 0.2);
+    stroke: #252525;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .bg-light-primary {
+background: rgba(37, 37, 37, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .btn-light-primary:not(:hover) {
+background: rgba(37, 37, 37, 0.2);
+    border-color: rgba(37, 37, 37, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .btn-link-primary:hover {
+background: rgba(37, 37, 37, 0.2);
+    border-color: rgba(37, 37, 37, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .form-check .form-check-input.input-light-secondary:checked {
+border-color: rgba(176, 5, 18, 0.2);
+    background-color: rgba(176, 5, 18, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .alert-secondary {
+color: #b00512;
+    background: rgba(176, 5, 18, 0.2);
+    border-color: rgba(176, 5, 18, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .alert-secondary .alert-link {
+color: #b00512;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .badge.bg-light-secondary {
+background: rgba(176, 5, 18, 0.2);
+    color: #b00512;
+    border-color: rgba(176, 5, 18, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .icon-svg-secondary {
+fill: rgba(176, 5, 18, 0.2);
+    stroke: #b00512;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .bg-light-secondary {
+background: rgba(176, 5, 18, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .btn-light-secondary:not(:hover) {
+background: rgba(176, 5, 18, 0.2);
+    border-color: rgba(176, 5, 18, 0.2);
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .btn-link-secondary:hover {
+background: rgba(176, 5, 18, 0.2);
+    border-color: rgba(176, 5, 18, 0.2);
+}
+
+[data-pc-preset=bike-and-more] .select2-container--default .select2-results__option--selected,
+[data-pc-preset=bike-and-more] .modal-backdrop~.select2-container .select2-results__option--highlighted.select2-results__option--selectable,
+[data-pc-preset=bike-and-more] .select2-container .select2-results__option--highlighted.select2-results__option--selectable,
+[data-pc-preset=bike-and-more] .select2-container--default .select2-selection--multiple .select2-selection__choice__remove,
+[data-pc-preset=bike-and-more] .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover,
+[data-pc-preset=bike-and-more] .select2-container--default .select2-selection--multiple .select2-selection__choice {
+background: #b00512;
+    background-color: #b00512;
+    color: #f2f2f2;
+    border: 1px solid #b00512;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .select2-container--default .select2-selection--single,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .select2-container--default .select2-selection--multiple,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .select2-container--default .select2-selection--multiple .select2-selection__rendered,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .select2-container--default .select2-selection--single .select2-selection__rendered,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .modal-2-container .select2-selection--single,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .modal-backdrop~.select2-container .select2-selection--single,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .modal-2-container .select2-dropdown,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .modal-backdrop~.select2-container .select2-dropdown {
+background-color: #212121 !important;
+    color: #ffffff;
+}
+
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .select2-container--default .select2-selection--multiple .select2-selection__choice__remove,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .select2-container--default .select2-selection--multiple .select2-selection__choice,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .select2-container--default .select2-results__option--selected,
+[data-pc-theme=dark][data-pc-preset=bike-and-more] .modal-backdrop~.select2-container .select2-results__option--highlighted.select2-results__option--selectable {
+background: #b00512;
+    color: #f2f2f2;
+    border: 1px solid #b00512;
+}
+
+/* Named swatch stays legible in every theme. */
+.preset-color > a.bike-more-option {
+    display: inline-flex; align-items: center; gap: 8px;
+    width: auto; height: auto; min-height: 40px; padding: 6px 12px;
+    margin-top: 12px; border: 2px solid #737373; border-radius: 6px;
+    background: #111; color: #fff; font-size: 13px;
+}
+.preset-color > a.bike-more-option.active,
+.preset-color > a.bike-more-option:focus-visible { outline: 3px solid #da0014; outline-offset: 3px; }
+.bike-more-option .bike-more-swatch {
+    display: inline-block; width: 28px; height: 22px; border: 1px solid #fff;
+    background: linear-gradient(115deg, #111 33%, #fff 33%, #fff 48%, #ed001b 48%);
+}
+[data-pc-preset=bike-and-more] .pc-sidebar {
+    background: #111; color: #fff;
+    --pc-sidebar-background: #111;
+    --pc-sidebar-color: #e8e8e8;
+    --pc-sidebar-icon-color: #e8e8e8;
+    --pc-sidebar-caption-color: #bcbcbc;
+    --pc-sidebar-shadow: none;
+    border-right: 1px solid #292929;
+}
+[data-pc-preset=bike-and-more] .pc-sidebar .m-header { border-bottom: 3px solid #ed001b; }
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-link,
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-micon { color: #e8e8e8; }
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-caption { color: #bcbcbc; }
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-item.active > .pc-link,
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-item:hover > .pc-link,
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-item:focus-within > .pc-link {
+    background: #ad0011; color: #fff; box-shadow: inset 3px 0 #ff3044;
+}
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-item:is(.active, :hover, :focus-within) > .pc-link .pc-micon,
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-item:is(.active, :hover, :focus-within) > .pc-link .pc-micon i,
+[data-pc-preset=bike-and-more] .pc-sidebar .pc-item:is(.active, :hover, :focus-within) > .pc-link .pc-micon svg { color: #fff; }
+[data-pc-preset=bike-and-more][data-pc-theme=light] .pc-header { background: #fff; border-bottom: 1px solid #e5e5e5; }
+[data-pc-preset=bike-and-more] .auth-main { border-top: 4px solid #ed001b; }
