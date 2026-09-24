@@ -22,7 +22,7 @@
                     $(this).find('.select2').select2(); // Initialize select2 only on the new row's elements
                 },
                 hide: function(deleteElement) {
-                    if (confirm('Are you sure you want to delete this element?')) {
+                    if (confirm('Bu satırı silmek istediğinizden emin misiniz?')) {
                         $(this).slideUp(deleteElement);
                         $(this).remove();
                     }

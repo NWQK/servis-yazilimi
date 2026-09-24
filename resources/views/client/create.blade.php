@@ -347,7 +347,7 @@
                 var typeId = $(this).val();
 
                 if (!typeId) {
-                    $('#brand').empty().append('<option value="">Select Model</option>').trigger('change');
+                    $('#brand').empty().append('<option value="">Model seçin</option>').trigger('change');
                     return;
                 }
 
@@ -362,7 +362,7 @@
                         console.log("Received brands:", data);
                         var brandSelect = $('#brand');
                         brandSelect.empty();
-                        brandSelect.append('<option value="">Select Model</option>');
+                        brandSelect.append('<option value="">Model seçin</option>');
                         $.each(data, function(key, value) {
                             brandSelect.append('<option value="' + key + '">' + value +
                                 '</option>');
@@ -391,7 +391,7 @@
                     select2();
                 },
                 hide: function(deleteElement) {
-                    if (confirm('Are you sure you want to delete this element?')) {
+                    if (confirm('Bu satırı silmek istediğinizden emin misiniz?')) {
                         $(this).slideUp(deleteElement);
                         $(this).remove();
                     }

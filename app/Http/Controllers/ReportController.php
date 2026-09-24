@@ -131,7 +131,7 @@ class ReportController extends Controller
             }
 
             $report[] = (object) [
-                'month' => date("F Y", mktime(0, 0, 0, $m, 1)),
+                'month' => \Carbon\Carbon::create($year, $m, 1)->locale('tr')->translatedFormat('F Y'),
                 'income' => $income,
                 'expense' => $expense,
                 'profit' => $income - $expense,
@@ -165,7 +165,7 @@ public function incomeByMonth($year = null)
     while ($currentdate <= $end) {
         $month = date('m', $currentdate);
         $year = date('Y', $currentdate);
-        $payment['label'][] = date('M-Y', $currentdate);
+        $payment['label'][] = \Carbon\Carbon::createFromTimestamp($currentdate)->locale('tr')->translatedFormat('M Y');
 
         $incomeQuery = InvoicePayment::join('invoices', 'invoices.id', '=', 'invoice_payments.invoice_id')
             ->whereMonth('payment_date', $month)

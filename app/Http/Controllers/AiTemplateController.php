@@ -72,7 +72,7 @@ class AiTemplateController extends Controller
     {
         // Request type validation
         if (!$request->expectsJson()) {
-            return response()->json(['success' => false, 'message' => 'Invalid request type']);
+            return response()->json(['success' => false, 'message' => __('Invalid request type')]);
         }
 
         // Load configuration
@@ -137,7 +137,7 @@ class AiTemplateController extends Controller
         }
 
         // Language instruction
-        $outputLanguage = $request->input('language', 'English');
+        $outputLanguage = 'Turkish';
         $finalPrompt .= "\n\nOutput must be in {$outputLanguage} only.";
 
         // AI configuration

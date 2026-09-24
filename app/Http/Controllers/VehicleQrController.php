@@ -49,7 +49,7 @@ class VehicleQrController extends Controller
         $this->authorizeStaff();
         $data = $request->validate(['ids' => 'required|array|min:1|max:100', 'ids.*' => 'required|integer|distinct']);
         $pool->markPrinted(parentId(), $data['ids']);
-        return redirect()->route('vehicle-qr.index')->with('success', 'Seçilen etiketler basılmış olarak işaretlendi.');
+        return redirect()->route('vehicle-qr.index')->with('success', __('Seçilen etiketler basılmış olarak işaretlendi.'));
     }
 
     public function assign(Request $request, Vehicle $vehicle, VehicleQrPool $pool)
@@ -58,6 +58,6 @@ class VehicleQrController extends Controller
         abort_unless(auth()->user()->can('edit vehicle') && (int) $vehicle->parent_id === (int) parentId(), 403);
         $data = $request->validate(['qr_code_id' => 'required|integer']);
         $pool->assignExisting(parentId(), $vehicle->id, $data['qr_code_id']);
-        return redirect()->route('vehicle.index')->with('success', 'QR araca atandı; boş stok 10 adede tamamlandı.');
+        return redirect()->route('vehicle.index')->with('success', __('QR araca atandı; boş stok 10 adede tamamlandı.'));
     }
 }

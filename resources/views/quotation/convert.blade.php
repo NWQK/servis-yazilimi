@@ -22,7 +22,7 @@ d @extends('layouts.app')
                     select2();
                 },
                 hide: function(deleteElement) {
-                    if (confirm('Are you sure you want to delete this element?')) {
+                    if (confirm('Bu satırı silmek istediğinizden emin misiniz?')) {
                         $(this).slideUp(deleteElement);
                         $(this).remove();
                     }

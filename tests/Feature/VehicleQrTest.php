@@ -328,8 +328,8 @@ class VehicleQrTest extends TestCase
         $this->assertCount(2, $options);
         $this->assertNotContains('Toyota catalogue brand', $options);
         $this->assertNotContains('Foreign service', $options);
-        $this->assertStringContainsString('Select Service', $options['']);
-        $this->assertSame('Service Type', trim($xpath->query('//table[@data-repeater-list="types"]/thead/tr/th')->item(0)->textContent));
+        $this->assertSame('Servis türü seçin', $options['']);
+        $this->assertSame('Servis türü', trim($xpath->query('//table[@data-repeater-list="types"]/thead/tr/th')->item(0)->textContent));
     }
 
     public function test_brand_catalogue_lists_only_models_for_the_selected_brand()
@@ -345,8 +345,8 @@ class VehicleQrTest extends TestCase
         $foreignMake = DB::table('vehicle_types')->insertGetId(['type' => 'Foreign', 'parent_id' => $foreignOwner->id]);
         $this->post('/vehicle-brand', ['name' => 'Not allowed', 'type' => $foreignMake])->assertSessionHas('error');
         $this->assertFalse(DB::table('vehicle_brands')->where('name', 'Not allowed')->exists());
-        $this->get('/vehicle-type')->assertOk()->assertSee('Vehicle Brand List');
-        $this->get('/vehicle-brand')->assertOk()->assertSee('Vehicle Model List');
+        $this->get('/vehicle-type')->assertOk()->assertSee('Araç markaları');
+        $this->get('/vehicle-brand')->assertOk()->assertSee('Araç modelleri');
         $vehicle = Vehicle::create(['parent_id' => $this->owner->id, 'type' => $make->id, 'brand' => $model->id, 'license_plate' => '34 NEW 01']);
         $this->assertSame('Toyota Corolla', $vehicle->fresh()->display_name);
         $qr = $this->ready();

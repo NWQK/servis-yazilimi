@@ -64,7 +64,7 @@ class UserController extends Controller
                 $user->phone_number = $request->phone_number;
                 $user->type = 'owner';
                 $user->profile = 'avatar.png';
-                $user->lang = 'english';
+                $user->lang = 'tr';
                 $user->subscription = 1;
                 $user->parent_id = parentId();
                 $user->email_verified_at = now();
@@ -147,7 +147,7 @@ class UserController extends Controller
                 $user->type = $userRole->name;
                 $user->email_verified_at = now();
                 $user->profile = 'avatar.png';
-                $user->lang = 'english';
+                $user->lang = 'tr';
                 $user->parent_id = parentId();
                 $user->save();
                 $user->assignRole($userRole);
@@ -277,7 +277,7 @@ class UserController extends Controller
                     $user->save();
                 }
 
-                return redirect()->route('users.index')->with('success', 'User successfully updated.');
+                return redirect()->route('users.index')->with('success', __('User successfully updated.'));
             } else {
 
 
@@ -318,7 +318,7 @@ class UserController extends Controller
                 }
 
                 $user->roles()->sync($userRole);
-                return redirect()->route('users.index')->with('success', 'User successfully updated.');
+                return redirect()->route('users.index')->with('success', __('User successfully updated.'));
             }
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
@@ -368,7 +368,7 @@ class UserController extends Controller
         if (\Auth::user()->can('delete logged history')) {
             $histories = LoggedHistory::find($id);
             $histories->delete();
-            return redirect()->back()->with('success', 'Logged history succefully deleted.');
+            return redirect()->back()->with('success', __('Logged history succefully deleted.'));
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
         }

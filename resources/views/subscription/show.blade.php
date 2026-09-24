@@ -296,7 +296,7 @@
                                     <b class="discoutedPrice">
                                         {{ subscriptionPaymentSettings()['CURRENCY_SYMBOL'] }}{{ $subscription->package_amount }}</b>
                                 </td>
-                                <td>{{ $subscription->interval }} </td>
+                                <td>{{ __((string) $subscription->interval) }} </td>
                                 <td>{{ $subscription->user_limit }} </td>
                                 <td>{{ $subscription->customer_limit }} </td>
                                 <td>{{ $subscription->agent_limit }} </td>

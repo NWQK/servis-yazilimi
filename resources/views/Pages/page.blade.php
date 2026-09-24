@@ -3,11 +3,11 @@
     $routeParameters = request()->route()->parameters;
     $settings = settings();
     $user = \App\Models\User::find(1);
-    \App::setLocale($user->lang);
+    \App::setLocale('tr');
     $menus = \App\Models\Page::where('enabled', 1)->get();
 @endphp
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 
 <head>
     <meta charset="utf-8">
@@ -85,7 +85,7 @@
 <body class="landing-page"
     data-pc-preset="{{ !empty($settings['color_type']) && $settings['color_type'] == 'custom' ? 'custom' : $settings['accent_color'] }}"
     data-pc-sidebar-theme="light" data-pc-sidebar-caption="{{ $settings['sidebar_caption'] }}"
-    data-pc-direction="{{ $settings['theme_layout'] }}" data-pc-theme="{{ $settings['theme_mode'] }}">
+    data-pc-direction="ltr" data-pc-theme="{{ $settings['theme_mode'] }}">
 
     <!-- [ Pre-loader ] start -->
     <div class="loader-bg">

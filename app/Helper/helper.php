@@ -264,19 +264,19 @@ if (!function_exists('getSettingsValByIdName')) {
 if (!function_exists('settingDateFormat')) {
     function settingDateFormat($settings, $date)
     {
-        return date($settings['company_date_format'], strtotime($date));
+        return $date ? \Carbon\Carbon::parse($date)->locale('tr')->translatedFormat($settings['company_date_format'] ?? 'd.m.Y') : '—';
     }
 }
 if (!function_exists('settingPriceFormat')) {
     function settingPriceFormat($settings, $price)
     {
-        return $settings['CURRENCY_SYMBOL'] . $price;
+        return number_format((float) $price, 2, ',', '.') . ' ' . $settings['CURRENCY_SYMBOL'];
     }
 }
 if (!function_exists('settingTimeFormat')) {
     function settingTimeFormat($settings, $time)
     {
-        return date($settings['company_time_format'], strtotime($time));
+        return $time ? \Carbon\Carbon::parse($time)->locale('tr')->translatedFormat($settings['company_time_format'] ?? 'H:i') : '—';
     }
 }
 if (!function_exists('dateFormat')) {
@@ -284,7 +284,7 @@ if (!function_exists('dateFormat')) {
     {
         $settings = settings();
 
-        return date($settings['company_date_format'], strtotime($date));
+        return $date ? \Carbon\Carbon::parse($date)->locale('tr')->translatedFormat($settings['company_date_format'] ?? 'd.m.Y') : '—';
     }
 }
 if (!function_exists('timeFormat')) {
@@ -292,7 +292,7 @@ if (!function_exists('timeFormat')) {
     {
         $settings = settings();
 
-        return date($settings['company_time_format'], strtotime($time));
+        return $time ? \Carbon\Carbon::parse($time)->locale('tr')->translatedFormat($settings['company_time_format'] ?? 'H:i') : '—';
     }
 }
 if (!function_exists('priceFormat')) {
@@ -300,7 +300,7 @@ if (!function_exists('priceFormat')) {
     {
         $settings = settings();
 
-        return $settings['CURRENCY_SYMBOL'] . $price;
+        return number_format((float) $price, 2, ',', '.') . ' ' . $settings['CURRENCY_SYMBOL'];
     }
 }
 if (!function_exists('parentId')) {

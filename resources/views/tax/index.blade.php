@@ -41,7 +41,7 @@
                             <thead>
                                 <tr>
                                     <th>{{ __('Title') }}</th>
-                                    <th>{{ __('Rate') }}</th>
+                                    <th>{{ __('Tax Rate') }}</th>
                                     @if (Gate::check('edit tax') || Gate::check('delete tax'))
                                         <th class="text-right">{{ __('Action') }}</th>
                                     @endif

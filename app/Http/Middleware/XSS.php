@@ -16,7 +16,7 @@ class XSS
         }
 
         if (Auth::check()) {
-            App::setLocale(Auth::user()->lang);
+            \App::setLocale('tr');
             $timezone = getSettingsValByName('timezone');
             \Config::set('app.timezone', $timezone);
             if (!empty($timezone)) {

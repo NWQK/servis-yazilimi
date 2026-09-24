@@ -124,7 +124,7 @@ class CouponController extends Controller
     {
         if (\Auth::user()->can('delete coupon')) {
             $coupon->delete();
-            return redirect()->back()->with('success', 'Coupon successfully deleted.');
+            return redirect()->back()->with('success', __('Coupon successfully deleted.'));
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
         }
@@ -145,7 +145,7 @@ class CouponController extends Controller
         if (\Auth::user()->can('manage coupon history')) {
             $coupon = CouponHistory::find($id);
             $coupon->delete();
-            return redirect()->back()->with('success', 'Coupon history successfully deleted.');
+            return redirect()->back()->with('success', __('Coupon history successfully deleted.'));
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
         }

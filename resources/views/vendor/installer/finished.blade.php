@@ -10,7 +10,7 @@
 @endsection
 
 @section('container')
-    <p><strong  style="color:red; font-size: 15px;">Open Documentation and Copy Default Login Details.</strong></p>
+    <p><strong  style="color:red; font-size: 15px;">Kullanım kılavuzunu açıp başlangıç giriş bilgilerini inceleyin.</strong></p>
     @if(session('message')['dbOutputLog'])
         <p><strong><small>{{ trans('installer_messages.final.migration') }}</small></strong></p>
         <pre><code>{{ session('message')['dbOutputLog'] }}</code></pre>

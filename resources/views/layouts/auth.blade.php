@@ -8,7 +8,7 @@
     $descriptions = $authPage && !empty($authPage->description) ? json_decode($authPage->description, true) : [];
 @endphp
 
-<html lang="en">
+<html lang="tr">
 
 <head>
     <!-- Required meta tags-->
@@ -60,7 +60,7 @@
 <body
     data-pc-preset="{{ !empty($settings['color_type']) && $settings['color_type'] == 'custom' ? 'custom' : $settings['accent_color'] }}"
     data-pc-sidebar-theme="light" data-pc-sidebar-caption="{{ $settings['sidebar_caption'] }}"
-    data-pc-direction="{{ $settings['theme_layout'] }}" data-pc-theme="{{ $settings['theme_mode'] }}">
+    data-pc-direction="ltr" data-pc-theme="{{ $settings['theme_mode'] }}">
     <div class="loader-bg">
         <div class="loader-track">
             <div class="loader-fill"></div>
@@ -128,6 +128,7 @@
     <script>
         font_change('Roboto');
     </script>
+<script src="{{ asset('js/turkish-ui.js') }}"></script>
 </body>
 
 </html>

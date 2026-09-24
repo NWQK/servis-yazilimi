@@ -9,7 +9,7 @@
             </div>
             <div class="col-6">
                 <div class="detail-group">
-                    <h6>{{__('Title')}}</h6>
+                    <h6>{{__('Product Name')}}</h6>
                     <p class="mb-20 text-muted">{{ $item->title}}</p>
                 </div>
             </div>

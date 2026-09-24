@@ -153,7 +153,7 @@ class PageController extends Controller
     {
         if (\Auth::user()->can('delete Page')) {
             $page->delete();
-            return redirect()->back()->with('success', 'Page successfully deleted.');
+            return redirect()->back()->with('success', __('Page successfully deleted.'));
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
         }

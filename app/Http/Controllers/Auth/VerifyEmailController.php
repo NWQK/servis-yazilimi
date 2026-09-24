@@ -34,7 +34,7 @@ class VerifyEmailController extends Controller
         $user = User::where('email_verification_token', $token)->first();
 
         if (!$user) {
-            return response()->json(['message' => 'Invalid or expired token.'], 404);
+            return response()->json(['message' => __('Invalid or expired token.')], 404);
         }
 
         // Mark the email as verified

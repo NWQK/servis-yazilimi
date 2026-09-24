@@ -3,7 +3,7 @@
     $settings = settings();
 
 @endphp
-<html lang="en">
+<html lang="tr">
 <!-- [Head] start -->
 @include('admin.head')
 
@@ -11,7 +11,7 @@
 <!-- [Body] Start -->
 
 <body data-pc-preset="{{ !empty($settings['color_type']) && $settings['color_type'] == 'custom' ? 'custom' : $settings['accent_color'] }}" data-pc-sidebar-theme="light"
-    data-pc-sidebar-caption="{{ $settings['sidebar_caption'] }}" data-pc-direction="{{ $settings['theme_layout'] }}"
+    data-pc-sidebar-caption="{{ $settings['sidebar_caption'] }}" data-pc-direction="ltr"
     data-pc-theme="{{ $settings['theme_mode'] }}">
     <!-- [ Pre-loader ] start -->
     <div class="loader-bg">
@@ -64,7 +64,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title"></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
                 </div>
                 <div class="body">
                 </div>
@@ -76,7 +76,7 @@
             <div class="modal-content">
                 <div class="modal-header">
                     <h5 class="modal-title"></h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Kapat"></button>
                 </div>
                 <div class="modal-body">
                     <!-- Content loaded via AJAX -->

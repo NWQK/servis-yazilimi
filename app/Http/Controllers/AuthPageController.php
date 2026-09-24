@@ -78,7 +78,7 @@ class AuthPageController extends Controller
 
         $authPage->save();
 
-        return redirect()->route('authPage.index')->with('success', 'Auth Page updated successfully.');
+        return redirect()->route('authPage.index')->with('success', __('Auth Page updated successfully.'));
     }
 
 

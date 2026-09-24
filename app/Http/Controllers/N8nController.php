@@ -14,7 +14,7 @@ class N8nController extends Controller
         $user = auth()->user();
 
         if (!$user->can('manage n8n')) {
-            return back()->with('error', 'Permission denied');
+            return back()->with('error', __('Permission denied'));
         }
 
         $parentId = parentId();
@@ -23,7 +23,7 @@ class N8nController extends Controller
             ->find($parentId);
 
         if (!$authUser) {
-            return back()->with('error', 'User not found');
+            return back()->with('error', __('User not found'));
         }
 
         $subscription = \App\Models\Subscription::find($authUser->subscription);
@@ -35,7 +35,7 @@ class N8nController extends Controller
             optional($subscription)->enabled_n8n == 1);
 
         if (!$canViewN8n) {
-            return back()->with('error', 'Permission denied');
+            return back()->with('error', __('Permission denied'));
         }
 
         $n8ns = N8n::where('parent_id', $parentId)->orderBy('id', 'desc')->get();
@@ -48,7 +48,7 @@ class N8nController extends Controller
     public function create()
     {
         if (!Auth::user()->can('create n8n')) {
-            return redirect()->back()->with('error', 'Permission denied');
+            return redirect()->back()->with('error', __('Permission denied'));
         }
         $method = N8n::method();
         $modules = N8n::module();
@@ -61,14 +61,14 @@ class N8nController extends Controller
     public function store(Request $request)
     {
         if (!Auth::user()->can('create n8n')) {
-            return redirect()->back()->with('error', 'Permission denied');
+            return redirect()->back()->with('error', __('Permission denied'));
         }
         $exists = N8n::where('module', $request->module)
             ->where('parent_id', parentId())
             ->exists();
 
         if ($exists) {
-            return redirect()->back()->with('error', 'This module already exists.');
+            return redirect()->back()->with('error', __('This module already exists.'));
         }
         $n8n = new N8n();
         $n8n->module = $request->module;
@@ -78,7 +78,7 @@ class N8nController extends Controller
         $n8n->parent_id = parentId();
         $n8n->save();
 
-        return redirect()->back()->with('success', 'N8n is created successfully');
+        return redirect()->back()->with('success', __('N8n is created successfully'));
     }
 
     /**
@@ -93,7 +93,7 @@ class N8nController extends Controller
     public function edit(N8n $n8n)
     {
         if (!Auth::user()->can('edit n8n')) {
-            return redirect()->back()->with('error', 'Permission denied');
+            return redirect()->back()->with('error', __('Permission denied'));
         }
         $method = N8n::method();
         $modules = N8n::module();
@@ -106,7 +106,7 @@ class N8nController extends Controller
     public function update(Request $request, N8n $n8n)
     {
         if (!Auth::user()->can('edit n8n')) {
-            return redirect()->back()->with('error', 'Permission denied');
+            return redirect()->back()->with('error', __('Permission denied'));
         }
         $n8n->module = $request->module;
         $n8n->method = $request->method;
@@ -115,7 +115,7 @@ class N8nController extends Controller
         $n8n->status = !empty($request->status) ? $request->status : 0;
         $n8n->save();
 
-        return redirect()->back()->with('success', 'N8n is updated successfully');
+        return redirect()->back()->with('success', __('N8n is updated successfully'));
     }
 
     /**
@@ -124,10 +124,10 @@ class N8nController extends Controller
     public function destroy(N8n $n8n)
     {
         if (!Auth::user()->can('delete n8n')) {
-            return redirect()->back()->with('error', 'Permission denied');
+            return redirect()->back()->with('error', __('Permission denied'));
         }
 
         $n8n->delete();
-        return redirect()->back()->with('success', 'N8n is deleted successfully');
+        return redirect()->back()->with('success', __('N8n is deleted successfully'));
     }
 }

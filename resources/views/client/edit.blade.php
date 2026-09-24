@@ -382,7 +382,7 @@
                     $(this).find('.select2').select2();
                 },
                 hide: function(deleteElement) {
-                    if (confirm('Are you sure you want to delete this element?')) {
+                    if (confirm('Bu satırı silmek istediğinizden emin misiniz?')) {
                         var el = $(this).parent().parent();
                         var id = $(el.find('.type_id')).val();
                         $.ajax({

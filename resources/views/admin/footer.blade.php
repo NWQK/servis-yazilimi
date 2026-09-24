@@ -72,6 +72,7 @@
 <script src="{{ asset('assets/js/plugins/choices.min.js') }}"></script>
 <script src="{{ asset('assets/js/plugins/ckeditor/classic/ckeditor.js') }}"></script>
 
+<script src="{{ asset('js/turkish-ui.js') }}"></script>
 <!-- [Page Specific JS] end -->
 <form method="post" action="{{ route('theme.settings') }}">
     {{ csrf_field() }}
@@ -92,7 +93,7 @@
             <div class="d-inline-flex align-items-center gap-2">
 
                 <a type="button" class="avtar avtar-s btn-link-danger btn-pc-default" data-bs-dismiss="offcanvas"
-                    aria-label="Close">
+                    aria-label="Kapat">
                     <i class="ti ti-x f-20"></i>
                 </a>
             </div>
@@ -253,50 +254,6 @@
                                 </div>
                             </li>
                             <li class="list-group-item">
-                                <div class="pc-rtl">
-                                    <div class="d-flex align-items-center">
-                                        <div class="flex-grow-1 me-3">
-                                            <h5 class="mb-1">{{ __('Theme Layout') }}</h5>
-                                            <p class="text-muted text-sm">{{ __('LTR/RTL') }}</p>
-                                        </div>
-                                        <div class="flex-shrink-0">
-                                            <div class="row g-2 theme-color theme-direction">
-                                                <div class="col-6">
-                                                    <div class="d-grid">
-                                                        <button type="button"
-                                                            class="preset-btn btn {{ $settings['theme_layout'] == 'ltr' ? 'active' : '' }}"
-                                                            data-value="false" onclick="layout_rtl_change('false');"
-                                                            data-bs-toggle="tooltip" title="LTR">
-                                                            <span class="pc-lay-icon">
-                                                                <span></span>
-                                                                <span></span>
-                                                                <span></span>
-                                                                <span></span>
-                                                            </span>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                                <div class="col-6">
-                                                    <div class="d-grid">
-                                                        <button type="button"
-                                                            class="preset-btn btn {{ $settings['theme_layout'] == 'rtl' ? 'active' : '' }}"
-                                                            data-value="true" onclick="layout_rtl_change('true');"
-                                                            data-bs-toggle="tooltip" title="RTL">
-                                                            <span class="pc-lay-icon">
-                                                                <span></span>
-                                                                <span></span>
-                                                                <span></span>
-                                                                <span></span>
-                                                            </span>
-                                                        </button>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </li>
-                            <li class="list-group-item">
                                 <div class="pc-container-width">
                                     <div class="d-flex align-items-center">
                                         <div class="flex-grow-1 me-3">
@@ -403,13 +360,13 @@
 <script src="{{ asset('js/theme-color.js') }}"></script>
 @if ($statusMessage = Session::get('success'))
     <script>
-        notifier.show('Success!', '{!! $statusMessage !!}', 'success',
+        notifier.show('İşlem tamamlandı', '{!! $statusMessage !!}', 'success',
             successImg, 4000);
     </script>
 @endif
 @if ($statusMessage = Session::get('error'))
     <script>
-        notifier.show('Error!', '{!! $statusMessage !!}', 'error',
+        notifier.show('Hata', '{!! $statusMessage !!}', 'error',
             errorImg, 4000);
     </script>
 @endif

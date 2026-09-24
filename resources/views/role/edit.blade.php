@@ -39,7 +39,7 @@
                                             @if (str_contains(strtolower($permission->name), strtolower($module)))
                                                 <div class="form-check custom-chek form-check-inline col-md-2">
                                                     {{ Form::checkbox('user_permission[]', $permission->id, null, ['class' => 'form-check-input', 'id' => $module . '_permission' . $permission->id, in_array($permission->id, $assignPermission) ? 'checked' : '']) }}
-                                                    {{ Form::label($module . '_permission' . $permission->id, ucfirst($permission->name), ['class' => 'form-check-label']) }}
+                                                    {{ Form::label($module . '_permission' . $permission->id, __(ucfirst($permission->name)), ['class' => 'form-check-label']) }}
                                                     {!! Form::hidden('editable_permissions[]', $permission->id) !!}
                                                 </div>
                                             @endif

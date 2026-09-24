@@ -68,12 +68,12 @@
                 </div>
 
                 <div>
-                    <b>Total Services:</b>
+                    <b>Toplam servis:</b>
                     ${services[dataPointIndex]}
                 </div>
 
                 <div style="margin-top:5px;">
-                    <b>Service Types:</b><br>
+                    <b>Servis türleri:</b><br>
                     ${serviceTypes[dataPointIndex]}
                 </div>
             </div>

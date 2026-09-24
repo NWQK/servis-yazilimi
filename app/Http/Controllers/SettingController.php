@@ -70,7 +70,7 @@ class SettingController extends Controller
         $user->save();
 
 
-        return redirect()->back()->with('success', 'User profile settings successfully updated.')->with('tab', 'user_profile_settings');
+        return redirect()->back()->with('success', __('User profile settings successfully updated.'))->with('tab', 'user_profile_settings');
     }
 
     public function accountDelete(Request $request)
@@ -78,7 +78,7 @@ class SettingController extends Controller
         $loginUser = \Auth::user();
         $loginUser->delete();
 
-        return redirect()->back()->with('success', 'Your account successfully deleted.');
+        return redirect()->back()->with('success', __('Your account successfully deleted.'));
     }
 
     //    ---------------------- Password --------------------------------------------------------
@@ -610,19 +610,12 @@ class SettingController extends Controller
 
     //    ---------------------- Language --------------------------------------------------------
 
-    public function lanquageChange($lang)
-    {
-        $user = \Auth::user();
-        $user->lang = $lang;
-        $user->save();
-
-        return redirect()->back()->with('success', __('Language successfully changed.'));
-    }
 
     public function themeSettings(Request $request)
     {
 
         $themeSettings = $request->all();
+        $themeSettings['theme_layout'] = 'ltr';
         unset($themeSettings['_token']);
 
         foreach ($themeSettings as $key => $val) {
@@ -832,7 +825,7 @@ class SettingController extends Controller
             );
         }
 
-        return redirect()->back()->with('success', 'twilio settings updated successfully.')->with('tab', 'twilio');
+        return redirect()->back()->with('success', __('twilio settings updated successfully.'))->with('tab', 'twilio');
     }
 
     public function openai(Request $request)
@@ -869,6 +862,6 @@ class SettingController extends Controller
                 );
             }
         }
-        return redirect()->back()->with('success', 'Open ai settings updated successfully.')->with('tab', 'openai');
+        return redirect()->back()->with('success', __('Open ai settings updated successfully.'))->with('tab', 'openai');
     }
 }

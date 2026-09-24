@@ -175,7 +175,7 @@ class InvoiceController extends Controller
     {
         $id = decrypt($id);
         if (!\Auth::user()->can('edit invoice')) {
-            return redirect()->back()->with('error', 'Permission denied');
+            return redirect()->back()->with('error', __('Permission denied'));
         }
         $invoice = Invoice::where('parent_id', parentId())->findOrFail($id);
         $clients = User::where('type', 'client')->where('parent_id', parentId())->get()->pluck('name', 'id');
@@ -652,7 +652,7 @@ class InvoiceController extends Controller
             }
             return redirect()
                 ->back()
-                ->with('error', 'Something went wrong.');
+                ->with('error', __('Something went wrong.'));
         } else {
             return redirect()
                 ->back()

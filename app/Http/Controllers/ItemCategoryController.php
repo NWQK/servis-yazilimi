@@ -51,7 +51,7 @@ class ItemCategoryController extends Controller
             $category->fill($data);
             $category->parent_id = parentId();
             $category->save();
-            return redirect()->route('item-category.index')->with('success', 'Ürün kategorisi kaydedildi.');
+            return redirect()->route('item-category.index')->with('success', __('Ürün kategorisi kaydedildi.'));
         });
     }
 
@@ -61,10 +61,10 @@ class ItemCategoryController extends Controller
         abort_unless((int) $itemCategory->parent_id === (int) parentId(), 404);
         return app(InventoryAccounting::class)->transaction(parentId(), function () use ($itemCategory) {
             if ($itemCategory->items()->exists()) {
-                return back()->with('error', 'Bu kategoride ürünler var. Silmeden önce ürünleri başka kategoriye taşıyın.');
+                return back()->with('error', __('Bu kategoride ürünler var. Silmeden önce ürünleri başka kategoriye taşıyın.'));
             }
             $itemCategory->delete();
-            return redirect()->route('item-category.index')->with('success', 'Ürün kategorisi silindi.');
+            return redirect()->route('item-category.index')->with('success', __('Ürün kategorisi silindi.'));
         });
     }
 }

@@ -97,7 +97,7 @@
             var typeId = $(this).val();
 
             if (!typeId) {
-                $('#brand').empty().append('<option value="">Select Model</option>').trigger('change');
+                $('#brand').empty().append('<option value="">Model seçin</option>').trigger('change');
                 return;
             }
 
@@ -115,7 +115,7 @@
 
                     // Clear and rebuild options (no destroy needed)
                     brandSelect.empty();
-                    brandSelect.append('<option value="">Select Model</option>');
+                    brandSelect.append('<option value="">Model seçin</option>');
 
                     // Append new options
                     $.each(data, function(key, value) {

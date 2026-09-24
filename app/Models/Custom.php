@@ -12,20 +12,7 @@ class Custom extends Model
 
     public static function languages()
     {
-        $directory = base_path() . '/resources/lang/';
-        $allFiles = glob($directory . "*", GLOB_ONLYDIR);
-        $language = array_map(
-            function ($envValue) use ($directory) {
-                return str_replace($directory, '', $envValue);
-            }, $allFiles
-        );
-        $language = array_map(
-            function ($envValue) use ($directory) {
-                return preg_replace('/[0-9]+/', '', $envValue);
-            }, $language
-        );
-        $language = array_filter($language);
-        return $language;
+        return ['tr'];
     }
 
 

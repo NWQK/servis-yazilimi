@@ -25,5 +25,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
             Schema::defaultStringLength(191);
+            config(['app.locale' => 'tr', 'app.fallback_locale' => 'tr']);
+            $this->app->setLocale('tr');
+            \Carbon\Carbon::setLocale('tr');
     }
 }

@@ -58,7 +58,7 @@
                                                     <b>
                                                         <sup>{{ subscriptionPaymentSettings()['CURRENCY_SYMBOL'] }}</sup>
                                                         {{ $subscription->package_amount }}
-                                                        <span>/{{ $subscription->interval }}</span>
+                                                        <span>/{{ __((string) $subscription->interval) }}</span>
                                                     </b>
                                                 </h3>
                                             </div>

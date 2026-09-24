@@ -31,7 +31,7 @@
                     $(this).slideDown();
                 },
                 hide: function(deleteElement) {
-                    if (confirm('Are you sure you want to delete this element?')) {
+                    if (confirm('Bu satırı silmek istediğinizden emin misiniz?')) {
                         $(this).slideUp(deleteElement, function() {
                             $(this).remove();
                         });

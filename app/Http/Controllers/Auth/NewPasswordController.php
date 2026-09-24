@@ -20,8 +20,7 @@ class NewPasswordController extends Controller
      */
     public function create(Request $request)
     {
-        $user=\App\Models\User::find(1);
-        \App::setLocale($user->lang);
+        \App::setLocale('tr');
         return view('auth.reset-password', ['request' => $request]);
     }
 

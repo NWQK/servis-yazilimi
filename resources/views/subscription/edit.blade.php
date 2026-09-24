@@ -13,7 +13,7 @@
                 $subscription->id == 1 ? 'disabled' : '' => $subscription->id == 1 ? 'disabled' : '',
             ]) !!}
             @if ($subscription->id == 1)
-                <input type="hidden" name="interval" value="{{ $subscription->interval }}">
+                <input type="hidden" name="interval" value="{{ __((string) $subscription->interval) }}">
             @endif
         </div>
         <div class="form-group">

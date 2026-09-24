@@ -179,7 +179,7 @@ class PaymentController extends Controller
                 }
                 return redirect()
                     ->back()
-                    ->with('error', 'Something went wrong.');
+                    ->with('error', __('Something went wrong.'));
             } else {
                 return redirect()
                     ->back()

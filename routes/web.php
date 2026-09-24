@@ -172,7 +172,6 @@ Route::group(
         Route::get('footer-setting', [SettingController::class, 'footerSetting'])->name('footerSetting');
         Route::post('settings/footer', [SettingController::class, 'footerData'])->name('setting.footer');
 
-        Route::get('language/{lang}', [SettingController::class, 'lanquageChange'])->name('language.change');
         Route::post('theme/settings', [SettingController::class, 'themeSettings'])->name('theme.settings');
 
 

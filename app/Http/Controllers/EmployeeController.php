@@ -68,7 +68,7 @@ class EmployeeController extends Controller
             $user->password = \Hash::make($request->password);
             $user->type = $userRole->name;
             $user->profile = 'avatar.png';
-            $user->lang = 'english';
+            $user->lang = 'tr';
             $user->parent_id = parentId();
             $user->email_verified_at = now();
             $user->save();

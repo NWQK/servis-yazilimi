@@ -100,7 +100,7 @@
                                             <td>{{ !empty($user->subscription_expire_date) ? dateFormat($user->subscription_expire_date) : __('Unlimited') }}
                                             </td>
                                         @else
-                                            <td>{{ ucfirst($user->type) }} </td>
+                                            <td>{{ __($user->type) }} </td>
                                         @endif
                                         <td>
                                             <div class="cart-action">

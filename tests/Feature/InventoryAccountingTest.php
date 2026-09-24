@@ -39,6 +39,41 @@ class InventoryAccountingTest extends TestCase
             'units' => 1, 'purchase_price' => '200.00', 'sales_price' => '300.00', 'purchase_date' => '2026-09-23'];
     }
 
+    public function test_interface_stays_turkish_for_legacy_accounts_and_language_route_is_removed()
+    {
+        $this->owner->update(['lang' => 'english']);
+        $this->get('/item', ['Accept-Language' => 'en-US'])->assertOk()
+            ->assertSee('Ürün adı')->assertSee('Alış fiyatı')->assertSee('Ürün Kategorileri')
+            ->assertSee('lang="tr"', false)->assertDontSee('ti-language', false)->assertDontSee('/language/', false);
+        $this->assertSame('tr', app()->getLocale());
+        $this->get('/language/english')->assertNotFound();
+        $this->assertSame('english', $this->owner->fresh()->lang);
+    }
+
+    public function test_guest_pages_and_validation_are_turkish_without_default_user()
+    {
+        auth()->logout();
+        $this->owner->delete();
+        $this->get('/forgot-password', ['Accept-Language' => 'en-US'])->assertOk()
+            ->assertSee('Şifrenizi mi unuttunuz?')->assertSee('lang="tr"', false);
+        $validator = validator(['email' => 'invalid', 'quantity' => 'abc'], ['email' => 'email', 'quantity' => 'integer', 'purchase_price' => 'required']);
+        $this->assertSame('E-posta adresi geçerli bir e-posta adresi olmalıdır.', $validator->errors()->first('email'));
+        $this->assertSame('Adet tam sayı olmalıdır.', $validator->errors()->first('quantity'));
+        $this->assertSame('Alış fiyatı alanı zorunludur.', $validator->errors()->first('purchase_price'));
+        $this->assertStringNotContainsString(':seconds', __('auth.throttle', ['seconds' => 60]));
+        $this->assertSame('Kurulum tamamlandı', __('installer_messages.final.title'));
+    }
+
+    public function test_turkish_dates_and_money_only_change_display()
+    {
+        $this->assertSame('24 Eylül 2026', settingDateFormat(['company_date_format' => 'd F Y'], '2026-09-24'));
+        $this->assertSame('—', dateFormat(null));
+        $this->assertSame('1.234,50 ₺', settingPriceFormat(['CURRENCY_SYMBOL' => '₺'], 1234.5));
+        $item = $this->stock->savePurchase($this->owner->id, array_merge($this->attributes(2), ['purchase_price' => 200.25]));
+        $this->assertEquals(400.5, Expense::sum('amount'));
+        $this->assertEquals(200.25, $item->purchase_price);
+    }
+
     public function test_categories_can_be_managed_and_filter_products_without_creating_purchase_expenses()
     {
         $this->post('/item-category', ['name' => ' Motor Yağları '])->assertRedirect(route('item-category.index'));

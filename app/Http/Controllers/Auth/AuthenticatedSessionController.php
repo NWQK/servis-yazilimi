@@ -19,8 +19,7 @@ class AuthenticatedSessionController extends Controller
             die;
         }
 
-        $user=\App\Models\User::find(1);
-        \App::setLocale($user->lang);
+        \App::setLocale('tr');
 
         return view('auth.login');
     }

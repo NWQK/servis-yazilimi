@@ -395,13 +395,13 @@
                                         <td>
                                             @if ($payment->payment_status == 'pending')
                                                 <span
-                                                    class="d-inline badge text-bg-warning text-capitalize ">{{ $payment->payment_status }}</span>
+                                                    class="d-inline badge text-bg-warning text-capitalize ">{{ __((string) $payment->payment_status) }}</span>
                                             @elseif($payment->payment_status == 'succeeded' || $payment->payment_status == 'success')
                                                 <span
-                                                    class="d-inline badge text-bg-success text-capitalize">{{ $payment->payment_status }}</span>
+                                                    class="d-inline badge text-bg-success text-capitalize">{{ __((string) $payment->payment_status) }}</span>
                                             @else
                                                 <span
-                                                    class="d-inline badge text-bg-danger text-capitalize">{{ $payment->payment_status }}</span>
+                                                    class="d-inline badge text-bg-danger text-capitalize">{{ __((string) $payment->payment_status) }}</span>
                                             @endif
                                         </td>
                                         <td>{{ !empty($payment->description) ? $payment->description : '' }} </td>

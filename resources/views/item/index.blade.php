@@ -54,7 +54,7 @@
                         <table class="table table-hover advance-datatable">
                             <thead>
                                 <tr>
-                                    <th>{{ __('Title') }}</th>
+                                    <th>{{ __('Product Name') }}</th>
                                     <th>Ürün Kategorisi</th>
                                     <th>{{ __('Item Code') }}</th>
                                     <th>{{ __('Quantity') }}</th>

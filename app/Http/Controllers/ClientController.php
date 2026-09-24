@@ -128,7 +128,7 @@ class ClientController extends Controller
                 $user->password          = \Hash::make(\Illuminate\Support\Str::random(64));
                 $user->type              = $userRole->name;
                 $user->profile           = 'avatar.png';
-                $user->lang              = 'english';
+                $user->lang              = 'tr';
                 $user->email_verified_at = null;
                 $user->parent_id         = parentId();
                 $user->save();

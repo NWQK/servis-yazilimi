@@ -41,17 +41,17 @@
                                         <td>{{ !empty($transaction->subscriptions) ? $transaction->subscriptions->title : '-' }}
                                         </td>
                                         <td>{{ $settings['CURRENCY_SYMBOL'] . $transaction->amount }}</td>
-                                        <td>{{ $transaction->payment_type }}</td>
+                                        <td>{{ __((string) $transaction->payment_type) }}</td>
                                         <td>
                                             @if ($transaction->payment_status == 'Pending')
                                                 <span
-                                                    class="d-inline badge text-bg-warning">{{ $transaction->payment_status }}</span>
+                                                    class="d-inline badge text-bg-warning">{{ __((string) $transaction->payment_status) }}</span>
                                             @elseif($transaction->payment_status == 'succeeded' || $transaction->payment_status == 'Success')
                                                 <span
-                                                    class="d-inline badge text-bg-success">{{ $transaction->payment_status }}</span>
+                                                    class="d-inline badge text-bg-success">{{ __((string) $transaction->payment_status) }}</span>
                                             @else
                                                 <span
-                                                    class="d-inline badge text-bg-danger">{{ $transaction->payment_status }}</span>
+                                                    class="d-inline badge text-bg-danger">{{ __((string) $transaction->payment_status) }}</span>
                                             @endif
 
 

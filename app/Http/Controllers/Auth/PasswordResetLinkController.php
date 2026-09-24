@@ -15,8 +15,7 @@ class PasswordResetLinkController extends Controller
      */
     public function create()
     {
-        $user = \App\Models\User::find(1);
-        \App::setLocale($user->lang);
+        \App::setLocale('tr');
         return view('auth.forgot-password');
     }
 
@@ -49,7 +48,7 @@ class PasswordResetLinkController extends Controller
                 ->withErrors(['email' => __($status)]);
         } catch (\Exception $e) {
 
-            return redirect()->route('password.request')->with('error', 'We noticed that the email settings have not been configured for this system. As a result, email-related functionalities may as expected. please add valide email smtp details first.');
+            return redirect()->route('password.request')->with('error', __('We noticed that the email settings have not been configured for this system. As a result, email-related functionalities may as expected. please add valide email smtp details first.'));
         }
     }
 }

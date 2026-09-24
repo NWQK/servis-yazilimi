@@ -151,12 +151,12 @@
             },
             series: serviceStatusData,
             labels: [
-                'Scheduled',
-                'In Progress',
-                'Completed',
-                'Pending Parts',
-                'On Hold',
-                'Cancelled'
+                @json(__('Scheduled')),
+                @json(__('In Progress')),
+                @json(__('Completed')),
+                @json(__('Pending Parts')),
+                @json(__('On Hold')),
+                @json(__('Cancelled'))
             ],
             legend: {
                 position: 'bottom'
@@ -305,15 +305,15 @@
                                     <td>
                                         @if ($service->status == 'scheduled')
                                             <span class="badge bg-light-primary">
-                                                {{ __('Scheduled') }}
+                                                {{ __(@json(__('Scheduled'))) }}
                                             </span>
                                         @elseif($service->status == 'in_progress')
                                             <span class="badge bg-light-secondary">
-                                                {{ __('In Progress') }}
+                                                {{ __(@json(__('In Progress'))) }}
                                             </span>
                                         @elseif($service->status == 'completed')
                                             <span class="badge bg-light-success">
-                                                {{ __('Completed') }}
+                                                {{ __(@json(__('Completed'))) }}
                                             </span>
                                         @else
                                             <span class="badge bg-light-warning">

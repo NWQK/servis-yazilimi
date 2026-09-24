@@ -143,7 +143,7 @@ class NoticeBoardController extends Controller
             }
             $note->delete();
 
-            return redirect()->back()->with('success', 'Note successfully deleted.');
+            return redirect()->back()->with('success', __('Note successfully deleted.'));
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
         }

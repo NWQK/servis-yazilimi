@@ -154,9 +154,9 @@ class FAQController extends Controller
             $fAQ = FAQ::find($id);
             if ($fAQ) {
                 $fAQ->delete();
-                return redirect()->back()->with('success', 'FAQ successfully deleted.');
+                return redirect()->back()->with('success', __('FAQ successfully deleted.'));
             } else {
-                return redirect()->back()->with('error', 'FAQ not found.');
+                return redirect()->back()->with('error', __('FAQ not found.'));
             }
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));

@@ -10,6 +10,12 @@
     var calendar = new FullCalendar.Calendar(
         document.getElementById("calendar"),
         {
+            locale: 'tr', firstDay: 1,
+            buttonText: {today: 'Bugün', month: 'Ay', week: 'Hafta', day: 'Gün', list: 'Liste'},
+            buttonHints: {prev: 'Önceki', next: 'Sonraki', today: 'Bugün'},
+            allDayText: 'Tüm gün', noEventsText: 'Gösterilecek servis yok', moreLinkText: 'daha fazla',
+            slotLabelFormat: {hour: '2-digit', minute: '2-digit', hour12: false},
+            eventTimeFormat: {hour: '2-digit', minute: '2-digit', hour12: false},
             headerToolbar: {
                 left: "prev,next today",
                 center: "title",
@@ -47,7 +53,7 @@
                 document.getElementById("pc-e-description").value = "";
                 document.getElementById("pc-e-type").value = "";
                 document.getElementById("pc-e-btn-text").innerHTML =
-                    '<i class="align-text-bottom me-1 ti ti-calendar-plus"></i> Add';
+                    '<i class="align-text-bottom me-1 ti ti-calendar-plus"></i> Ekle';
                 document
                     .querySelector("#pc_event_add")
                     .setAttribute("data-pc-action", "add");
@@ -108,12 +114,12 @@
             });
             swalWithBootstrapButtons
                 .fire({
-                    title: "Are you sure?",
-                    text: "you want to delete this event?",
+                    title: "Emin misiniz?",
+                    text: "Bu servis kaydını silmek istiyor musunuz?",
                     icon: "warning",
                     showCancelButton: true,
-                    confirmButtonText: "Yes, delete it!",
-                    cancelButtonText: "No, cancel!",
+                    confirmButtonText: "Evet, sil",
+                    cancelButtonText: "Vazgeç",
                     reverseButtons: true,
                 })
                 .then((result) => {
@@ -121,14 +127,14 @@
                         calendevent.remove();
                         calendarmodal.hide();
                         swalWithBootstrapButtons.fire(
-                            "Deleted!",
-                            "Your Event has been deleted.",
+                            "Silindi",
+                            "Kayıt silindi.",
                             "success",
                         );
                     } else if (result.dismiss === Swal.DismissReason.cancel) {
                         swalWithBootstrapButtons.fire(
-                            "Cancelled",
-                            "Your Event data is safe.",
+                            "İptal edildi",
+                            "Kayıt değiştirilmedi.",
                             "error",
                         );
                     }
@@ -175,7 +181,7 @@
             } else {
                 calendevent.remove();
                 document.getElementById("pc-e-btn-text").innerHTML =
-                    '<i class="align-text-bottom me-1 ti ti-calendar-plus"></i> Add';
+                    '<i class="align-text-bottom me-1 ti ti-calendar-plus"></i> Ekle';
                 document
                     .querySelector("#pc_event_add")
                     .setAttribute("data-pc-action", "add");
@@ -270,18 +276,18 @@
     //  get date
     function dateformat(dt) {
         var mn = [
-            "January",
-            "February",
-            "March",
-            "April",
-            "May",
-            "June",
-            "July",
-            "August",
-            "September",
-            "October",
-            "November",
-            "December",
+            "Ocak",
+            "Şubat",
+            "Mart",
+            "Nisan",
+            "Mayıs",
+            "Haziran",
+            "Temmuz",
+            "Ağustos",
+            "Eylül",
+            "Ekim",
+            "Kasım",
+            "Aralık",
         ];
         var d = new Date(dt),
             month = "" + mn[d.getMonth()],
@@ -297,7 +303,7 @@
         var timeFormat = time.split(":");
         var hours = timeFormat[0];
         var minutes = timeFormat[1];
-        var newformat = hours >= 12 ? "PM" : "AM";
+        var newformat = hours >= 12 ? "ÖS" : "ÖÖ";
         hours = hours % 12;
         hours = hours ? hours : 12;
         minutes = minutes < 10 ? "0" + minutes : minutes;

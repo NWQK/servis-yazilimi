@@ -19,7 +19,7 @@ $(document).on("click", ".customModal", function () {
         success: function (result) {
             if (result.status == "error") {
                 notifier.show(
-                    "Error!",
+                    "Hata",
                     result.messages,
                     "error",
                     errorImg,
@@ -40,12 +40,12 @@ $(document).on("click", ".customModal", function () {
 $(document).on("click", ".confirm_dialog", function (e) {
     var title = $(this).attr("data-dialog-title");
     if (title == undefined) {
-        var title = "Are you sure you want to delete this record ?";
+        var title = "Bu kaydı silmek istediğinizden emin misiniz?";
     }
     var text = $(this).attr("data-dialog-text");
     if (text == undefined) {
         var text =
-            "This record can not be restore after delete. Do you want to confirm?";
+            "Silinen kayıt geri alınamaz. Devam etmek istiyor musunuz?";
     }
     var dialogForm = $(this).closest("form");
     Swal.fire({
@@ -55,7 +55,8 @@ $(document).on("click", ".confirm_dialog", function (e) {
         showCancelButton: true,
         confirmButtonColor: "#3085d6",
         cancelButtonColor: "#d33",
-        confirmButtonText: "Yes",
+        confirmButtonText: "Evet",
+        cancelButtonText: "Vazgeç",
     }).then((data) => {
         if (data.isConfirmed) {
             dialogForm.submit();
@@ -68,16 +69,14 @@ $(document).on("click", ".common_confirm_dialog", function (e) {
     var dialogForm = $(this).closest("form");
     var actions = $(this).data("actions");
     Swal.fire({
-        title: "Are you sure you want to delete " + actions + " ?",
-        text:
-            "This " +
-            actions +
-            " can not be restore after delete. Do you want to confirm?",
+        title: "Bu kaydı silmek istediğinizden emin misiniz?",
+        text: "Silinen kayıt geri alınamaz. Devam etmek istiyor musunuz?",
         icon: "warning",
         showCancelButton: true,
         confirmButtonColor: "#3085d6",
         cancelButtonColor: "#d33",
-        confirmButtonText: "Yes",
+        confirmButtonText: "Evet",
+        cancelButtonText: "Vazgeç",
     }).then((data) => {
         if (data.isConfirmed) {
             dialogForm.submit();
@@ -105,9 +104,9 @@ $(document).on("click", ".fc-day-grid-event", function (e) {
 
 function toastrs(title, message, status) {
     if (status == "success") {
-        notifier.show("Success!", message, "success", successImg, 4000);
+        notifier.show("İşlem tamamlandı", message, "success", successImg, 4000);
     } else {
-        notifier.show("Success!", message, "success", errorImg, 4000);
+        notifier.show("Hata", message, "error", errorImg, 4000);
     }
 }
 
@@ -123,6 +122,15 @@ function convertArrayToJson(form) {
 }
 
 function select2() {
+    $.fn.select2.defaults.set('language', {
+        errorLoading: function () { return 'Sonuçlar yüklenemedi.'; },
+        inputTooLong: function (args) { return 'En fazla ' + args.maximum + ' karakter girebilirsiniz.'; },
+        inputTooShort: function (args) { return 'En az ' + args.minimum + ' karakter girin.'; },
+        loadingMore: function () { return 'Daha fazla sonuç yükleniyor...'; },
+        maximumSelected: function (args) { return 'En fazla ' + args.maximum + ' seçim yapabilirsiniz.'; },
+        noResults: function () { return 'Sonuç bulunamadı.'; }, searching: function () { return 'Aranıyor...'; },
+        removeAllItems: function () { return 'Tüm seçimleri kaldır'; }, removeItem: function () { return 'Seçimi kaldır'; }
+    });
     if ($(".select2").length > 0) {
         $(".select2").each(function () {
             let $modalParent = $(this).closest("form");
@@ -144,7 +152,7 @@ function ckediter(editer_id = "") {
         editer_id = "#classic-editor";
     }
     if ($(editer_id).length > 0) {
-        ClassicEditor.create(document.querySelector(editer_id), {})
+        ClassicEditor.create(document.querySelector(editer_id), {language: 'tr'})
             .then((editor) => {})
             .catch((error) => {
                 console.error(error);
@@ -153,6 +161,19 @@ function ckediter(editer_id = "") {
 }
 
 function datatable() {
+    $.extend(true, $.fn.dataTable.defaults, {
+        language: {
+            emptyTable: "Gösterilecek kayıt yok", info: "Toplam _TOTAL_ kayıttan _START_–_END_ arası gösteriliyor",
+            infoEmpty: "Gösterilecek kayıt yok", infoFiltered: "(_MAX_ kayıt içinden süzüldü)",
+            lengthMenu: "Sayfada _MENU_ kayıt göster", loadingRecords: "Yükleniyor...", processing: "İşleniyor...",
+            search: "Ara:", zeroRecords: "Eşleşen kayıt bulunamadı", decimal: ",", thousands: ".",
+            paginate: {first: "İlk", last: "Son", next: "Sonraki", previous: "Önceki"},
+            aria: {orderable: "Sıralamayı değiştir", orderableReverse: "Ters sırala", orderableRemove: "Sıralamayı kaldır"},
+            buttons: {copy: "Kopyala", print: "Yazdır", colvis: "Sütunlar", copyTitle: "Panoya kopyalandı",
+                copySuccess: {_: "%d satır kopyalandı", 1: "1 satır kopyalandı"},
+                copyKeys: "Kopyalamak için Ctrl+C veya ⌘+C tuşlarına basın. Çıkmak için Esc tuşuna basın."}
+        }
+    });
     if ($(".basic-datatable").length > 0) {
         $(".basic-datatable").DataTable({
             scrollX: true,
@@ -197,7 +218,7 @@ $(document).on("click", ".aiModal", function (e) {
     e.preventDefault();
 
     const $el = $(this);
-    const title = $el.data("title") || "Popup";
+    const title = $el.data("title") || "Ayrıntılar";
     const size = $el.data("size") || "md";
     const url = $el.data("url");
     const validate = $el.data("validate");
@@ -219,7 +240,7 @@ $(document).on("click", ".aiModal", function (e) {
             $("#aiModal").modal("show");
         },
         error: function (xhr) {
-            let msg = "Something went wrong.";
+            let msg = "İşlem tamamlanamadı. Lütfen tekrar deneyin.";
 
             showAiMessage("error", msg, "error");
         },

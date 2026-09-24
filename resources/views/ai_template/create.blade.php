@@ -1,10 +1,3 @@
-@php
-    $userLang = Auth::user()->lang;
-
-    $languages = App\Models\Custom::languages();
-    $languages = array_diff($languages, ['en']);
-    $languages = array_combine($languages, $languages);
-@endphp
 {!! Form::open(['id' => 'aitemplate']) !!}
 @csrf
 
@@ -32,14 +25,6 @@
         </div>
     </div>
 
-    {{-- Output Language --}}
-    <div class="col-6">
-        <div class="form-group">
-            {!! Form::label('language', __('Output Language'), ['class' => 'col-form-label']) !!}
-            {!! Form::select('language', $languages, $userLang, ['class' => 'form-select select2']) !!}
-        </div>
-    </div>
-
     {{-- Writing Style --}}
     <div class="col-6 mode">
         <div class="form-group">
@@ -47,16 +32,16 @@
             {!! Form::select(
                 'mode',
                 [
-                    'professional' => 'Professional',
-                    'casual' => 'Casual',
-                    'friendly' => 'Friendly',
-                    'funny' => 'Funny',
-                    'excited' => 'Excited',
-                    'witty' => 'Witty',
-                    'sarcastic' => 'Sarcastic',
-                    'bold' => 'Bold',
-                    'dramatic' => 'Dramatic',
-                    'secretive' => 'Secretive',
+                    'professional' => 'Profesyonel',
+                    'casual' => 'Gündelik',
+                    'friendly' => 'Samimi',
+                    'funny' => 'Eğlenceli',
+                    'excited' => 'Coşkulu',
+                    'witty' => 'Esprili',
+                    'sarcastic' => 'İğneleyici',
+                    'bold' => 'İddialı',
+                    'dramatic' => 'Dramatik',
+                    'secretive' => 'Gizemli',
                 ],
                 null,
                 ['class' => 'form-select select2'],
@@ -134,7 +119,7 @@
         const generatedText = $('#ai_generated_content').val();
 
         if (!generatedText) {
-            showAiMessage('error', 'No text to copy', 'error');
+            showAiMessage('error', 'Kopyalanacak metin yok.', 'error');
             return;
         }
 
@@ -142,7 +127,7 @@
             toastrs('success', 'Result text copied successfully', 'success');
             $('#aiModal').modal('hide');
         }).catch(() => {
-            showAiMessage('error', 'Copy failed', 'error');
+            showAiMessage('error', 'Metin kopyalanamadı.', 'error');
         });
     }
 
@@ -150,15 +135,15 @@
         const selectedText = window.getSelection().toString();
 
         if (!selectedText) {
-            showAiMessage('error', 'Please select text first', 'error');
+            showAiMessage('error', 'Önce bir metin seçin.', 'error');
             return;
         }
 
         navigator.clipboard.writeText(selectedText).then(() => {
-            toastrs('success', 'Selected text copied successfully', 'success');
+            toastrs('success', 'Seçilen metin kopyalandı.', 'success');
             $('#aiModal').modal('hide');
         }).catch(() => {
-            showAiMessage('error', 'Copy failed', 'error');
+            showAiMessage('error', 'Metin kopyalanamadı.', 'error');
         });
     }
 
@@ -191,7 +176,7 @@
             },
             error: function(xhr) {
                 console.error('Keywords load error:', xhr.responseText);
-                $('#promptKeywords').html('<div class="alert alert-danger">Failed to load fields.</div>');
+                $('#promptKeywords').html('<div class="alert alert-danger">Alanlar yüklenemedi.</div>');
                 $('.mode').addClass('d-none');
             }
         });

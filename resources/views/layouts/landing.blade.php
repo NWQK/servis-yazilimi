@@ -2,10 +2,10 @@
     $profile = asset(Storage::url('upload/profile'));
     $settings = settings();
     $user = \App\Models\User::find(1);
-    \App::setLocale($user->lang);
+    \App::setLocale('tr');
 @endphp
 <!DOCTYPE html>
-<html lang="en">
+<html lang="tr">
 
 <head>
     <meta charset="utf-8">
@@ -59,7 +59,7 @@
 <body class="landing-page"
     data-pc-preset="{{ !empty($settings['color_type']) && $settings['color_type'] == 'custom' ? 'custom' : $settings['accent_color'] }}"
     data-pc-sidebar-theme="light" data-pc-sidebar-caption="{{ $settings['sidebar_caption'] }}"
-    data-pc-direction="{{ $settings['theme_layout'] }}" data-pc-theme="{{ $settings['theme_mode'] }}">
+    data-pc-direction="ltr" data-pc-theme="{{ $settings['theme_mode'] }}">
 
     <nav class="navbar navbar-expand-md navbar-light default">
         <div class="container">
@@ -491,7 +491,7 @@
                                         <div class="price-price mt-4">
                                             <sup>{{ subscriptionPaymentSettings()['CURRENCY_SYMBOL'] }}</sup>
                                             {{ $subscription->package_amount }}
-                                            <span>/{{ $subscription->interval }}</span>
+                                            <span>/{{ __((string) $subscription->interval) }}</span>
                                         </div>
                                         <ul class="list-group list-group-flush product-list">
                                             <li class="list-group-item enable">{{ __('User Limit') }}

@@ -20,8 +20,8 @@
             {{ Form::select('category_id', $categories, null, ['class' => 'form-control select2']) }}
         </div>
         <div class="form-group col-md-6">
-            {{ Form::label('title', __('Title'), ['class' => 'form-label']) }}
-            {{ Form::text('title', null, ['class' => 'form-control', 'placeholder' => __('Enter title'), 'required' => 'required']) }}
+            {{ Form::label('title', __('Product Name'), ['class' => 'form-label']) }}
+            {{ Form::text('title', null, ['class' => 'form-control', 'placeholder' => __('Enter product name'), 'required' => 'required']) }}
         </div>
         <div class="form-group col-md-6">
             {{ Form::label('item_code', __('Item Code'), ['class' => 'form-label']) }}

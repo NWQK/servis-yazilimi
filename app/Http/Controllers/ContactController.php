@@ -109,7 +109,7 @@ class ContactController extends Controller
         if (\Auth::user()->can('edit contact') ) {
             $contact->delete();
 
-            return redirect()->back()->with('success', 'Contact successfully deleted.');
+            return redirect()->back()->with('success', __('Contact successfully deleted.'));
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
         }

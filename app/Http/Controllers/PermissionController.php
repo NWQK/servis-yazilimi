@@ -48,7 +48,7 @@ class PermissionController extends Controller
                 }
             }
         }
-        return redirect()->back()->with('success', 'Permission successfully created.');
+        return redirect()->back()->with('success', __('Permission successfully created.'));
     }
 
 
@@ -56,6 +56,6 @@ class PermissionController extends Controller
     {
         $permission = Permission::find($id);
         $permission->delete();
-        return redirect()->back()->with('success', 'Permission successfully deleted.');
+        return redirect()->back()->with('success', __('Permission successfully deleted.'));
     }
 }

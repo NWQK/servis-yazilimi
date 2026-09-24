@@ -1,7 +1,5 @@
 @php
     $users = \Auth::user();
-    $languages = \App\Models\Custom::languages();
-    $userLang = \Auth::user()->lang;
     $profile = asset(Storage::url('upload/profile'));
 @endphp
 <header class="pc-header">
@@ -121,24 +119,6 @@
         <div class="ms-auto">
             <ul class="list-unstyled">
 
-                <li class="dropdown pc-h-item" data-bs-toggle="tooltip"
-                    data-bs-original-title="{{ __('Language') }}" data-bs-placement="bottom">
-                    <a class="pc-head-link head-link-primary dropdown-toggle arrow-none me-0"
-                        data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="false"
-                        aria-expanded="false">
-                        <i class="ti ti-language"></i>
-                    </a>
-                    <div class="dropdown-menu dropdown-menu-end pc-h-dropdown">
-                        @foreach ($languages as $language)
-                            @if ($language != 'en')
-                                <a href="{{ route('language.change', $language) }}"
-                                    class="dropdown-item {{ $userLang == $language ? 'active' : '' }}">
-                                    <span class="align-middle">{{ ucfirst($language) }}</span>
-                                </a>
-                            @endif
-                        @endforeach
-                    </div>
-                </li>
                 @if (\Auth::user()->type == 'super admin' || \Auth::user()->type == 'owner')
                     <li class="dropdown pc-h-item pc-mega-menu" data-bs-toggle="tooltip"
                         data-bs-original-title="{{ __('Theme Settings') }}" data-bs-placement="bottom">
