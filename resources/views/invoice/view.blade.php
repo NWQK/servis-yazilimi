@@ -75,7 +75,7 @@
                                     <h6>
                                         {{ __('Invoice Date') }} :
                                         <span
-                                            class="text-muted f-w-400">{{ dateFormat($invoice->invoice_date ?? '-') }}</span>
+                                            class="text-muted f-w-400">{{ dateFormat($invoice->invoice_date) }}</span>
                                     </h6>
                                     <h6>
                                         {{ __('Status') }} :

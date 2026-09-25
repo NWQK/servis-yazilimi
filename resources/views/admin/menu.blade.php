@@ -37,6 +37,14 @@
                         <span class="pc-mtext">{{ __('Dashboard') }}</span>
                     </a>
                 </li>
+                @if (auth()->user()->type === 'owner')
+                    <li class="pc-item {{ request()->routeIs('appointments.index') ? 'active' : '' }}">
+                        <a href="{{ route('appointments.index') }}" class="pc-link"><span class="pc-micon"><i class="ti ti-calendar"></i></span><span class="pc-mtext">Randevular</span></a>
+                    </li>
+                    <li class="pc-item {{ request()->routeIs('appointments.settings*') ? 'active' : '' }}">
+                        <a href="{{ route('appointments.settings') }}" class="pc-link"><span class="pc-micon"><i class="ti ti-clock"></i></span><span class="pc-mtext">Randevu ayarları</span></a>
+                    </li>
+                @endif
                 @if (\Auth::user()->type == 'super admin')
                     @if (Gate::check('manage user'))
                         <li class="pc-item {{ in_array($routeName, ['users.index', 'users.show']) ? 'active' : '' }}">

@@ -322,6 +322,38 @@ class VehicleQrTest extends TestCase
         $this->post('/vehicle-qr/assign/' . $vehicle->id, ['qr_code_id' => $code->id])->assertForbidden();
     }
 
+    public function test_service_dates_and_times_can_be_omitted_or_cleared()
+    {
+        $vehicle = $this->vehicle();
+        $fields = ['service_date', 'due_date', 'service_time', 'due_time'];
+        $data = ['vehicle' => $vehicle->id, 'client' => $this->owner->id, 'assign' => $this->owner->id,
+            'status' => 'scheduled', 'types' => []];
+        $this->actingAs($this->owner)->post('/service', $data)->assertRedirect()->assertSessionMissing('error');
+        $service = Service::firstOrFail();
+        foreach ($fields as $field) $this->assertNull($service->$field);
+        $this->get(route('dashboard'))->assertOk()->assertViewHas('eventData', []);
+        $dates = ['service_date' => '2026-09-25', 'due_date' => '2026-09-26', 'service_time' => '09:30', 'due_time' => '17:00'];
+        $this->put('/service/' . $service->id, $data + $dates)->assertRedirect()->assertSessionMissing('error');
+        $this->assertSame('2026-09-25', $service->fresh()->service_date);
+        $this->put('/service/' . $service->id, $data + array_fill_keys($fields, ''))->assertRedirect()->assertSessionMissing('error');
+        foreach ($fields as $field) $this->assertNull($service->fresh()->$field);
+        $this->get('/service/' . encrypt($service->id))->assertOk();
+        $this->get('/invoice/' . encrypt(Invoice::firstOrFail()->id))->assertOk();
+        foreach (['/service/create', '/service/' . encrypt($service->id) . '/edit', '/client/create'] as $url) {
+            $response = $this->get($url)->assertOk();
+            $dom = new \DOMDocument();
+            @$dom->loadHTML($response->getContent());
+            $xpath = new \DOMXPath($dom);
+            foreach ($fields as $field) {
+                $input = $xpath->query('//input[@name="' . $field . '"]')->item(0);
+                $this->assertNotNull($input);
+                $this->assertFalse($input->hasAttribute('required'));
+            }
+        }
+        $this->post('/service', $data + ['service_date' => 'invalid'])->assertSessionHas('error');
+        $this->assertSame(1, Service::count());
+    }
+
     public function test_dashboard_quick_access_links_return_forms_in_the_correct_layout()
     {
         $response = $this->actingAs($this->owner)->get(route('dashboard'))->assertOk();
@@ -422,6 +454,10 @@ class VehicleQrTest extends TestCase
         if ($emailCase === 'omitted') unset($data['email']);
         if ($emailCase === 'blank') $data['email'] = '';
         if ($emailCase !== 'provided') {
+            foreach (['service_date', 'due_date', 'service_time', 'due_time'] as $field) {
+                unset($data[$field]);
+                if ($emailCase === 'blank') $data[$field] = '';
+            }
             foreach (array_merge($this->optionalVehicleFields(), ['vehicle_notes']) as $field) {
                 unset($data[$field]);
                 if ($emailCase === 'blank') $data[$field] = '';
@@ -446,6 +482,9 @@ class VehicleQrTest extends TestCase
         $this->assertSame(($data['vehicle_notes'] ?? null) ?: null, Vehicle::first()->notes);
         $this->assertSame($data['service_notes'] ?? null, Service::first()->notes);
         if ($emailCase !== 'provided') {
+            foreach (['service_date', 'due_date', 'service_time', 'due_time'] as $field) {
+                $this->assertNull(Service::first()->$field);
+            }
             foreach (array_merge($this->optionalVehicleFields(), ['notes']) as $field) {
                 $this->assertNull(Vehicle::first()->$field);
             }

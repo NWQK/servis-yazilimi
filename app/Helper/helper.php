@@ -56,8 +56,8 @@ if (!function_exists('settingsKeys')) {
             "meta_seo_keyword" => "",
             "meta_seo_description" => "",
             "meta_seo_image" => "",
-            "company_date_format" => "M j, Y",
-            "company_time_format" => "g:i A",
+            "company_date_format" => "d M Y",
+            "company_time_format" => "H:i",
             "company_name" => "",
             "company_phone" => "",
             "company_address" => "",
@@ -98,7 +98,7 @@ if (!function_exists('settingsKeys')) {
             "flutterwave_payment" => "off",
             "flutterwave_public_key" => "",
             "flutterwave_secret_key" => "",
-            "timezone" => "",
+            "timezone" => "Europe/Istanbul",
             "footer_column_1" => "Quick Links",
             "footer_column_1_enabled" => "active",
             "footer_column_2" => "Help",
@@ -153,7 +153,7 @@ if (!function_exists('settings')) {
             ]
         );
 
-        return $details;
+        return array_replace($details, ['timezone' => 'Europe/Istanbul', 'company_date_format' => 'd M Y', 'company_time_format' => 'H:i']);
     }
 }
 
@@ -264,7 +264,7 @@ if (!function_exists('getSettingsValByIdName')) {
 if (!function_exists('settingDateFormat')) {
     function settingDateFormat($settings, $date)
     {
-        return $date ? \Carbon\Carbon::parse($date)->locale('tr')->translatedFormat($settings['company_date_format'] ?? 'd.m.Y') : '—';
+        return $date ? \Carbon\Carbon::parse($date)->locale('tr')->setTimezone('Europe/Istanbul')->translatedFormat('d M Y') : '—';
     }
 }
 if (!function_exists('settingPriceFormat')) {
@@ -276,23 +276,21 @@ if (!function_exists('settingPriceFormat')) {
 if (!function_exists('settingTimeFormat')) {
     function settingTimeFormat($settings, $time)
     {
-        return $time ? \Carbon\Carbon::parse($time)->locale('tr')->translatedFormat($settings['company_time_format'] ?? 'H:i') : '—';
+        return $time ? \Carbon\Carbon::parse($time)->locale('tr')->setTimezone('Europe/Istanbul')->format('H:i') : '—';
     }
 }
 if (!function_exists('dateFormat')) {
     function dateFormat($date)
     {
-        $settings = settings();
 
-        return $date ? \Carbon\Carbon::parse($date)->locale('tr')->translatedFormat($settings['company_date_format'] ?? 'd.m.Y') : '—';
+        return $date ? \Carbon\Carbon::parse($date)->locale('tr')->setTimezone('Europe/Istanbul')->translatedFormat('d M Y') : '—';
     }
 }
 if (!function_exists('timeFormat')) {
     function timeFormat($time)
     {
-        $settings = settings();
 
-        return $time ? \Carbon\Carbon::parse($time)->locale('tr')->translatedFormat($settings['company_time_format'] ?? 'H:i') : '—';
+        return $time ? \Carbon\Carbon::parse($time)->locale('tr')->setTimezone('Europe/Istanbul')->format('H:i') : '—';
     }
 }
 if (!function_exists('priceFormat')) {
@@ -570,7 +568,7 @@ if (!function_exists('settingsById')) {
             ]
         );
 
-        return $settings;
+        return array_replace($settings, ['timezone' => 'Europe/Istanbul', 'company_date_format' => 'd M Y', 'company_time_format' => 'H:i']);
     }
 }
 

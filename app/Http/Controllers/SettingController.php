@@ -20,8 +20,7 @@ class SettingController extends Controller
     {
         $loginUser = \Auth::user();
         $settings = settings();
-        $timezones = config('timezones');
-        return view('settings.index', compact('loginUser', 'settings', 'timezones'));
+        return view('settings.index', compact('loginUser', 'settings'));
     }
 
     public function accountData(Request $request)
@@ -580,7 +579,6 @@ class SettingController extends Controller
                 'company_email' => 'required',
                 'company_phone' => 'required',
                 'company_address' => 'required',
-                'timezone' => 'required',
             ]
         );
         if ($validator->fails()) {
@@ -589,19 +587,17 @@ class SettingController extends Controller
             return redirect()->back()->with('error', $messages->first());
         }
 
-        $settings = $request->all();
+        $settings = array_replace($request->all(), [
+            'timezone' => 'Europe/Istanbul', 'company_date_format' => 'd M Y', 'company_time_format' => 'H:i',
+        ]);
         unset($settings['_token']);
 
         foreach ($settings as $key => $val) {
             if (!empty($val)) {
 
-                \DB::insert(
-                    'insert into settings (`value`, `name`,`parent_id`) values (?, ?, ?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`) ',
-                    [
-                        $val,
-                        $key,
-                        parentId(),
-                    ]
+                \DB::table('settings')->updateOrInsert(
+                    ['name' => $key, 'parent_id' => parentId()],
+                    ['value' => $val]
                 );
             }
         }

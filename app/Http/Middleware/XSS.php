@@ -17,12 +17,6 @@ class XSS
 
         if (Auth::check()) {
             \App::setLocale('tr');
-            $timezone = getSettingsValByName('timezone');
-            \Config::set('app.timezone', $timezone);
-            if (!empty($timezone)) {
-                date_default_timezone_set($timezone);
-            }
-
             if (Auth::user()->type == 'super admin') {
                 $directoryMigrations             = $this->getMigrations();
                 $databaseMigrations           = $this->getExecutedMigrations();

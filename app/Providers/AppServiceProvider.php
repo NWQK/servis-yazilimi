@@ -25,7 +25,8 @@ class AppServiceProvider extends ServiceProvider
     public function boot()
     {
             Schema::defaultStringLength(191);
-            config(['app.locale' => 'tr', 'app.fallback_locale' => 'tr']);
+            config(['app.locale' => 'tr', 'app.fallback_locale' => 'tr', 'app.timezone' => 'Europe/Istanbul']);
+            date_default_timezone_set('Europe/Istanbul');
             $this->app->setLocale('tr');
             \Carbon\Carbon::setLocale('tr');
     }

@@ -66,12 +66,44 @@ class InventoryAccountingTest extends TestCase
 
     public function test_turkish_dates_and_money_only_change_display()
     {
-        $this->assertSame('24 Eylül 2026', settingDateFormat(['company_date_format' => 'd F Y'], '2026-09-24'));
+        $this->assertSame('Europe/Istanbul', config('app.timezone'));
+        $this->assertSame('Europe/Istanbul', date_default_timezone_get());
+        DB::table('settings')->insert([
+            ['parent_id' => $this->owner->id, 'name' => 'timezone', 'value' => 'America/New_York'],
+            ['parent_id' => $this->owner->id, 'name' => 'company_date_format', 'value' => 'Y-m-d'],
+            ['parent_id' => $this->owner->id, 'name' => 'company_time_format', 'value' => 'g:i A'],
+        ]);
+        $this->get('/item')->assertOk();
+        $this->assertSame('Europe/Istanbul', config('app.timezone'));
+        $this->assertSame('Europe/Istanbul', settings()['timezone']);
+        $this->assertSame('24 Eyl 2026', dateFormat('2026-09-24'));
+        $this->assertSame('14:30', timeFormat('14:30:00'));
+        $this->assertSame('00:00', timeFormat('00:00:00'));
+        $this->assertSame('25 Eyl 2026', dateFormat('2026-09-24T22:30:00Z'));
+        $this->assertSame('01:30', settingTimeFormat(['company_time_format' => 'g:i A'], '2026-09-24T22:30:00Z'));
+        $this->assertSame('24 Eyl 2026', settingDateFormat(['company_date_format' => 'd F Y'], '2026-09-24'));
         $this->assertSame('—', dateFormat(null));
         $this->assertSame('1.234,50 ₺', settingPriceFormat(['CURRENCY_SYMBOL' => '₺'], 1234.5));
         $item = $this->stock->savePurchase($this->owner->id, array_merge($this->attributes(2), ['purchase_price' => 200.25]));
         $this->assertEquals(400.5, Expense::sum('amount'));
         $this->assertEquals(200.25, $item->purchase_price);
+    }
+
+    public function test_company_settings_use_fixed_turkish_time_without_format_inputs()
+    {
+        $this->get(route('setting.index'))->assertOk()
+            ->assertDontSee('name="timezone"', false)
+            ->assertDontSee('name="company_date_format"', false)
+            ->assertDontSee('name="company_time_format"', false);
+        $company = ['company_name' => 'Test servis', 'company_email' => 'servis@example.test',
+            'company_phone' => '5551234567', 'company_address' => 'İstanbul'];
+        $this->post(route('setting.company'), $company)->assertRedirect()->assertSessionMissing('error');
+        $this->post(route('setting.company'), $company + ['timezone' => 'UTC',
+            'company_date_format' => 'Y-m-d', 'company_time_format' => 'g:i A'])->assertRedirect()->assertSessionMissing('error');
+        foreach (['timezone' => 'Europe/Istanbul', 'company_date_format' => 'd M Y', 'company_time_format' => 'H:i'] as $name => $value) {
+            $this->assertSame($value, DB::table('settings')->where('parent_id', $this->owner->id)->where('name', $name)->value('value'));
+            $this->assertSame($value, settingsById($this->owner->id)[$name]);
+        }
     }
 
     public function test_categories_can_be_managed_and_filter_products_without_creating_purchase_expenses()

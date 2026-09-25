@@ -62,7 +62,7 @@
                                     <h6>
                                         {{ __('service Date') }} :
                                         <span
-                                            class="text-muted f-w-400">{{ dateFormat($service->service_date ?? '-') }}</span>
+                                            class="text-muted f-w-400">{{ dateFormat($service->service_date) }}</span>
                                     </h6>
                                     <h6>
                                         {{ __('Status') }} :

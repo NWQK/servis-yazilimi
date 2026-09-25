@@ -101,6 +101,7 @@ class HomeController extends Controller
                 $services = Service::where('parent_id', parentId())->get();
                 $eventData = $currentMonth = [];
                 foreach ($services as $service) {
+                if (!$service->service_date) continue; // Undated services have no calendar position.
                     $assign_user = User::find($service->assign);
                     $event = [
                         'title' => servicePrefix() . $service->service_id,

@@ -26,7 +26,7 @@
                             <td><input type="checkbox" name="ids[]" value="{{ $code->id }}" aria-label="{{ $code->label }} seç" @checked(!$code->printed_at)></td>
                             <td><strong>{{ $code->label }}</strong></td>
                             <td>{{ $code->printed_at ? 'Basılmış / teslim edilmeye hazır' : 'Basılmayı bekliyor' }}</td>
-                            <td>{{ $code->created_at->format('d.m.Y H:i') }}</td>
+                            <td>{{ dateFormat($code->created_at) . ' ' . timeFormat($code->created_at) }}</td>
                             <td>@if ($code->printed_at)<a href="{{ route('vehicle-qr.print', ['ids' => [$code->id]]) }}" target="_blank" rel="noopener" aria-label="{{ $code->label }} etiketini tekrar yazdır / PDF kaydet">Tekrar yazdır / PDF kaydet</a>@endif</td>
                         </tr>
                     @endforeach
@@ -42,7 +42,7 @@
         <div class="card-body table-responsive">
             <table class="table"><thead><tr><th>Etiket</th><th>Araç</th><th>Atama tarihi</th><th></th></tr></thead><tbody>
             @forelse ($assigned as $code)
-                <tr><td>{{ $code->label }}</td><td>{{ $code->vehicle->license_plate ?? 'Araç silinmiş — etiket kullanılamaz' }}</td><td>{{ $code->assigned_at->format('d.m.Y H:i') }}</td>
+                <tr><td>{{ $code->label }}</td><td>{{ $code->vehicle->license_plate ?? 'Araç silinmiş — etiket kullanılamaz' }}</td><td>{{ dateFormat($code->assigned_at) . ' ' . timeFormat($code->assigned_at) }}</td>
                     <td>@if ($code->vehicle)<a href="{{ route('vehicle-qr.print', ['ids' => [$code->id]]) }}" target="_blank" rel="noopener">Tekrar yazdır</a>@endif</td></tr>
             @empty
                 <tr><td colspan="4">Henüz bir araca QR atanmadı.</td></tr>

@@ -440,18 +440,6 @@
                                                 {{ Form::label('CURRENCY_SYMBOL', __('Currency Icon'), ['class' => 'form-label']) }}
                                                 {{ Form::text('CURRENCY_SYMBOL', $settings['CURRENCY_SYMBOL'], ['class' => 'form-control', 'placeholder' => __('Enter currency symbol')]) }}
                                             </div>
-                                            <div class="col-md-6">
-                                                {{ Form::label('timezone', __('Timezone'), ['class' => 'form-label text-dark']) }}
-                                                <select type="text" name="timezone" class="form-control select2"
-                                                    id="timezone">
-                                                    <option value="">{{ __('Select Timezone') }}</option>
-                                                    @foreach ($timezones as $k => $timezone)
-                                                        <option value="{{ $k }}"
-                                                            {{ $settings['timezone'] == $k ? 'selected' : '' }}>
-                                                            {{ $timezone }}</option>
-                                                    @endforeach
-                                                </select>
-                                            </div>
                                             <div class="form-group col-md-6">
                                                 {{ Form::label('client_number_prefix', __('Client Number Prefix'), ['class' => 'form-label']) }}
                                                 {{ Form::text('client_number_prefix', $settings['client_number_prefix'], ['class' => 'form-control', 'placeholder' => __('Enter client number prefix')]) }}
@@ -478,74 +466,6 @@
                                                 {{ Form::label('invoice_number_prefix', __('Invoice Number Prefix'), ['class' => 'form-label']) }}
                                                 {{ Form::text('invoice_number_prefix', $settings['invoice_number_prefix'], ['class' => 'form-control', 'placeholder' => __('Enter invoice number prefix')]) }}
                                             </div>
-
-                                            <div class="form-group col-md-3">
-                                                {{ Form::label('company_zipcode', __('System Date Format'), ['class' => 'form-label']) }}
-                                                <div class="">
-                                                    <div class="custom-control custom-radio">
-                                                        <input type="radio" id="company_date_format1"
-                                                            name="company_date_format" class="custom-control-input"
-                                                            value="M j, Y"
-                                                            {{ $settings['company_date_format'] == 'M j, Y' ? 'checked' : '' }}>
-                                                        <label class="custom-control-label"
-                                                            for="company_date_format1">{{ date('M d,Y') }}</label>
-                                                    </div>
-                                                    <div class="custom-control custom-radio">
-                                                        <input type="radio" id="company_date_format2"
-                                                            name="company_date_format" class="custom-control-input"
-                                                            value="y-m-d"
-                                                            {{ $settings['company_date_format'] == 'y-m-d' ? 'checked' : '' }}>
-                                                        <label class="custom-control-label"
-                                                            for="company_date_format2">{{ date('y-m-d') }}</label>
-                                                    </div>
-                                                    <div class="custom-control custom-radio">
-                                                        <input type="radio" id="company_date_format3"
-                                                            name="company_date_format" class="custom-control-input"
-                                                            value="d-m-y"
-                                                            {{ $settings['company_date_format'] == 'd-m-y' ? 'checked' : '' }}>
-                                                        <label class="custom-control-label"
-                                                            for="company_date_format3">{{ date('d-m-y') }}</label>
-                                                    </div>
-                                                    <div class="custom-control custom-radio">
-                                                        <input type="radio" id="company_date_format4"
-                                                            name="company_date_format" class="custom-control-input"
-                                                            value="m-d-y"
-                                                            {{ $settings['company_date_format'] == 'm-d-y' ? 'checked' : '' }}>
-                                                        <label class="custom-control-label"
-                                                            for="company_date_format4">{{ date('m-d-y') }}</label>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                            <div class="form-group col-md-3">
-                                                {{ Form::label('company_zipcode', __('System Time Format'), ['class' => 'form-label']) }}
-                                                <div class="">
-                                                    <div class="custom-control custom-radio">
-                                                        <input type="radio" id="company_time_format1"
-                                                            name="company_time_format" class="custom-control-input"
-                                                            value="H:i"
-                                                            {{ $settings['company_time_format'] == 'H:i' ? 'checked' : '' }}>
-                                                        <label class="custom-control-label"
-                                                            for="company_time_format1">{{ date('H:i') }}</label>
-                                                    </div>
-                                                    <div class="custom-control custom-radio">
-                                                        <input type="radio" id="company_time_format2"
-                                                            name="company_time_format" class="custom-control-input"
-                                                            value="g:i A"
-                                                            {{ $settings['company_time_format'] == 'g:i A' ? 'checked' : '' }}>
-                                                        <label class="custom-control-label"
-                                                            for="company_time_format2">{{ date('g:i A') }}</label>
-                                                    </div>
-                                                    <div class="custom-control custom-radio">
-                                                        <input type="radio" id="company_time_format3"
-                                                            name="company_time_format" class="custom-control-input"
-                                                            value="g:i a"
-                                                            {{ $settings['company_time_format'] == 'g:i a' ? 'checked' : '' }}>
-                                                        <label class="custom-control-label"
-                                                            for="company_time_format3">{{ date('g:i a') }}</label>
-                                                    </div>
-                                                </div>
-                                            </div>
-
 
                                         </div>
                                         <div class="row mt-3">

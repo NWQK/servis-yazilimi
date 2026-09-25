@@ -204,20 +204,20 @@
                                                 </div>
                                                 <div class="form-group col-md-4 col-lg-3">
                                                     {{ Form::label('service_date', __('Service Start Date'), ['class' => 'form-label']) }}
-                                                    {{ Form::date('service_date', $service->service_date ?? '', ['class' => 'form-control', 'required' => 'required']) }}
+                                                    {{ Form::date('service_date', $service->service_date ?? '', ['class' => 'form-control']) }}
                                                 </div>
 
                                                 <div class="form-group col-md-4 col-lg-3">
                                                     {{ Form::label('due_date', __('Service Due Date'), ['class' => 'form-label']) }}
-                                                    {{ Form::date('due_date', $service->due_date ?? '', ['class' => 'form-control', 'required' => 'required']) }}
+                                                    {{ Form::date('due_date', $service->due_date ?? '', ['class' => 'form-control']) }}
                                                 </div>
                                                 <div class="form-group col-md-4 col-lg-3">
                                                     {{ Form::label('service_time', __('Service Start Time'), ['class' => 'form-label']) }}
-                                                    {{ Form::time('service_time', $service->service_time ?? '', ['class' => 'form-control', 'required' => 'required']) }}
+                                                    {{ Form::time('service_time', $service->service_time ?? '', ['class' => 'form-control']) }}
                                                 </div>
                                                 <div class="form-group col-md-4 col-lg-3">
                                                     {{ Form::label('due_time', __('Service Due Time'), ['class' => 'form-label']) }}
-                                                    {{ Form::time('due_time', $service->due_time ?? '', ['class' => 'form-control', 'required' => 'required']) }}
+                                                    {{ Form::time('due_time', $service->due_time ?? '', ['class' => 'form-control']) }}
                                                 </div>
                                                 <div class="form-group col-md-4 col-lg-3">
                                                     {{ Form::label('status', __('Status'), ['class' => 'form-label']) }}

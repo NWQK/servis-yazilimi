@@ -58,10 +58,10 @@ class ServiceController extends Controller
                 [
                     'vehicle' => 'required',
                     'client' => 'required',
-                    'service_date' => 'required',
-                    'service_time' => 'required',
-                    'due_date' => 'required',
-                    'due_time' => 'required',
+                    'service_date' => 'nullable|date_format:Y-m-d',
+                    'service_time' => 'nullable|date_format:H:i,H:i:s',
+                    'due_date' => 'nullable|date_format:Y-m-d',
+                    'due_time' => 'nullable|date_format:H:i,H:i:s',
                     'assign' => 'required',
                     'status' => 'required',
                     'external_labor_amount' => \App\Services\ExternalLabor::RULE,
@@ -287,10 +287,10 @@ class ServiceController extends Controller
                 [
                     'vehicle' => 'required',
                     'client' => 'required',
-                    'service_date' => 'required',
-                    'service_time' => 'required',
-                    'due_date' => 'required',
-                    'due_time' => 'required',
+                    'service_date' => 'nullable|date_format:Y-m-d',
+                    'service_time' => 'nullable|date_format:H:i,H:i:s',
+                    'due_date' => 'nullable|date_format:Y-m-d',
+                    'due_time' => 'nullable|date_format:H:i,H:i:s',
                     'assign' => 'required',
                     'status' => 'required',
                     'external_labor_amount' => \App\Services\ExternalLabor::RULE,
@@ -412,6 +412,7 @@ class ServiceController extends Controller
 
             $eventData = $currentMonth = [];
             foreach ($services as $service) {
+                if (!$service->service_date) continue; // Undated services have no calendar position.
                 $assign_user = User::find($service->assign);
                 $event = [
                     'title' => servicePrefix() . $service->service_id,

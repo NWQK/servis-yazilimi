@@ -37,6 +37,19 @@ use App\Http\Controllers\UnitController;
 use App\Http\Controllers\VehicleQrController;
 use App\Http\Controllers\VehiclePortalController;
 
+Route::middleware(['auth', 'XSS'])->prefix('appointments')->name('appointments.')->group(function () {
+    Route::get('/', [\App\Http\Controllers\AppointmentController::class, 'index'])->name('index');
+    Route::get('/settings', [\App\Http\Controllers\AppointmentController::class, 'settings'])->name('settings');
+    Route::post('/settings', [\App\Http\Controllers\AppointmentController::class, 'saveSettings'])->name('settings.save');
+    Route::post('/{id}/status', [\App\Http\Controllers\AppointmentController::class, 'status'])->whereNumber('id')->name('status');
+});
+Route::prefix('randevu/{publicId}')->where(['publicId' => '[a-f0-9-]{36}'])
+    ->withoutMiddleware(\App\Http\Middleware\Verify2FA::class)->name('booking.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\PublicAppointmentController::class, 'show'])->middleware('throttle:60,1')->name('show');
+        Route::post('/', [\App\Http\Controllers\PublicAppointmentController::class, 'store'])->middleware('throttle:5,10')->name('store');
+        Route::get('/talep/{token}', [\App\Http\Controllers\PublicAppointmentController::class, 'status'])->where('token', '[a-f0-9]{64}')->middleware('throttle:60,1')->name('status');
+    });
+
 Route::middleware(['auth', 'XSS'])->prefix('vehicle-qr')->name('vehicle-qr.')->group(function () {
     Route::get('/', [VehicleQrController::class, 'index'])->name('index');
     Route::match(['get', 'post'], '/print', [VehicleQrController::class, 'print'])->name('print');
