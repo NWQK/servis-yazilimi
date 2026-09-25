@@ -8,7 +8,10 @@ use Illuminate\Database\Eloquent\Model;
 class Invoice extends Model
 {
     use HasFactory;
+    protected $casts = ['external_labor_amount' => 'decimal:2'];
+
     protected $fillable = [
+        'external_labor_amount',
         'invoice_id',
         'client',
         'service',
@@ -81,7 +84,7 @@ class Invoice extends Model
     }
     public function getInvoiceServiceSubTotalAmount()
     {
-        $invoiceServiceSubTotal = 0;
+        $invoiceServiceSubTotal = (float) $this->external_labor_amount;
         foreach ($this->types as $serviceItem) {
             $invoiceServiceSubTotal += $serviceItem->rate;
         }

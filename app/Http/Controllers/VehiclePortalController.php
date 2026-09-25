@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Invoice;
-use App\Models\Service;
 use App\Models\ServiceType;
 use App\Models\Tax;
 use App\Models\VehicleQrCode;
@@ -57,14 +56,10 @@ class VehiclePortalController extends Controller
         }
         $vehicle = $this->vehicle($code);
         $parentId = $vehicle->parent_id;
-        $services = Service::where('parent_id', $parentId)->where('vehicle', $vehicle->id)
-            ->with(['types' => fn ($q) => $q->where('parent_id', $parentId)])
-            ->orderByDesc('service_date')->orderByDesc('id')->paginate(10, ['*'], 'services_page')->withQueryString();
         $invoices = $this->invoices($vehicle)->orderByDesc('invoice_date')->orderByDesc('id')
-            ->paginate(10, ['*'], 'invoices_page')->withQueryString();
-        $serviceTypes = ServiceType::where('parent_id', $parentId)->pluck('type', 'id');
+            ->paginate(10, ['*'], 'invoices_page');
         $settings = $this->displaySettings($parentId);
-        return $this->page('vehicle_portal.show', compact('code', 'vehicle', 'services', 'invoices', 'serviceTypes', 'settings'));
+        return $this->page('vehicle_portal.show', compact('code', 'vehicle', 'invoices', 'settings'));
     }
 
     public function invoice(string $token, int $invoiceId)
@@ -90,6 +85,10 @@ class VehiclePortalController extends Controller
         foreach ($invoice->items as $item) {
             $lines->push(['name' => $item->item_title, 'description' => $item->description,
                 'quantity' => (float) $item->quantity, 'price' => (float) $item->amount, 'tax_ids' => $item->tax]);
+        }
+        if ($invoice->external_labor_amount > 0) {
+            $lines->push(['name' => 'Harici işçilik', 'description' => '', 'quantity' => 1,
+                'price' => (float) $invoice->external_labor_amount, 'tax_ids' => null]);
         }
         $lines = $lines->map(function ($line) use ($taxes) {
             $line['subtotal'] = $line['quantity'] * $line['price'];

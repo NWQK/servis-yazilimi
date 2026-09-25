@@ -48,12 +48,12 @@ class InventoryAccounting
         });
     }
 
-    public function sync(Invoice $invoice, array $rows): void
+    public function sync(Invoice $invoice, array $rows, ?float $previousTotal = null): void
     {
-        $this->transaction($invoice->parent_id, function () use ($invoice, $rows) {
+        $this->transaction($invoice->parent_id, function () use ($invoice, $rows, $previousTotal) {
             $invoice = Invoice::where('parent_id', $invoice->parent_id)->lockForUpdate()->findOrFail($invoice->id);
             $existing = $invoice->items()->lockForUpdate()->get()->keyBy('id');
-            $previousTotal = $invoice->getInvoiceAllTotalAmount();
+            $previousTotal = $previousTotal ?? $invoice->getInvoiceAllTotalAmount();
             $seen = [];
             foreach ($rows as $row) {
                 if (!empty($row['id'])) {
@@ -101,7 +101,7 @@ class InventoryAccounting
         });
     }
 
-    private function adjustReturnedIncome(Invoice $invoice, $previousTotal): void
+    public function adjustReturnedIncome(Invoice $invoice, $previousTotal): void
     {
         $invoice->unsetRelation('items')->unsetRelation('types')->unsetRelation('payments');
         $newTotal = (int) round($invoice->getInvoiceAllTotalAmount() * 100);
@@ -122,7 +122,7 @@ class InventoryAccounting
         $payment->payment_status = 'success';
         $payment->payment_date = now()->toDateString();
         $payment->amount = -$correction / 100;
-        $payment->description = 'Ürün iadesi / adet azaltımı nedeniyle otomatik gelir düzeltmesi. Banka işlemi değildir.';
+        $payment->description = 'Fatura tutarındaki azalma nedeniyle otomatik gelir düzeltmesi. Banka işlemi değildir.';
         $payment->save();
     }
 

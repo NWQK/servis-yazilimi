@@ -8,12 +8,13 @@ $(document).ready(function () {
     }, 1000);
 });
 
-$(document).on("click", ".customModal", function () {
+$(document).on("click", ".customModal", function (event) {
+    event.preventDefault();
     var modalTitle = $(this).data("title");
     var modalUrl = $(this).data("url");
-    var modalSize = $(this).data("size") == "" ? "md" : $(this).data("size");
+    var modalSize = $(this).data("size") || "md";
     $("#customModal .modal-title").html(modalTitle);
-    $("#customModal .modal-dialog").addClass("modal-" + modalSize);
+    $("#customModal .modal-dialog").removeClass("modal-sm modal-md modal-lg modal-xl").addClass("modal-" + modalSize);
     $.ajax({
         url: modalUrl,
         success: function (result) {
@@ -32,7 +33,12 @@ $(document).on("click", ".customModal", function () {
                 ckediter();
             }
         },
-        error: function (result) {},
+        error: function (result) {
+            var message = result.status === 403
+                ? "Bu formu açmak için yetkiniz bulunmuyor."
+                : "Form yüklenemedi. Lütfen sayfayı yenileyip tekrar deneyin.";
+            toastrs("Hata", message, "error");
+        },
     });
 });
 

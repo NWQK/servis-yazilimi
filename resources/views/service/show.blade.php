@@ -184,13 +184,16 @@
                                                         $totalTaxAmount = $service
                                                             ? $service->getServiceTotalTaxAmount()
                                                             : 0;
-                                                        $grandTotal = $subtotal + $totalTaxAmount;
+                                                        $grandTotal = $subtotal + $totalTaxAmount + (float) $service->external_labor_amount;
                                                     @endphp
                                                     <tr>
                                                         <th>{{ __('Subtotal') }} :</th>
                                                         <td colspan="2">{{ priceFormat($subtotal) }}</td>
                                                     </tr>
 
+                                                    @if ($service->external_labor_amount > 0)
+                                                        <tr><th>Harici işçilik :</th><td colspan="2">{{ priceFormat($service->external_labor_amount) }}</td></tr>
+                                                    @endif
                                                     @if (!empty($taxBreakdown))
                                                         @foreach ($taxBreakdown as $tax)
                                                             <tr>

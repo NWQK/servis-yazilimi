@@ -64,6 +64,7 @@ class ServiceController extends Controller
                     'due_time' => 'required',
                     'assign' => 'required',
                     'status' => 'required',
+                    'external_labor_amount' => \App\Services\ExternalLabor::RULE,
 
                 ]
             );
@@ -83,6 +84,7 @@ class ServiceController extends Controller
             $service->assign = $request->assign;
             $service->status = $request->status;
             $service->notes = $request->notes;
+            $service->external_labor_amount = $request->external_labor_amount ?? 0;
             $service->parent_id = parentId();
             $service->save();
             $serviceTypes = $request->types;
@@ -105,6 +107,7 @@ class ServiceController extends Controller
             $invoice->invoice_date = $request->service_date;
             $invoice->client = $request->client;
             $invoice->service = $service->id;
+            $invoice->external_labor_amount = $service->external_labor_amount;
             $invoice->status = 0;
             $invoice->parent_id = parentId();
             $invoice->save();
@@ -278,6 +281,7 @@ class ServiceController extends Controller
     public function update(Request $request, Service $service)
     {
         if (\Auth::user()->can('edit service')) {
+            abort_unless((int) $service->parent_id === (int) parentId(), 403);
             $validator = \Validator::make(
                 $request->all(),
                 [
@@ -289,6 +293,7 @@ class ServiceController extends Controller
                     'due_time' => 'required',
                     'assign' => 'required',
                     'status' => 'required',
+                    'external_labor_amount' => \App\Services\ExternalLabor::RULE,
                 ]
             );
             if ($validator->fails()) {
@@ -305,6 +310,7 @@ class ServiceController extends Controller
             $service->status = $request->status;
             $service->notes = $request->notes;
             $service->save();
+            if ($request->exists('external_labor_amount')) app(\App\Services\ExternalLabor::class)->update($service, $request->external_labor_amount);
             $serviceTypes = $request->types;
             for ($i = 0; $i < count($serviceTypes); $i++) {
                 $serviceItem = ServiceItem::find($serviceTypes[$i]['id']);

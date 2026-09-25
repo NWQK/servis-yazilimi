@@ -247,7 +247,8 @@ class InventoryAccountingTest extends TestCase
     public function test_failed_invoice_creation_leaves_no_invoice_or_sale()
     {
         $item = $this->purchase(1);
-        $data = ['invoice_date' => '2026-09-23', 'client' => $this->owner->id, 'service' => 1,
+        $service = Service::create(['parent_id' => $this->owner->id, 'client' => $this->owner->id]);
+        $data = ['invoice_date' => '2026-09-23', 'client' => $this->owner->id, 'service' => $service->id,
             'item' => [$item->id], 'quantity' => [2], 'types' => []];
         $this->post('/invoice', $data)->assertSessionHasErrors('item');
         $this->assertSame(0, Invoice::count());
@@ -332,6 +333,85 @@ class InventoryAccountingTest extends TestCase
         $this->assertEqualsWithDelta(0, $invoice->payments()->sum('amount'), 0.001);
         $this->assertSame(3, $invoice->payments()->count());
         $this->assertSame(5, (int) $item->fresh()->quantity);
+    }
+
+    public function test_external_labor_flows_from_service_to_invoice_portal_and_paid_reductions()
+    {
+        \Illuminate\Support\Facades\Schema::table('service_items', fn ($table) => $table->string('tax')->nullable());
+        $vehicle = Vehicle::create(['parent_id' => $this->owner->id, 'client' => $this->owner->id, 'license_plate' => '34 LAB 01']);
+        $data = ['client' => $this->owner->id, 'vehicle' => $vehicle->id, 'assign' => $this->owner->id,
+            'service_date' => now()->toDateString(), 'due_date' => now()->toDateString(),
+            'service_time' => '09:00', 'due_time' => '17:00', 'status' => 'scheduled', 'types' => [],
+            'external_labor_amount' => '1250.75'];
+        $this->post('/service', $data)->assertRedirect()->assertSessionMissing('error');
+        $service = Service::firstOrFail();
+        $invoice = Invoice::firstOrFail();
+        $this->assertEquals(1250.75, $invoice->getInvoiceAllTotalAmount());
+        $this->assertEquals(0, $invoice->payments()->sum('amount'));
+        $this->assertSame(0, Expense::count());
+        $this->get('/service/' . encrypt($service->id) . '/edit')->assertOk()->assertSee('1250.75');
+        $this->get('/service/' . encrypt($service->id))->assertOk()->assertSee('1.250,75');
+        $this->get('/invoice/' . encrypt($invoice->id))->assertOk()->assertSee('Harici işçilik')->assertSee('1.250,75');
+        $pool = app(\App\Services\VehicleQrPool::class);
+        $pool->replenish($this->owner->id);
+        $code = \App\Models\VehicleQrCode::available()->first();
+        $pool->markPrinted($this->owner->id, [$code->id]);
+        $pool->assignExisting($this->owner->id, $vehicle->id, $code->id);
+        $this->get('/q/' . $code->token)->assertOk()->assertSee('Faturalar')->assertDontSee('Harici işçilik');
+        $this->get('/q/' . $code->token . '/invoice/' . $invoice->id)->assertOk()->assertSee('Harici işçilik')->assertViewHas('total', 1250.75);
+        DB::table('invoice_payments')->insert(['invoice_id' => $invoice->id, 'parent_id' => $this->owner->id,
+            'amount' => 1250.75, 'payment_date' => now()->toDateString()]);
+        foreach (['500.25', '500.25', '0'] as $amount) {
+            $this->put('/service/' . $service->id, array_merge($data, ['external_labor_amount' => $amount]))->assertRedirect()->assertSessionMissing('error');
+            $this->assertEquals((float) $amount, $invoice->fresh()->getInvoiceAllTotalAmount());
+            $this->assertEquals((float) $amount, $invoice->payments()->sum('amount'));
+        }
+        $this->assertSame(3, $invoice->payments()->count());
+        $this->assertEquals(1250.75, $invoice->payments()->where('amount', '>', 0)->sum('amount'));
+        $this->put('/service/' . $service->id, array_merge($data, ['external_labor_amount' => '100']))->assertRedirect();
+        $this->assertEquals(100, $invoice->fresh()->getInvoiceTotalDueAmount());
+        $this->assertEquals(0, $invoice->payments()->sum('amount'));
+        foreach (['-1', 'abc', '1.999', '10000000000'] as $invalid) {
+            $this->put('/service/' . $service->id, array_merge($data, ['external_labor_amount' => $invalid]))->assertSessionHas('error');
+            $this->assertEquals(100, $invoice->fresh()->getInvoiceAllTotalAmount());
+        }
+        DB::table('invoice_payments')->insert(['invoice_id' => $invoice->id, 'parent_id' => $this->owner->id,
+            'amount' => 25, 'payment_date' => now()->toDateString()]);
+        $this->put('/service/' . $service->id, array_merge($data, ['external_labor_amount' => '50']))->assertRedirect();
+        $this->assertEquals(25, $invoice->payments()->sum('amount'));
+        $this->assertEquals(25, $invoice->fresh()->getInvoiceTotalDueAmount());
+        $this->assertSame(1, (int) $invoice->fresh()->status);
+        $this->put('/service/' . $service->id, array_merge($data, ['external_labor_amount' => '']))->assertRedirect();
+        $this->assertEquals(0, $invoice->fresh()->external_labor_amount);
+    }
+
+    public function test_invoice_service_selection_copies_labor_once_and_never_creates_income()
+    {
+        $vehicle = Vehicle::create(['parent_id' => $this->owner->id, 'license_plate' => '34 LAB 02']);
+        $service = Service::create(['parent_id' => $this->owner->id, 'client' => $this->owner->id,
+            'vehicle' => $vehicle->id, 'external_labor_amount' => '250.50']);
+        $data = ['invoice_date' => now()->toDateString(), 'client' => $this->owner->id, 'service' => $service->id, 'types' => [], 'external_labor_amount' => '999'];
+        $this->post('/invoice', $data)->assertRedirect()->assertSessionMissing('error');
+        $invoice = Invoice::firstOrFail();
+        $this->assertEquals(250.50, $invoice->getInvoiceAllTotalAmount());
+        $this->put('/invoice/' . encrypt($invoice->id), $data)->assertRedirect()->assertSessionMissing('error');
+        $this->assertEquals(250.50, $invoice->fresh()->getInvoiceAllTotalAmount());
+        $this->assertSame(0, $invoice->payments()->count());
+        $this->get('/invoice/' . encrypt($invoice->id) . '/edit')->assertOk()->assertSee('250.50');
+        $this->get(route('client.service', $this->owner->id))->assertJsonFragment(['external_labor_amount' => '250.50']);
+        $other = Service::create(['parent_id' => $this->owner->id + 100, 'client' => $this->owner->id, 'external_labor_amount' => 777]);
+        $this->post('/invoice', array_merge($data, ['service' => $other->id]))->assertSessionHas('error');
+        $this->assertSame(1, Invoice::count());
+        // Reducing labor while adding a more expensive product must not reverse income mid-update.
+        $item = $this->purchase();
+        $replacement = Service::create(['parent_id' => $this->owner->id, 'client' => $this->owner->id, 'vehicle' => $vehicle->id]);
+        DB::table('invoice_payments')->insert(['invoice_id' => $invoice->id, 'parent_id' => $this->owner->id,
+            'amount' => 250.50, 'payment_date' => now()->toDateString()]);
+        $this->put('/invoice/' . encrypt($invoice->id), array_merge($data, ['service' => $replacement->id,
+            'item' => [$item->id], 'quantity' => [1]]))->assertRedirect();
+        $this->assertEquals(300, $invoice->fresh()->getInvoiceAllTotalAmount());
+        $this->assertEquals(250.50, $invoice->payments()->sum('amount'));
+        $this->assertEquals(49.50, $invoice->fresh()->getInvoiceTotalDueAmount());
     }
 
     public function test_invoice_routes_deduct_restore_and_only_payments_count_as_income()

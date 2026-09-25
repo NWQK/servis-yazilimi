@@ -9,7 +9,10 @@ class Service extends Model
 {
     use HasFactory;
 
+    protected $casts = ['external_labor_amount' => 'decimal:2'];
+
     protected $fillable = [
+        'external_labor_amount',
         'service_id',
         'vehicle',
         'client',

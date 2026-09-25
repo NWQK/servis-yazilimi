@@ -133,6 +133,7 @@ return [
     'uuid' => ':attribute geçerli bir UUID olmalıdır.',
     'ulid' => ':attribute geçerli bir ULID olmalıdır.',
     'attributes' => [
+        'external_labor_amount' => 'Harici işçilik tutarı',
         'name' => 'Ad', 'title' => 'Başlık', 'email' => 'E-posta adresi', 'password' => 'Şifre',
         'current_password' => 'Mevcut şifre', 'password_confirmation' => 'Şifre tekrarı',
         'phone_number' => 'Telefon numarası', 'phone' => 'Telefon numarası', 'contact' => 'Telefon numarası',

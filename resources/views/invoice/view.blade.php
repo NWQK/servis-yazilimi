@@ -277,20 +277,20 @@
                                                                     class="text-muted text-sm">({{ __('Item') }})</span>
                                                                 :
                                                             </th>
-                                                            <td>{{ priceFormat(number_format($invoice->getInvoiceSubTotalAmount(), 2)) }}
+                                                            <td>{{ priceFormat($invoice->getInvoiceSubTotalAmount()) }}
                                                             </td>
                                                         </tr>
                                                         @if (!empty($taxesData))
                                                             @foreach ($taxesData as $taxName => $taxPrice)
                                                                 <tr>
                                                                     <th>{{ $taxName }} :</th>
-                                                                    <td>{{ priceFormat(number_format($taxPrice, 2)) }}</td>
+                                                                    <td>{{ priceFormat($taxPrice) }}</td>
                                                                 </tr>
                                                             @endforeach
                                                         @endif
                                                         <tr>
                                                             <th>{{ __('Item Total') }} :</th>
-                                                            <td>{{ priceFormat(number_format($invoice->getInvoiceItemAmount(), 2)) }}
+                                                            <td>{{ priceFormat($invoice->getInvoiceItemAmount()) }}
                                                             </td>
                                                         </tr>
                                                         <tr>
@@ -298,7 +298,7 @@
                                                                     class="text-muted text-sm">({{ __('Service') }})</span>
                                                                 :
                                                             </th>
-                                                            <td>{{ priceFormat(number_format($invoice->getInvoiceServiceSubTotalAmount(), 2)) }}
+                                                            <td>{{ priceFormat($invoice->getInvoiceServiceSubTotalAmount()) }}
                                                             </td>
                                                         </tr>
                                                     @endif
@@ -328,31 +328,34 @@
                                                             <tr>
                                                                 <th>{{ $taxName }}
                                                                     :</th>
-                                                                <td>{{ priceFormat(number_format($taxPrice, 2)) }}</td>
+                                                                <td>{{ priceFormat($taxPrice) }}</td>
                                                             </tr>
                                                         @endforeach
                                                     @endif
+                                                    @if ($invoice->external_labor_amount > 0)
+                                                        <tr><th>Harici işçilik (servis toplamına dahil) :</th><td>{{ priceFormat($invoice->external_labor_amount) }}</td></tr>
+                                                    @endif
                                                     <tr>
                                                         <th>{{ __('Service Total') }} :</th>
-                                                        <td>{{ priceFormat(number_format($invoice?->getInvoiceServiceAmount(), 2)) }}
+                                                        <td>{{ priceFormat($invoice?->getInvoiceServiceAmount()) }}
                                                         </td>
                                                     </tr>
                                                     <tr>
                                                         <th>{{ __('Grand Total') }} :</th>
                                                         <td class="h5">
-                                                            {{ priceFormat(number_format($invoice?->getInvoiceAllTotalAmount(), 2)) }}
+                                                            {{ priceFormat($invoice?->getInvoiceAllTotalAmount()) }}
                                                         </td>
                                                     </tr>
                                                     <tr>
                                                         <th>{{ __('Paid Amount') }} :</th>
                                                         <td class="h5">
-                                                            {{ priceFormat(number_format($invoice?->getInvoiceAllTotalAmount() - $invoice?->getInvoiceTotalDueAmount(), 2)) }}
+                                                            {{ priceFormat($invoice?->getInvoiceAllTotalAmount() - $invoice?->getInvoiceTotalDueAmount()) }}
                                                         </td>
                                                     </tr>
                                                     <tr>
                                                         <th>{{ __('Due Amount') }} :</th>
                                                         <td class="h5">
-                                                            {{ priceFormat(number_format($invoice?->getInvoiceTotalDueAmount(), 2)) }}
+                                                            {{ priceFormat($invoice?->getInvoiceTotalDueAmount()) }}
                                                         </td>
                                                     </tr>
                                                 </tbody>

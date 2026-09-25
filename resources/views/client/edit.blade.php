@@ -226,6 +226,7 @@
                                                         'required' => 'required',
                                                     ]) !!}
                                                 </div>
+                                                @include('service.external_labor_field', ['laborAmount' => $service->external_labor_amount ?? 0])
                                                 <div class="form-group col-md-12 col-lg-12">
                                                     {{ Form::label('service_notes', __('Notes'), ['class' => 'form-label']) }}
                                                     {{ Form::textarea('service_notes', $service->notes ?? '', ['class' => 'form-control', 'placeholder' => __('Enter notes'), 'rows' => 2]) }}

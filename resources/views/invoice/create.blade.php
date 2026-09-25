@@ -49,6 +49,11 @@
                 </div>
             </div>
         </div>
+        <div class="col-sm-12"><div class="card"><div class="card-body">
+            <label for="invoice_external_labor" class="form-label">Harici işçilik tutarı ({{ settings()['CURRENCY_SYMBOL'] }})</label>
+            <input id="invoice_external_labor" class="form-control" value="0,00" readonly>
+            <small class="text-muted">Seçilen servisten alınır ve fatura toplamına eklenir. Değiştirmek için servisi düzenleyin.</small>
+        </div></div></div>
         <div class="card repeater">
             <div class="card-header">
                 <div class="d-flex align-items-center justify-content-between">
@@ -228,6 +233,7 @@
         $('#client_id').on('change', function() {
             "use strict";
             var client_id = $(this).val();
+            $('#invoice_external_labor').val('0,00');
             if (client_id) {
                 var url = '{{ route('client.service', ':id') }}';
                 url = url.replace(':id', client_id);
@@ -246,7 +252,7 @@
                         $('.service').empty().append(
                             '<option value="">{{ __('Select Service') }}</option>');
                         $.each(data, function(key, value) {
-                            $('.service').append('<option value="' + value['id'] + '">' + value[
+                            $('.service').append('<option data-labor="' + value['external_labor_amount'] + '" value="' + value['id'] + '">' + value[
                                 'name'] + '</option>');
                         });
                         // Auto-select the first client's service and trigger change to populate types
@@ -267,6 +273,7 @@
         $(document).on('change', '#service', function() {
 
             var service_id = $(this).val();
+            $('#invoice_external_labor').val(Number($(this).find('option:selected').attr('data-labor') || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
 
             if (service_id) {
 

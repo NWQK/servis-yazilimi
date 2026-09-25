@@ -305,15 +305,15 @@
                                     <td>
                                         @if ($service->status == 'scheduled')
                                             <span class="badge bg-light-primary">
-                                                {{ __(@json(__('Scheduled'))) }}
+                                                {{ __('Scheduled') }}
                                             </span>
                                         @elseif($service->status == 'in_progress')
                                             <span class="badge bg-light-secondary">
-                                                {{ __(@json(__('In Progress'))) }}
+                                                {{ __('In Progress') }}
                                             </span>
                                         @elseif($service->status == 'completed')
                                             <span class="badge bg-light-success">
-                                                {{ __(@json(__('Completed'))) }}
+                                                {{ __('Completed') }}
                                             </span>
                                         @else
                                             <span class="badge bg-light-warning">

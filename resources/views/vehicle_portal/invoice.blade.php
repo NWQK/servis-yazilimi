@@ -1,7 +1,7 @@
 @extends('vehicle_portal.layout')
 @section('title', 'Fatura ' . $settings['invoice_number_prefix'] . $invoice->invoice_id)
 @section('content')
-<div class="actions"><a href="{{ route('vehicle-portal.show', $code->token) }}#invoices">← Araç kayıtları</a><button id="print-invoice" type="button">Yazdır / PDF kaydet</button></div>
+<div class="actions"><a href="{{ route('vehicle-portal.show', $code->token) }}#invoices">← Faturalara dön</a><button id="print-invoice" type="button">Yazdır / PDF kaydet</button></div>
 <article class="card">
     <span class="eyebrow">FATURA</span><h1>{{ $settings['invoice_number_prefix'] . $invoice->invoice_id }}</h1>
     <p>{{ $vehicle->license_plate }} · {{ $vehicle->display_name }}</p>

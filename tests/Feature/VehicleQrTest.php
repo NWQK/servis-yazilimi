@@ -169,7 +169,7 @@ class VehicleQrTest extends TestCase
         $other = $this->owner('other@example.test');
         Service::create(['vehicle' => $vehicle->id, 'parent_id' => $other->id, 'notes' => 'OTHER_TENANT_SECRET']);
         $foreignInvoice = Invoice::create(['parent_id' => $other->id, 'service' => $service->id, 'invoice_id' => 888]);
-        $this->get('/q/' . $code->token)->assertOk()->assertSee('Görünen servis')->assertSee('#INV-85')
+        $this->get('/q/' . $code->token)->assertOk()->assertDontSee('Görünen servis')->assertDontSee('id="services"', false)->assertDontSee('Son servis:')->assertSee('#INV-85')
             ->assertDontSee('OTHER_VEHICLE_SECRET')->assertDontSee('OTHER_TENANT_SECRET')->assertDontSee('#INV-999')->assertDontSee('#INV-888')
             ->assertHeader('Referrer-Policy', 'no-referrer')->assertHeader('X-Robots-Tag', 'noindex, nofollow, noarchive');
         $this->get('/q/' . $code->token . '/invoice/' . $invoice->id)->assertOk();
@@ -190,15 +190,15 @@ class VehicleQrTest extends TestCase
             ->assertSee('&lt;script&gt;alert(1)&lt;/script&gt;', false)->assertDontSee('<script>alert(1)</script>', false);
     }
 
-    public function test_all_history_is_accessible_through_pagination()
+    public function test_only_invoice_history_is_accessible_through_pagination()
     {
         [$code, $vehicle] = $this->assigned();
         for ($i = 1; $i <= 12; $i++) {
             $service = Service::create(['vehicle' => $vehicle->id, 'parent_id' => $this->owner->id, 'service_id' => $i]);
             Invoice::create(['parent_id' => $this->owner->id, 'service' => $service->id, 'invoice_id' => $i]);
         }
-        $this->get('/q/' . $code->token)->assertOk()->assertSee('Servisler (12)')->assertSee('Faturalar (12)');
-        $this->get('/q/' . $code->token . '?services_page=2&invoices_page=2')->assertOk()->assertSee('#SER-1')->assertSee('#INV-1');
+        $this->get('/q/' . $code->token)->assertOk()->assertDontSee('Servisler')->assertSee('Faturalar (12)')->assertViewMissing('services');
+        $this->get('/q/' . $code->token . '?services_page=2&invoices_page=2')->assertOk()->assertDontSee('#SER-1')->assertSee('#INV-1')->assertDontSee('services_page=');
     }
 
     public function test_guest_and_client_cannot_manage_qr_stock()
@@ -220,6 +220,35 @@ class VehicleQrTest extends TestCase
         $this->assertSame('https://service.example.test/q/' . $code->token, $code->publicUrl());
         $this->post('/vehicle-qr/printed', ['ids' => [$code->id]])->assertRedirect();
         $this->assertNotNull($code->fresh()->printed_at);
+    }
+
+    public function test_ready_labels_can_be_reprinted_from_list_without_changing_stock_or_assignment()
+    {
+        [$assigned] = $this->assigned();
+        $ready = VehicleQrCode::available()->orderBy('id')->take(2)->get();
+        $this->pool->markPrinted($this->owner->id, $ready->pluck('id')->all());
+        $before = VehicleQrCode::orderBy('id')->get()->toArray();
+        $response = $this->actingAs($this->owner)->get('/vehicle-qr')->assertOk();
+        $dom = new \DOMDocument();
+        @$dom->loadHTML('<?xml encoding="utf-8" ?>' . $response->getContent());
+        $xpath = new \DOMXPath($dom);
+        $links = $xpath->query('//a[contains(text(), "Araca atanmaya hazır QR")]');
+        $this->assertSame(1, $links->length);
+        $url = $links->item(0)->getAttribute('href');
+        parse_str(parse_url($url, PHP_URL_QUERY), $query);
+        $this->assertSame($ready->pluck('id')->map(fn ($id) => (string) $id)->all(), $query['ids']);
+        $print = $this->get($url)->assertOk()->assertSee('yeniden basılmış olarak işaretlemeniz gerekmez')
+            ->assertDontSee($assigned->label);
+        foreach ($ready as $code) {
+            $print->assertSee($code->label)->assertSee('data:image/svg+xml;base64,', false);
+            $singleUrl = route('vehicle-qr.print', ['ids' => [$code->id]]);
+            $response->assertSee(e($singleUrl), false);
+            $this->get($singleUrl)->assertOk()->assertSee($code->label);
+        }
+        $this->assertSame($before, VehicleQrCode::orderBy('id')->get()->toArray());
+        $this->assertSame(10, VehicleQrCode::available()->count());
+        $this->pool->assignExisting($this->owner->id, $this->vehicle()->id, $ready->first()->id);
+        $this->assertNotNull($ready->first()->fresh()->assigned_at);
     }
 
     public function test_foreign_labels_cannot_be_printed_or_marked_printed()
@@ -291,6 +320,26 @@ class VehicleQrTest extends TestCase
         $this->put('/vehicle/' . $vehicle->id, [])->assertForbidden();
         $this->delete('/vehicle/' . $vehicle->id)->assertForbidden();
         $this->post('/vehicle-qr/assign/' . $vehicle->id, ['qr_code_id' => $code->id])->assertForbidden();
+    }
+
+    public function test_dashboard_quick_access_links_return_forms_in_the_correct_layout()
+    {
+        $response = $this->actingAs($this->owner)->get(route('dashboard'))->assertOk();
+        $dom = new \DOMDocument();
+        @$dom->loadHTML($response->getContent());
+        $xpath = new \DOMXPath($dom);
+        $links = $xpath->query('//*[@id="quick-access-menu"]/a');
+        $this->assertSame(16, $links->length);
+        $fullPages = ['client.create', 'service.create', 'quotation.create', 'invoice.create'];
+        $pageUrls = array_map(fn ($name) => route($name), $fullPages);
+        foreach ($links as $link) {
+            $modal = str_contains($link->getAttribute('class'), 'customModal');
+            $url = $modal ? $link->getAttribute('data-url') : $link->getAttribute('href');
+            $this->assertSame(!in_array($url, $pageUrls), $modal, $url);
+            $form = $this->get($url)->assertOk();
+            $this->assertStringContainsString('<form', $form->getContent(), $url);
+            $this->assertSame(!$modal, str_contains($form->getContent(), '<html'), $url);
+        }
     }
 
     public function test_staff_pages_render_and_only_offer_printed_available_codes()
@@ -379,6 +428,7 @@ class VehicleQrTest extends TestCase
             }
         }
         if ($emailCase === 'provided') {
+            $data['external_labor_amount'] = '250.75';
             $data['notes'] = 'Customer note';
             $data['vehicle_notes'] = 'Vehicle note';
             $data['service_notes'] = 'Service note';
@@ -403,6 +453,8 @@ class VehicleQrTest extends TestCase
         $this->assertSame(1, Vehicle::count());
         $this->assertSame(1, Service::count());
         $this->assertSame(1, Invoice::count());
+        $this->assertEquals($data['external_labor_amount'] ?? 0, Service::first()->external_labor_amount);
+        $this->assertEquals($data['external_labor_amount'] ?? 0, Invoice::first()->external_labor_amount);
         $this->assertSame(Vehicle::first()->id, $code->fresh()->vehicle_id);
         $this->assertSame(10, VehicleQrCode::available()->count());
         // A stale tab must not leave an orphan customer behind when the QR was taken.

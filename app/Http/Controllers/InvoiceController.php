@@ -65,7 +65,7 @@ class InvoiceController extends Controller
                 [
                     'invoice_date' => 'required',
                     'client' => 'required',
-                    'service' => 'required',
+                    'service' => ['required', \Illuminate\Validation\Rule::exists('services', 'id')->where('parent_id', parentId())->where('client', $request->client)],
                 ]
             );
             if ($validator->fails()) {
@@ -79,6 +79,7 @@ class InvoiceController extends Controller
             $invoice->invoice_date = $request->invoice_date;
             $invoice->client = $request->client;
             $invoice->service = $request->service;
+            $invoice->external_labor_amount = Service::where('parent_id', parentId())->findOrFail($request->service)->external_labor_amount;
             $invoice->status = 0;
             $invoice->parent_id = parentId();
             $invoice->save();
@@ -202,10 +203,11 @@ class InvoiceController extends Controller
                 'note' => $type->note,
             ];
         })->toArray();
-        $services = Service::where('client', $invoice->client)->get();
+        $services = Service::where('parent_id', parentId())->where('client', $invoice->client)->get();
         $serviceData = [];
         foreach ($services as $service) {
             $serv['id'] = $service->id;
+            $serv['external_labor_amount'] = $service->external_labor_amount;
             $serv['name'] = servicePrefix() . $service->service_id . ' | ' . $service->vehicles->license_plate;
             $serviceData[] = $serv;
         }
@@ -224,7 +226,7 @@ class InvoiceController extends Controller
                 [
                     'invoice_date' => 'required',
                     'client' => 'required',
-                    'service' => 'required',
+                    'service' => ['required', \Illuminate\Validation\Rule::exists('services', 'id')->where('parent_id', parentId())->where('client', $request->client)],
                 ]
             );
 
@@ -235,8 +237,10 @@ class InvoiceController extends Controller
 
             $invoice = app(InventoryAccounting::class)->transaction(parentId(), function () use ($request, $id) {
                 $invoice = Invoice::where('parent_id', parentId())->lockForUpdate()->findOrFail($id);
+                $previousTotal = $invoice->getInvoiceAllTotalAmount();
                 $invoice->client = $request->client;
                 $invoice->service = $request->service;
+                $invoice->external_labor_amount = Service::where('parent_id', parentId())->findOrFail($request->service)->external_labor_amount;
                 $invoice->invoice_date = $request->invoice_date;
                 $invoice->save();
             $existingTypeIds = InvoiceService::where('invoice_id', $invoice->id)->pluck('id')->toArray();
@@ -272,7 +276,7 @@ class InvoiceController extends Controller
                 InvoiceService::whereIn('id', $typesToDelete)->delete();
             }
 
-                app(InventoryAccounting::class)->sync($invoice, $this->stockRows($request));
+                app(InventoryAccounting::class)->sync($invoice, $this->stockRows($request), $previousTotal);
                 app(InventoryAccounting::class)->refreshStatus($invoice);
                 return $invoice;
             });

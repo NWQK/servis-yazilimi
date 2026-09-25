@@ -198,6 +198,7 @@
                                 {{ Form::label('status', __('Status'), ['class' => 'form-label']) }}
                                 {!! Form::select('status', $status, null, ['class' => 'form-control select2 ', 'required' => 'required']) !!}
                             </div>
+                            @include('service.external_labor_field', ['laborAmount' => $service->external_labor_amount ?? 0])
                             <div class="form-group col-md-12 col-lg-12">
                                 {{ Form::label('notes', __('Notes'), ['class' => 'form-label']) }}
                                 {{ Form::textarea('notes', null, ['class' => 'form-control', 'placeholder' => __('Enter notes'), 'rows' => 2]) }}

@@ -18,7 +18,7 @@
                 </li>
 
                 @if (\Auth::user()->type == 'owner')
-                    <li class="dropdown pc-h-item" data-bs-toggle="tooltip" data-bs-original-title="Quick Access"
+                    <li class="dropdown pc-h-item" data-bs-toggle="tooltip" data-bs-original-title="{{ __('Quick Access') }}"
                         data-bs-placement="bottom">
 
                         <a class="pc-head-link head-link-secondary dropdown-toggle arrow-none me-0"
@@ -26,7 +26,7 @@
                             <i class="ti ti-plus fs-18"></i>
                         </a>
 
-                        <div class="dropdown-menu pc-h-dropdown overflow-auto" style="max-height: 400px;">
+                        <div id="quick-access-menu" class="dropdown-menu pc-h-dropdown overflow-auto" style="max-height: 400px;">
                             <a href="#" class="dropdown-item customModal"
                                 data-url="{{ route('employee.create') }}" data-title="{{ __('Create Employee') }}"
                                 data-size="lg">
@@ -48,9 +48,7 @@
                                 data-title="{{ __('Create vehicle') }}" data-size="lg">
                                 <i class="ti ti-truck"></i> {{ __('Create vehicle') }}
                             </a>
-                            <a href="#" class="dropdown-item customModal"
-                                data-url="{{ route('service.create') }}" data-title="{{ __('Create Service') }}"
-                                data-size="lg">
+                            <a href="{{ route('service.create') }}" class="dropdown-item">
                                 <i class="ti ti-tool"></i> {{ __('Create Service') }}
                             </a>
 

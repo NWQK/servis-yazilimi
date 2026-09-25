@@ -64,6 +64,7 @@ class ClientController extends Controller
 
     public function store(Request $request)
     {
+        $request->validate(['external_labor_amount' => \App\Services\ExternalLabor::RULE]);
         abort_unless(auth()->user()->type !== 'client' && auth()->user()->can('create vehicle'), 403);
         if (!\Auth::user()->can('create client')) {
             return redirect()->back()->with('error', __('Permission Denied.'));
@@ -173,6 +174,7 @@ class ClientController extends Controller
                 $service->assign       = $request->assign;
                 $service->status       = $request->status;
                 $service->notes        = $request->service_notes;
+                $service->external_labor_amount = $request->external_labor_amount ?? 0;
                 $service->parent_id    = parentId();
                 $service->save();
                 foreach ($request->types as $type) {
@@ -190,6 +192,7 @@ class ClientController extends Controller
                 $invoice->invoice_date = $request->service_date;
                 $invoice->client       = $user->id;
                 $invoice->service      = $service->id;
+                $invoice->external_labor_amount = $service->external_labor_amount;
                 $invoice->status       = 0;
                 $invoice->parent_id    = parentId();
                 $invoice->save();
@@ -370,6 +373,7 @@ class ClientController extends Controller
 
     public function update(Request $request, $id)
     {
+        $request->validate(['external_labor_amount' => \App\Services\ExternalLabor::RULE]);
         if (\Auth::user()->can('edit client')) {
             $validator = \Validator::make($request->all(), [
                 'name'          => 'required',
@@ -439,6 +443,8 @@ class ClientController extends Controller
             }
             $service = Service::where('client', $id)->first();
             if ($service) {
+                abort_unless((int) $service->parent_id === (int) parentId(), 403);
+                if ($request->exists('external_labor_amount')) app(\App\Services\ExternalLabor::class)->update($service, $request->external_labor_amount);
                 $service->update([
                     'assign'       => $request->assign,
                     'service_date' => $request->service_date,
@@ -506,10 +512,11 @@ class ClientController extends Controller
     public function getService($clientId)
     {
 
-        $services = Service::where('client', $clientId)->get();
+        $services = Service::where('parent_id', parentId())->where('client', $clientId)->get();
         $serviceData = [];
         foreach ($services as $service) {
             $serv['id'] = $service->id;
+            $serv['external_labor_amount'] = $service->external_labor_amount;
             $serv['name'] = servicePrefix() . $service->service_id . ' | ' . $service->vehicles->license_plate;
             $serviceData[] = $serv;
         }
