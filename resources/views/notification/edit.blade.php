@@ -25,26 +25,7 @@
             </div>
         </div>
 
-        <div class="form-group col-md-6">
-            {{ Form::label('enabled_sms', __('Enabled SMS Notification'), ['class' => 'form-label']) }}
-            <input class="form-check-input sms" type="hidden" name="enabled_sms" value="0">
-            <div class="form-check form-switch">
-                <input class="form-check-input sms" type="checkbox" role="switch" id="flexSwitchCheck"
-                    name="enabled_sms" value="1" {{ $notification->enabled_sms == 1 ? 'checked' : '' }}>
-                <label class="form-check-label" for="flexSwitchCheck"></label>
-            </div>
-        </div>
-
-        <div class="form-group col-md-6">
-            {{ Form::label('enabled_whatsapp', __('Enabled Whatsapp Notification'), ['class' => 'form-label']) }}
-            <input class="form-check-input" type="hidden" name="enabled_whatsapp" value="0">
-            <div class="form-check form-switch">
-                <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckChecked"
-                    name="enabled_whatsapp" value="1" {{ $notification->enabled_whatsapp == 1 ? 'checked' : '' }}>
-                <label class="form-check-label" for="flexSwitchCheckChecked"></label>
-            </div>
-        </div>
-
+        <p class="text-muted">Randevu SMS mesajları merkezi SMS ayarlarından yönetilir.</p>
         <div class="form-group col-md-12">
             {{ Form::label('message', __('User Message'), ['class' => 'form-label']) }}
             {!! Form::textarea('message', $notification->message, [
@@ -54,18 +35,6 @@
             ]) !!}
 
         </div>
-
-        <div class="form-group col-md-12 smsMessage {{ $notification->enabled_sms == 1 ? '' : 'd-none' }}">
-            {{ Form::label('sms_message', __('User SMS Message'), ['class' => 'form-label']) }}
-            {!! Form::textarea('sms_message', $notification->sms_message, [
-                'class' => 'form-control ',
-                'rows' => 5,
-                'id' => 'sms_message',
-            ]) !!}
-
-            <p class="mt-2"> <b>{{ __('Note') }}</b> :- {{ __('Maximum 160 characters allowed!') }}</p>
-        </div>
-
 
         <div class="form-group col-md-12">
             <h4 class="mb-0">{{ __('Shortcodes') }}</h4>

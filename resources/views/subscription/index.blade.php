@@ -17,13 +17,7 @@
                         <div class="col">
                             <h5>{{ __('Pricing Packages List') }}</h5>
                         </div>
-                        @if (
-                            \Auth::user()->type == 'super admin' &&
-                                (subscriptionPaymentSettings()['STRIPE_PAYMENT'] == 'on' ||
-                                    subscriptionPaymentSettings()['paypal_payment'] == 'on' ||
-                                    subscriptionPaymentSettings()['bank_transfer_payment'] == 'on' ||
-                                    subscriptionPaymentSettings()['flutterwave_payment'] == 'on' ||
-                                    subscriptionPaymentSettings()['paystack_payment'] == 'on'))
+                        @if (\Auth::user()->type == 'super admin')
                             <div class="col-auto">
                                 <a href="#" class="btn btn-secondary customModal" data-size="md"
                                     data-url="{{ route('subscriptions.create') }}" data-title="{{ __('Create Package') }}">

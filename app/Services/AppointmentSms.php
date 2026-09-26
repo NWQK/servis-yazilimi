@@ -53,7 +53,7 @@ class AppointmentSms
         $settings = AppointmentSmsSetting::central();
         $body = $settings->renderMessage($settings->verification_template, ['{kod}' => $code, '{isletme}' => $profile->display_name]);
         $result = app(AppointmentSmsGateway::class)->send($challenge->payload['phone'], $body);
-        $challenge->update(['send_status' => $result['status']]);
+        $challenge->update(['send_status' => $result['status'], 'error_code' => $result['error_code'] ?? null, 'provider_sid' => $result['provider_sid'] ?? null]);
     }
 
     public function resend(AppointmentSmsChallenge $challenge, AppointmentProfile $profile): void

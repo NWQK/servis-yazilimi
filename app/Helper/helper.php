@@ -29,7 +29,6 @@ use Illuminate\Support\Facades\Storage;
 use PragmaRX\Google2FAQRCode\Google2FA;
 use Spatie\Permission\Models\Permission;
 use Spatie\Permission\Models\Role;
-use Twilio\Rest\Client;
 
 if (!function_exists('settingsKeys')) {
     function settingsKeys()
@@ -80,24 +79,14 @@ if (!function_exists('settingsKeys')) {
             "invoice_number_prefix" => "#INV-000",
             "service_number_prefix" => "#SER-000",
             "quotation_number_prefix" => "#QUO-000",
-            'CURRENCY' => "USD",
-            'CURRENCY_SYMBOL' => "$",
-            'STRIPE_PAYMENT' => "off",
-            'STRIPE_KEY' => "",
-            'STRIPE_SECRET' => "",
-            "paypal_payment" => "off",
-            "paypal_mode" => "",
-            "paypal_client_id" => "",
-            "paypal_secret_key" => "",
+            'CURRENCY' => "TRY",
+            'CURRENCY_SYMBOL' => "₺",
             "bank_transfer_payment" => "off",
             "bank_name" => "",
             "bank_holder_name" => "",
             "bank_account_number" => "",
             "bank_ifsc_code" => "",
             "bank_other_details" => "",
-            "flutterwave_payment" => "off",
-            "flutterwave_public_key" => "",
-            "flutterwave_secret_key" => "",
             "timezone" => "Europe/Istanbul",
             "footer_column_1" => "Quick Links",
             "footer_column_1_enabled" => "active",
@@ -108,20 +97,11 @@ if (!function_exists('settingsKeys')) {
             "footer_column_4" => "Core System",
             "footer_column_4_enabled" => "active",
             "pricing_feature" => "on",
-            "paystack_payment" => "off",
-            "paystack_public_key" => "",
-            "paystack_secret_key" => "",
-            'twilio_sid' => '',
-            'twilio_token' => '',
-            'twilio_from_number' => '',
             'openai_secret_key' => '',
             'openai_module' => '',
             'copyright' => '',
             'whatsapp_instance' => '',
             'whatsapp_token' => '',
-            'razorpay_payment' => 'off',
-            'razorpay_public_key' => '',
-            'razorpay_secret_key' => '',
         ];
     }
 }
@@ -153,7 +133,7 @@ if (!function_exists('settings')) {
             ]
         );
 
-        return array_replace($details, ['timezone' => 'Europe/Istanbul', 'company_date_format' => 'd M Y', 'company_time_format' => 'H:i']);
+        return array_replace($details, ['CURRENCY' => 'TRY', 'CURRENCY_SYMBOL' => '₺', 'timezone' => 'Europe/Istanbul', 'company_date_format' => 'd M Y', 'company_time_format' => 'H:i']);
     }
 }
 
@@ -162,37 +142,22 @@ if (!function_exists('subscriptionPaymentSettings')) {
     {
         $settingData = DB::table('settings')->where('type', 'payment')->where('parent_id', '=', 1)->get();
         $result = [
-            'CURRENCY' => "USD",
-            'CURRENCY_SYMBOL' => "$",
-            'STRIPE_PAYMENT' => "off",
-            'STRIPE_KEY' => "",
-            'STRIPE_SECRET' => "",
-            "paypal_payment" => "off",
-            "paypal_mode" => "",
-            "paypal_client_id" => "",
-            "paypal_secret_key" => "",
+            'CURRENCY' => "TRY",
+            'CURRENCY_SYMBOL' => "₺",
             "bank_transfer_payment" => "off",
             "bank_name" => "",
             "bank_holder_name" => "",
             "bank_account_number" => "",
             "bank_ifsc_code" => "",
             "bank_other_details" => "",
-            "flutterwave_payment" => "off",
-            "flutterwave_public_key" => "",
-            "flutterwave_secret_key" => "",
-            "paystack_payment" => "off",
-            "paystack_public_key" => "",
-            "paystack_secret_key" => "",
-            'razorpay_payment' => 'off',
-            'razorpay_public_key' => '',
-            'razorpay_secret_key' => '',
-            'razorpay_api_key' => '',
         ];
 
         foreach ($settingData as $setting) {
             $result[$setting->name] = $setting->value;
         }
 
+        $result['CURRENCY'] = 'TRY';
+        $result['CURRENCY_SYMBOL'] = '₺';
         return $result;
     }
 }
@@ -202,37 +167,22 @@ if (!function_exists('invoicePaymentSettings')) {
     {
         $settingData = DB::table('settings')->where('type', 'payment')->where('parent_id', $id)->get();
         $result = [
-            'CURRENCY' => "USD",
-            'CURRENCY_SYMBOL' => "$",
-            'STRIPE_PAYMENT' => "off",
-            'STRIPE_KEY' => "",
-            'STRIPE_SECRET' => "",
-            "paypal_payment" => "off",
-            "paypal_mode" => "",
-            "paypal_client_id" => "",
-            "paypal_secret_key" => "",
+            'CURRENCY' => "TRY",
+            'CURRENCY_SYMBOL' => "₺",
             "bank_transfer_payment" => "off",
             "bank_name" => "",
             "bank_holder_name" => "",
             "bank_account_number" => "",
             "bank_ifsc_code" => "",
             "bank_other_details" => "",
-            "flutterwave_payment" => "off",
-            "flutterwave_public_key" => "",
-            "flutterwave_secret_key" => "",
-            "paystack_payment" => "off",
-            "paystack_public_key" => "",
-            "paystack_secret_key" => "",
-            'razorpay_payment' => 'off',
-            'razorpay_public_key' => '',
-            'razorpay_secret_key' => '',
-            'razorpay_api_key' => '',
 
         ];
 
         foreach ($settingData as $row) {
             $result[$row->name] = $row->value;
         }
+        $result['CURRENCY'] = 'TRY';
+        $result['CURRENCY_SYMBOL'] = '₺';
         return $result;
     }
 }
@@ -270,7 +220,7 @@ if (!function_exists('settingDateFormat')) {
 if (!function_exists('settingPriceFormat')) {
     function settingPriceFormat($settings, $price)
     {
-        return number_format((float) $price, 2, ',', '.') . ' ' . $settings['CURRENCY_SYMBOL'];
+        return number_format((float) $price, 2, ',', '.') . ' ₺';
     }
 }
 if (!function_exists('settingTimeFormat')) {
@@ -298,7 +248,7 @@ if (!function_exists('priceFormat')) {
     {
         $settings = settings();
 
-        return number_format((float) $price, 2, ',', '.') . ' ' . $settings['CURRENCY_SYMBOL'];
+        return number_format((float) $price, 2, ',', '.') . ' ₺';
     }
 }
 if (!function_exists('parentId')) {
@@ -568,7 +518,7 @@ if (!function_exists('settingsById')) {
             ]
         );
 
-        return array_replace($settings, ['timezone' => 'Europe/Istanbul', 'company_date_format' => 'd M Y', 'company_time_format' => 'H:i']);
+        return array_replace($settings, ['CURRENCY' => 'TRY', 'CURRENCY_SYMBOL' => '₺', 'timezone' => 'Europe/Istanbul', 'company_date_format' => 'd M Y', 'company_time_format' => 'H:i']);
     }
 }
 
@@ -884,30 +834,6 @@ if (!function_exists('defaultSMSTemplate')) {
 
         // Return all created templates if needed
         return $createdTemplates;
-    }
-}
-
-if (!function_exists('send_twilio_msg')) {
-    function send_twilio_msg($to, $msg)
-    {
-        if (!empty($msg)) {
-            $settings = settings();
-
-            $sid = $settings['twilio_sid'];
-            $token = $settings['twilio_token'];
-            $from_number = $settings['twilio_from_number'];
-
-            try {
-                $client = new Client($sid, $token);
-                $client->messages->create($to, [
-                    'from' => $from_number,
-                    'body' => $msg,
-                ]);
-            } catch (\Exception $e) {
-
-                \Log::error('Twilio SMS send failed: ' . $e->getMessage());
-            }
-        }
     }
 }
 
@@ -1398,7 +1324,6 @@ if (!function_exists('NewPermission')) {
 
         $permissions = [
 
-            ['name' => 'manage twilio settings', 'guard_name' => 'web', 'roles' => ['owner']],
             ['name' => 'manage account settings', 'guard_name' => 'web', 'roles' => ['client', 'employee']],
             ['name' => 'manage password settings', 'guard_name' => 'web', 'roles' => ['client', 'employee']],
             ['name' => 'manage 2FA settings', 'guard_name' => 'web', 'roles' => ['client', 'employee']],
@@ -1906,29 +1831,5 @@ if (!function_exists('defaultAiTemplate')) {
         }
 
         return $createdTemplates;
-    }
-}
-
-if (!function_exists('sendWhatshappSms')) {
-    function sendWhatshappSms($params)
-    {
-        try {
-            $sid = getSettingsValByName('twilio_sid');
-            $token = getSettingsValByName('twilio_token');
-            $from = getSettingsValByName('twilio_whatsapp_number');
-
-            $client = new Client($sid, $token);
-            $message = $client->messages->create(
-                'whatsapp:' . $params['to'],
-                [
-                    'from' => 'whatsapp:' . $from,
-                    'body' => $params['body']
-                ]
-            );
-            return ['status' => 'success'];
-        } catch (\Exception $e) {
-            \Log::error('WhatsApp Error: ' . $e->getMessage());
-            return ['status' => 'error'];
-        }
     }
 }

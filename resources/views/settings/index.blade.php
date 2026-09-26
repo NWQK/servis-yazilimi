@@ -176,23 +176,6 @@
                                         </a>
                                     </li>
                                 @endif
-                                @if (Gate::check('manage twilio settings'))
-                                    <li class="nav-item">
-                                        <a class="nav-link {{ empty($activeTab) || $activeTab == 'twilio' ? ' active ' : '' }} "
-                                            id="profile-tab-9" data-bs-toggle="tab" href="#twilio" role="tab"
-                                            aria-selected="true">
-                                            <div class="d-flex align-items-center">
-                                                <div class="flex-shrink-0">
-                                                    <i class="ti ti-message-dots me-2 f-20"></i>
-                                                </div>
-                                                <div class="flex-grow-1 ms-2">
-                                                    <h5 class="mb-0">{{ __('Twilio Settings') }}</h5>
-                                                    <small class="text-muted">{{ __('Twilio Settings') }}</small>
-                                                </div>
-                                            </div>
-                                        </a>
-                                    </li>
-                                @endif
                                 @if (Auth::user()->type === 'super admin' ||
                                         ($subscriptionData['pricing_feature_settings'] === 'off' ||
                                             $subscriptionData['subscription']->enabled_openai == 1))
@@ -215,10 +198,17 @@
                                     @endif
                                 @endif
 
-                            </ul>
+                            @if (auth()->user()->type === 'owner')
+                                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#sms_system" role="tab"><div class="d-flex align-items-center"><i class="ti ti-message-dots me-2 f-20"></i><div><h5 class="mb-0">SMS Sistemi</h5><small class="text-muted">İşletme SMS ayarları</small></div></div></a></li>
+                                @endif
+</ul>
                         </div>
                         <div class="col-lg-8">
                             <div class="tab-content">
+                                @if (auth()->user()->type === 'owner')
+                                <div class="tab-pane" id="sms_system" role="tabpanel"><h5>SMS Sistemi</h5><p>İşletmeye özel SMS ayarları yakında kullanıma açılacaktır. Randevu SMS’leri sistem yöneticisi tarafından yönetilir.</p></div>
+                                @endif
+
                                 @if (Gate::check('manage account settings'))
                                     <div class="tab-pane {{ empty($activeTab) || $activeTab == 'user_profile_settings' ? ' active show ' : '' }}"
                                         id="user_profile_settings" role="tabpanel"
@@ -436,10 +426,7 @@
                                                 {{ Form::label('company_address', __('Address'), ['class' => 'form-label']) }}
                                                 {{ Form::textarea('company_address', $settings['company_address'], ['class' => 'form-control', 'rows' => '2']) }}
                                             </div>
-                                            <div class="form-group col-md-6">
-                                                {{ Form::label('CURRENCY_SYMBOL', __('Currency Icon'), ['class' => 'form-label']) }}
-                                                {{ Form::text('CURRENCY_SYMBOL', $settings['CURRENCY_SYMBOL'], ['class' => 'form-control', 'placeholder' => __('Enter currency symbol')]) }}
-                                            </div>
+
                                             <div class="form-group col-md-6">
                                                 {{ Form::label('client_number_prefix', __('Client Number Prefix'), ['class' => 'form-label']) }}
                                                 {{ Form::text('client_number_prefix', $settings['client_number_prefix'], ['class' => 'form-control', 'placeholder' => __('Enter client number prefix')]) }}
@@ -535,86 +522,11 @@
 
                                         {{ Form::model($settings, ['route' => ['setting.payment'], 'method' => 'post']) }}
                                         <div class="row">
-                                            <div class="form-group col-md-6">
-                                                {{ Form::label('CURRENCY_SYMBOL', __('Currency Icon'), ['class' => 'form-label']) }}
-                                                {{ Form::text('CURRENCY_SYMBOL', $settings['CURRENCY_SYMBOL'], ['class' => 'form-control', 'placeholder' => __('Enter currency icon'), 'required']) }}
-                                            </div>
-                                            <div class="form-group col-md-6">
-                                                {{ Form::label('CURRENCY', __('Currency Code'), ['class' => 'form-label']) }}
-                                                {{ Form::text('CURRENCY', $settings['CURRENCY'], ['class' => 'form-control font-style', 'placeholder' => __('Enter currency code'), 'required']) }}
-                                            </div>
+
+
                                         </div>
                                         <hr>
 
-                                        {{-- ------------------------Stripe Payment settings------------------------------- --}}
-                                        <div class="row mt-2">
-                                            <div class="col-auto">
-                                                {{ Form::label('stripe_payment', __('Stripe Payment'), ['class' => 'form-label']) }}
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <div class="form-check custom-chek">
-                                                        <input class="form-check-input" type="checkbox"
-                                                            name="stripe_payment" id="stripe_payment"
-                                                            {{ $settings['STRIPE_PAYMENT'] == 'on' ? 'checked' : '' }}>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="form-group col-md-6">
-                                                {{ Form::label('stripe_key', __('Account Key'), ['class' => 'form-label']) }}
-                                                {{ Form::text('stripe_key', $settings['STRIPE_KEY'], ['class' => 'form-control', 'placeholder' => __('Enter stripe key')]) }}
-                                            </div>
-                                            <div class="form-group col-md-6">
-                                                {{ Form::label('stripe_secret', __('Account Secret Key'), ['class' => 'form-label']) }}
-                                                {{ Form::text('stripe_secret', $settings['STRIPE_SECRET'], ['class' => 'form-control ', 'placeholder' => __('Enter stripe secret')]) }}
-                                            </div>
-                                        </div>
-                                        <hr>
-                                        {{-- ------------------------Paypal Payment settings------------------------------- --}}
-                                        <div class="row mt-2">
-                                            <div class="col-auto">
-                                                {{ Form::label('paypal_payment', __('Paypal Payment'), ['class' => 'form-label']) }}
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <div class="form-check custom-chek">
-                                                        <input class="form-check-input" type="checkbox"
-                                                            name="paypal_payment" id="paypal_payment"
-                                                            {{ $settings['paypal_payment'] == 'on' ? 'checked' : '' }}>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="form-group col-md-12">
-                                                {{ Form::label('paypal_mode', __('Account Mode'), ['class' => 'form-label me-2']) }}
-                                                <div class="form-check custom-chek form-check-inline">
-                                                    <input class="form-check-input" type="radio" value="sandbox"
-                                                        id="sandbox" name="paypal_mode"
-                                                        {{ $settings['paypal_mode'] == 'sandbox' ? 'checked' : '' }}>
-                                                    <label class="form-check-label" for="sandbox">{{ __('Sandbox') }}
-                                                    </label>
-                                                </div>
-                                                <div class="form-check custom-chek form-check-inline">
-                                                    <input class="form-check-input" type="radio" value="live"
-                                                        id="live" name="paypal_mode"
-                                                        {{ $settings['paypal_mode'] == 'live' ? 'checked' : '' }}>
-                                                    <label class="form-check-label" for="live">{{ __('Live') }}
-                                                    </label>
-                                                </div>
-                                            </div>
-                                            <div class="form-group col-md-6">
-                                                {{ Form::label('paypal_client_id', __('Account Client ID'), ['class' => 'form-label']) }}
-                                                {{ Form::text('paypal_client_id', $settings['paypal_client_id'], ['class' => 'form-control', 'placeholder' => __('Enter client id')]) }}
-                                            </div>
-                                            <div class="form-group col-md-6">
-                                                {{ Form::label('paypal_secret_key', __('Account Secret Key'), ['class' => 'form-label']) }}
-                                                {{ Form::text('paypal_secret_key', $settings['paypal_secret_key'], ['class' => 'form-control ', 'placeholder' => __('Enter secret key')]) }}
-                                            </div>
-                                        </div>
-                                        <hr>
                                         {{-- ------------------------Bank Transfer settings------------------------------- --}}
                                         <div class="row mt-2">
                                             <div class="col-auto">
@@ -654,88 +566,6 @@
                                         </div>
 
                                         <hr>
-                                        {{-- ------------------------Flutterwave settings------------------------------- --}}
-                                        <div class="row mt-2">
-                                            <div class="col-auto">
-                                                {{ Form::label('flutterwave_payment', __('Flutterwave Payment'), ['class' => 'form-label']) }}
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <div class="form-check custom-chek">
-                                                        <input class="form-check-input" type="checkbox"
-                                                            name="flutterwave_payment" id="flutterwave_payment"
-                                                            {{ $settings['flutterwave_payment'] == 'on' ? 'checked' : '' }}>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="form-group col-md-6">
-                                                {{ Form::label('flutterwave_public_key', __('Public Key'), ['class' => 'form-label']) }}
-                                                {{ Form::text('flutterwave_public_key', $settings['flutterwave_public_key'], ['class' => 'form-control', 'placeholder' => __('Enter flutterwave public key')]) }}
-                                            </div>
-                                            <div class="form-group col-md-6">
-                                                {{ Form::label('flutterwave_secret_key', __('Secret Key'), ['class' => 'form-label']) }}
-                                                {{ Form::text('flutterwave_secret_key', $settings['flutterwave_secret_key'], ['class' => 'form-control', 'placeholder' => __('Enter flutterwave secret key')]) }}
-                                            </div>
-
-                                        </div>
-
-                                        <hr>
-                                        {{-- ------------------------Paystack settings------------------------------- --}}
-                                        <div class="row mt-2">
-                                            <div class="col-auto">
-                                                {{ Form::label('paystack_payment', __('Paystack Payment'), ['class' => 'form-label']) }}
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <div class="form-check custom-chek">
-                                                        <input class="form-check-input" type="checkbox"
-                                                            name="paystack_payment" id="paystack_payment"
-                                                            {{ $settings['paystack_payment'] == 'on' ? 'checked' : '' }}>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="form-group col-md-6">
-                                                {{ Form::label('paystack_public_key', __('Public Key'), ['class' => 'form-label']) }}
-                                                {{ Form::text('paystack_public_key', $settings['paystack_public_key'], ['class' => 'form-control', 'placeholder' => __('Enter Paystack public key')]) }}
-                                            </div>
-                                            <div class="form-group col-md-6">
-                                                {{ Form::label('paystack_secret_key', __('Secret Key'), ['class' => 'form-label']) }}
-                                                {{ Form::text('paystack_secret_key', $settings['paystack_secret_key'], ['class' => 'form-control', 'placeholder' => __('Enter Paystack secret key')]) }}
-                                            </div>
-                                        </div>
-
-                                        <div class="row mt-2">
-                                            <div class="col-auto">
-                                                {{ Form::label('razorpay_payment', __('Razorpay Payment'), ['class' => 'form-label']) }}
-                                            </div>
-                                            <div class="col-md-6">
-                                                <div class="form-group">
-                                                    <div class="form-check custom-chek">
-                                                        <input class="form-check-input" type="checkbox"
-                                                            name="razorpay_payment" id="razorpay_payment"
-                                                            {{ $settings['razorpay_payment'] == 'on' ? 'checked' : '' }}>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <div class="row">
-                                            <div class="form-group col-md-6">
-                                                {{ Form::label('razorpay_public_key', __('Public Key'), ['class' => 'form-label']) }}
-                                                {{ Form::text('razorpay_public_key', $settings['razorpay_public_key'], ['class' => 'form-control', 'placeholder' => __('Enter Razorpay public key')]) }}
-                                            </div>
-                                            <div class="form-group col-md-6">
-                                                {{ Form::label('razorpay_secret_key', __('Secret Key'), ['class' => 'form-label']) }}
-                                                {{ Form::text('razorpay_secret_key', $settings['razorpay_secret_key'], ['class' => 'form-control', 'placeholder' => __('Enter Razorpay  secret key')]) }}
-                                            </div>
-                                        </div>
-
                                         <div class="row mt-3">
                                             <div class="col-6"></div>
                                             <div class="col-6 text-end">
@@ -903,46 +733,6 @@
                                         @endif
                                         {{ Form::close() }}
 
-                                    </div>
-                                @endif
-                                @if (Gate::check('manage twilio settings'))
-                                    <div class="tab-pane {{ !empty($activeTab) && $activeTab == 'twilio' ? ' active show ' : '' }}"
-                                        id="twilio" role="tabpanel" aria-labelledby="twilio">
-                                        {{ Form::model($settings, ['route' => ['setting.twilio'], 'method' => 'post']) }}
-                                        <div class="row">
-                                            <div class="form-group col-md-12">
-                                                {{ Form::label('twilio_sid', __('twilio SID'), ['class' => 'form-label']) }}
-                                                {{ Form::text('twilio_sid', $settings['twilio_sid'], ['class' => 'form-control  mb-2', 'placeholder' => __('Enter SID')]) }}
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="form-group col-md-12">
-                                                {{ Form::label('twilio_token', __('twilio Token'), ['class' => 'form-label']) }}
-                                                {{ Form::text('twilio_token', $settings['twilio_token'], ['class' => 'form-control  mb-2', 'placeholder' => __('Enter Token')]) }}
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="form-group col-md-12">
-                                                {{ Form::label('twilio_from_number', __('twilio From Number'), ['class' => 'form-label']) }}
-                                                {{ Form::text('twilio_from_number', $settings['twilio_from_number'], ['class' => 'form-control  mb-2', 'placeholder' => __('Enter From Numner')]) }}
-                                            </div>
-                                        </div>
-                                        <div class="row mt-3">
-                                            <div class="form-group col-md-12">
-                                                {{ Form::label('twilio_whatsapp_number', __('WhatsApp From Number')) }}
-                                                {{ Form::text('twilio_whatsapp_number', $settings['twilio_whatsapp_number'] ?? '', [
-                                                    'class' => 'form-control',
-                                                    'placeholder' => '+14155238886',
-                                                ]) }}
-                                            </div>
-                                        </div>
-                                        <div class="row mt-3">
-                                            <div class="col-6"></div>
-                                            <div class="col-6 text-end">
-                                                {{ Form::submit(__('Save'), ['class' => 'btn btn-secondary btn-rounded']) }}
-                                            </div>
-                                        </div>
-                                        {{ Form::close() }}
                                     </div>
                                 @endif
                                 @can('manage openai settings')

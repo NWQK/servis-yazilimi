@@ -77,7 +77,7 @@ class AppointmentController extends Controller
         $appointment = $booking->changeStatus($profile, $id, $data['status']);
         $message = $data['status'] === 'approved' ? app(\App\Services\AppointmentSms::class)->dispatchApproval($id) : null;
         $text = 'Randevu durumu güncellendi.';
-        if ($message) $text .= $message->status === 'accepted' ? ' Onay SMS’i gönderim için Twilio’ya iletildi.' : ' Onay SMS’i gönderimi tamamlanamadı; süper admin SMS panelinden kontrol edebilir.';
+        if ($message) $text .= $message->status === 'accepted' ? ' Onay SMS’i gönderim için İleti Merkezi’ne iletildi.' : ' Onay SMS’i gönderimi tamamlanamadı; süper admin SMS panelinden kontrol edebilir.';
         elseif ($data['status'] === 'approved' && !$appointment->phone_verified_at) $text .= ' Bu eski kaydın telefonu doğrulanmadığı için SMS gönderilmedi.';
         return back()->with('success', $text);
     }

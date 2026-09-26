@@ -162,7 +162,6 @@ Route::group(
     ],
     function () {
 
-        Route::post('subscription/{id}/stripe/payment', [SubscriptionController::class, 'stripePayment'])->name('subscription.stripe.payment');
     }
 );
 //-------------------------------Settings-------------------------------------------
@@ -195,7 +194,6 @@ Route::group(
         Route::post('theme/settings', [SettingController::class, 'themeSettings'])->name('theme.settings');
 
 
-        Route::post('settings/twilio', [SettingController::class, 'twilio'])->name('setting.twilio');
         Route::post('openai/settings', [SettingController::class, 'openai'])->name('openai.settings');
     }
 );
@@ -261,13 +259,8 @@ Route::group(
     function () {
         Route::post('subscription/{id}/bank-transfer', [PaymentController::class, 'subscriptionBankTransfer'])->name('subscription.bank.transfer');
         Route::get('subscription/{id}/bank-transfer/action/{status}', [PaymentController::class, 'subscriptionBankTransferAction'])->name('subscription.bank.transfer.action');
-        Route::post('subscription/{id}/paypal', [PaymentController::class, 'subscriptionPaypal'])->name('subscription.paypal');
-        Route::get('subscription/{id}/paypal/{status}', [PaymentController::class, 'subscriptionPaypalStatus'])->name('subscription.paypal.status');
         Route::post('subscription/{id}/{user_id}/manual-assign-package', [PaymentController::class, 'subscriptionManualAssignPackage'])->name('subscription.manual_assign_package');
-        Route::get('subscription/flutterwave/{sid}/{tx_ref}', [PaymentController::class, 'subscriptionFlutterwave'])->name('subscription.flutterwave');
 
-        Route::post('/subscription-pay-with-paystack', [PaymentController::class, 'subscriptionPaystack'])->name('subscription.pay.with.paystack')->middleware(['auth', 'XSS']);
-        Route::get('/subscription/paystack/{pay_id}/{s_id}', [PaymentController::class, 'subscriptionPaystackStatus'])->name('subscription.paystack');
     }
 );
 
@@ -382,14 +375,8 @@ Route::group(
 
         Route::post('invoice/{id}/banktransfer/payment', [InvoiceController::class, 'banktransferPayment'])->name(name: 'invoice.banktransfer.payment');
         Route::get('invoice-payment-status/{id}/{status}', [InvoiceController::class, 'invoicePaymentStatus'])->name('invoice.bank.transfer.action');
-        Route::post('invoice/{id}/stripe/payment', [InvoiceController::class, 'invoiceStripePayment'])->name('invoice.stripe.payment');
-        Route::post('booing/{id}/paypal', [InvoiceController::class, 'invoicePaypal'])->name('invoice.paypal');
-        Route::get('invoice/{id}/paypal/{status}', [InvoiceController::class, 'invoicePaypalStatus'])->name('invoice.paypal.status');
-        Route::get('invoice/flutterwave/{id}/{tx_ref}', [InvoiceController::class, 'invoiceFlutterwave'])->name('invoice.flutterwave');
 
 
-        Route::post('invoice/{id}/paystack/payment', [InvoiceController::class, 'invoicePaystack'])->name('invoice.paystack.payment');
-        Route::get('invoice/paystack/{pay_id}/{id}', [InvoiceController::class, 'invoicePaystackStatus'])->name('invoice.paystack');
 
         Route::get('get-service-type/{id}', [InvoiceController::class, 'getServiceType'])->name('get.service.type');
     }

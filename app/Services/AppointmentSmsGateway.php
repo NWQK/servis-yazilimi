@@ -1,6 +1,5 @@
 <?php
 namespace App\Services;
-
 use App\Models\AppointmentSmsSetting;
 use Illuminate\Support\Facades\Http;
 
@@ -10,20 +9,27 @@ class AppointmentSmsGateway
     {
         $settings = AppointmentSmsSetting::central();
         if (!$settings->ready()) return ['status' => 'failed', 'error_code' => 'not_configured'];
-        $data = ['To' => $phone, 'Body' => $body];
-        if ($settings->messaging_service_sid) $data['MessagingServiceSid'] = $settings->messaging_service_sid;
-        else $data['From'] = $settings->from_number;
+        if (!preg_match('/^\+905[0-9]{9}$/D', $phone)) return ['status' => 'failed', 'error_code' => 'invalid_phone'];
         try {
-            // No automatic retry: a timed-out POST may already have sent an SMS.
-            $response = Http::asForm()->withBasicAuth($settings->account_sid, $settings->auth_token)
-                ->connectTimeout(5)->timeout(15)->post('https://api.twilio.com/2010-04-01/Accounts/'.$settings->account_sid.'/Messages.json', $data);
-            if ($response->successful() && preg_match('/^SM[a-f0-9]{32}$/i', (string) $response->json('sid'))) {
-                return ['status' => 'accepted', 'provider_sid' => $response->json('sid'), 'error_code' => null];
+            // A timeout can occur after acceptance; never automatically retry a send.
+            $response = Http::asJson()->acceptJson()->connectTimeout(5)->timeout(15)
+                ->post('https://api.iletimerkezi.com/v1/send-sms/json', ['request' => [
+                    'authentication' => ['key' => $settings->api_key, 'hash' => $settings->api_hash],
+                    'order' => ['sender' => $settings->sender, 'iys' => '0', 'message' => [
+                        'text' => $body, 'receipents' => ['number' => [ltrim($phone, '+')]],
+                    ]],
+                ]]);
+            $code = (string) $response->json('response.status.code');
+            $orderId = (string) $response->json('response.order.id');
+            if ($response->successful() && $code === '200' && preg_match('/^[1-9][0-9]*$/D', $orderId)) {
+                return ['status' => 'accepted', 'provider_sid' => $orderId, 'error_code' => null];
             }
-            return ['status' => $response->clientError() ? 'failed' : 'unknown',
-                'error_code' => ctype_digit((string) $response->json('code')) ? (string) $response->json('code') : 'provider_error'];
+            // Duplicate order can refer to a prior accepted request; reconcile manually.
+            $failed = !$response->serverError() && $code !== '451' &&
+                (($code !== '200' && ctype_digit($code) && (int) $code >= 400 && (int) $code < 500) || $response->clientError());
+            return ['status' => $failed ? 'failed' : 'unknown', 'error_code' => ctype_digit($code) ? $code : 'provider_error'];
         } catch (\Throwable $e) {
-            // Never persist exception text, request bodies, tokens, or OTP codes.
+            // Never persist raw exceptions, credentials, phone numbers or message text.
             return ['status' => 'unknown', 'error_code' => 'connection_error'];
         }
     }

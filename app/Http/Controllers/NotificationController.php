@@ -67,8 +67,8 @@ class NotificationController extends Controller
                 $notification->subject = $request->subject;
                 $notification->message = $request->message;
                 $notification->enabled_email = isset($request->enabled_email) ? 1 : 0;
-                $notification->enabled_sms = $request->enabled_sms;
-                $notification->sms_message = $request->sms_message;
+                $notification->enabled_sms = 0;
+                $notification->sms_message = '';
                 $notification->parent_id = parentId();
                 $notification->save();
 
@@ -132,9 +132,8 @@ class NotificationController extends Controller
             $notification->subject = $request->subject;
             $notification->message = $request->message;
             $notification->enabled_email = $request->enabled_email;
-            $notification->enabled_sms = $request->enabled_sms;
-            $notification->sms_message = $request->sms_message;
-            $notification->enabled_whatsapp = $request->enabled_whatsapp ? 1 : 0;
+            $notification->enabled_sms = 0;
+            $notification->enabled_whatsapp = 0;
             $notification->save();
 
             return redirect()->route('notification.index')->with('success', __('Notification successfully updated.'));

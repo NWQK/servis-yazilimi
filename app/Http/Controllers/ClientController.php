@@ -237,12 +237,8 @@ class ClientController extends Controller
                 $r = commonEmailSend($user->email, $data);
                 if ($r['status'] == 'error') $errorMessage = $r['message'];
             }
-            if ($clientNotification->enabled_sms == 1 && !empty(getSettingsValByName('twilio_sid'))) {
-                send_twilio_msg($user->phone_number, $resp['sms_message']);
-            }
-            if ($clientNotification->enabled_whatsapp == 1 && !empty($user->phone_number)) {
-                sendWhatshappSms(['to' => $user->phone_number, 'body' => $resp['sms_message']]);
-            }
+
+
         }
         $vehicleNotification = Notification::where('parent_id', parentId())->where('module', 'vehicle_create')->first();
         if (!empty($vehicleNotification)) {
@@ -257,12 +253,8 @@ class ClientController extends Controller
                 $r = commonEmailSend($user->email, $data);
                 if ($r['status'] == 'error') $errorMessage = $r['message'];
             }
-            if ($vehicleNotification->enabled_sms == 1 && !empty(getSettingsValByName('twilio_sid'))) {
-                send_twilio_msg($user->phone_number, $resp['sms_message']);
-            }
-            if ($vehicleNotification->enabled_whatsapp == 1 && !empty($user->phone_number)) {
-                sendWhatshappSms(['to' => $user->phone_number, 'body' => $resp['sms_message']]);
-            }
+
+
         }
         triggerN8n('new_service', [
             'service_id'    => $service->id,
@@ -309,12 +301,8 @@ class ClientController extends Controller
                 $r = commonEmailSend($user->email, $data);
                 if ($r['status'] == 'error') $errorMessage = $r['message'];
             }
-            if ($serviceCreateNotif->enabled_sms == 1 && !empty(getSettingsValByName('twilio_sid'))) {
-                send_twilio_msg($user->phone_number, $resp['sms_message']);
-            }
-            if ($serviceCreateNotif->enabled_whatsapp == 1 && !empty($user->phone_number)) {
-                sendWhatshappSms(['to' => $user->phone_number, 'body' => $resp['sms_message']]);
-            }
+
+
         }
         $serviceAssignNotif = Notification::where('parent_id', parentId())->where('module', 'service_assign')->first();
         if (!empty($serviceAssignNotif)) {
@@ -326,12 +314,8 @@ class ClientController extends Controller
                     $r = commonEmailSend($assignUser->email, $data);
                     if ($r['status'] == 'error') $errorMessage = $r['message'];
                 }
-                if ($serviceAssignNotif->enabled_sms == 1 && !empty(getSettingsValByName('twilio_sid'))) {
-                    send_twilio_msg($assignUser->phone_number, $resp['sms_message']);
-                }
-                if ($serviceAssignNotif->enabled_whatsapp == 1 && !empty($assignUser->phone_number)) {
-                    sendWhatshappSms(['to' => $assignUser->phone_number, 'body' => $resp['sms_message']]);
-                }
+
+
             }
         }
         return redirect()->route('client.index')

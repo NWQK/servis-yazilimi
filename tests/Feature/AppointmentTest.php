@@ -30,9 +30,9 @@ class AppointmentTest extends TestCase
         $this->booking = app(AppointmentBooking::class);
         $this->profile = $this->booking->profileForOwner($this->owner->id);
         $this->profile->update(['is_active' => true, 'weekly_hours' => [5 => [8, 9, 10, 23]]]);
-        \App\Models\AppointmentSmsSetting::central()->update(['enabled' => true, 'account_sid' => 'AC'.str_repeat('a', 32),
-            'auth_token' => str_repeat('b', 32), 'from_number' => '+15005550006']);
-        \Illuminate\Support\Facades\Http::fake(['api.twilio.com/*' => \Illuminate\Support\Facades\Http::response(['sid' => 'SM'.str_repeat('c', 32)], 201)]);
+        \App\Models\AppointmentSmsSetting::central()->update(['enabled' => true, 'api_key' => str_repeat('a', 32),
+            'api_hash' => str_repeat('b', 32), 'sender' => 'SANAYI']);
+        \Illuminate\Support\Facades\Http::fake(['api.iletimerkezi.com/*' => \Illuminate\Support\Facades\Http::response(['response' => ['status' => ['code' => 200], 'order' => ['id' => '12345']]], 200)]);
     }
 
     protected function tearDown(): void
@@ -84,7 +84,7 @@ class AppointmentTest extends TestCase
         $challenge = \App\Models\AppointmentSmsChallenge::firstOrFail();
         $this->assertSame(0, Appointment::count());
         $smsRequest = \Illuminate\Support\Facades\Http::recorded()->first()[0];
-        preg_match('/\b(\d{6})\b/', $smsRequest['Body'], $match);
+        preg_match('/\b(\d{6})\b/', $smsRequest['request']['order']['message']['text'], $match);
         $this->post(route('booking.verify.submit', [$this->profile->public_id, $challenge->token]), ['code' => $match[1]])->assertRedirect();
         $appointment = Appointment::firstOrFail();
         $this->assertSame('+905551234567', $appointment->phone);
@@ -194,7 +194,7 @@ class AppointmentTest extends TestCase
     private function verificationCode(): string
     {
         $request = \Illuminate\Support\Facades\Http::recorded()->last()[0];
-        preg_match('/\b(\d{6})\b/', $request['Body'], $matches);
+        preg_match('/\b(\d{6})\b/', $request['request']['order']['message']['text'], $matches);
         return $matches[1];
     }
 
@@ -284,7 +284,7 @@ class AppointmentTest extends TestCase
         \Illuminate\Support\Facades\Http::assertNothingSent();
         $settings->update(['enabled' => true]);
         \Illuminate\Support\Facades\Http::swap(new \Illuminate\Http\Client\Factory());
-        \Illuminate\Support\Facades\Http::fake(['api.twilio.com/*' => \Illuminate\Support\Facades\Http::response(['code' => 21608], 400)]);
+        \Illuminate\Support\Facades\Http::fake(['api.iletimerkezi.com/*' => \Illuminate\Support\Facades\Http::response(['response' => ['status' => ['code' => 401]]], 200)]);
         $this->post($this->profile->publicUrl(), $this->data())->assertRedirect();
         $challenge = \App\Models\AppointmentSmsChallenge::firstOrFail();
         $this->assertSame('failed', $challenge->send_status);
@@ -314,15 +314,15 @@ class AppointmentTest extends TestCase
         $this->withoutMiddleware(\App\Http\Middleware\XSS::class);
         $this->get('/appointments/sms-settings')->assertOk()->assertDontSee(str_repeat('b', 32));
         $settings = \App\Models\AppointmentSmsSetting::central();
-        $data = $settings->only(['brand', 'account_sid', 'from_number', 'messaging_service_sid', 'daily_limit', 'verification_template', 'approval_template']);
+        $data = $settings->only(['brand', 'sender', 'daily_limit', 'verification_template', 'approval_template']);
         $data['enabled'] = 1;
-        $data['auth_token'] = '';
+        $data['api_hash'] = '';
         $this->post('/appointments/sms-settings', $data)->assertSessionHasNoErrors()->assertRedirect();
-        $this->assertSame(str_repeat('b', 32), $settings->fresh()->auth_token);
-        $this->assertNotSame(str_repeat('b', 32), DB::table('appointment_sms_settings')->value('auth_token'));
-        $this->post('/appointments/sms-settings', array_replace($data, ['auth_token' => 'secret-token-never-flashed', 'verification_template' => 'No code']))->assertSessionHasErrors('verification_template');
-        $this->assertFalse(session()->has('_old_input.auth_token'));
-        $this->assertSame(str_repeat('b', 32), $settings->fresh()->auth_token);
+        $this->assertSame(str_repeat('b', 32), $settings->fresh()->api_hash);
+        $this->assertNotSame(str_repeat('b', 32), DB::table('appointment_sms_settings')->value('api_hash'));
+        $this->post('/appointments/sms-settings', array_replace($data, ['api_hash' => 'secret-token-never-flashed', 'verification_template' => 'No code']))->assertSessionHasErrors('verification_template');
+        $this->assertFalse(session()->has('_old_input.api_hash'));
+        $this->assertSame(str_repeat('b', 32), $settings->fresh()->api_hash);
     }
 
     public function test_uncertain_approval_is_not_automatically_sent_twice()
@@ -330,11 +330,127 @@ class AppointmentTest extends TestCase
         $appointment = $this->booking->book($this->profile, $this->data(['phone' => '+905551234567']));
         $appointment->update(['phone_verified_at' => now()]);
         \Illuminate\Support\Facades\Http::swap(new \Illuminate\Http\Client\Factory());
-        \Illuminate\Support\Facades\Http::fake(['api.twilio.com/*' => \Illuminate\Support\Facades\Http::response([], 503)]);
+        \Illuminate\Support\Facades\Http::fake(['api.iletimerkezi.com/*' => \Illuminate\Support\Facades\Http::response([], 503)]);
         $this->actingAs($this->owner);
         for ($i = 0; $i < 2; $i++) $this->post('/appointments/'.$appointment->id.'/status', ['status' => 'approved'])->assertRedirect();
         \Illuminate\Support\Facades\Http::assertSentCount(1);
         $this->assertSame('unknown', \App\Models\AppointmentSmsMessage::first()->status);
         $this->assertSame('approved', $appointment->fresh()->status);
+    }
+
+    public function test_iletimerkezi_request_contract_and_encrypted_keys()
+    {
+        $result = app(\App\Services\AppointmentSmsGateway::class)->send('+905551234567', 'Randevu testi');
+        $this->assertSame('accepted', $result['status']);
+        $this->assertSame('12345', $result['provider_sid']);
+        \Illuminate\Support\Facades\Http::assertSent(function ($request) {
+            return $request->url() === 'https://api.iletimerkezi.com/v1/send-sms/json'
+                && $request['request']['authentication'] === ['key' => str_repeat('a', 32), 'hash' => str_repeat('b', 32)]
+                && $request['request']['order'] === ['sender' => 'SANAYI', 'iys' => '0', 'message' => [
+                    'text' => 'Randevu testi', 'receipents' => ['number' => ['905551234567']]]];
+        });
+        $this->assertNotSame(str_repeat('a', 32), DB::table('appointment_sms_settings')->value('api_key'));
+    }
+
+    /** @dataProvider providerResponses */
+    public function test_provider_failure_and_uncertainty($body, $http, $status, $error)
+    {
+        \Illuminate\Support\Facades\Http::swap(new \Illuminate\Http\Client\Factory());
+        \Illuminate\Support\Facades\Http::fake(fn () => \Illuminate\Support\Facades\Http::response($body, $http));
+        $result = app(\App\Services\AppointmentSmsGateway::class)->send('+905551234567', 'Test');
+        $this->assertSame($status, $result['status']);
+        $this->assertSame($error, $result['error_code']);
+        \Illuminate\Support\Facades\Http::assertSentCount(1);
+    }
+
+    public static function providerResponses(): array
+    {
+        return [
+            [['response'=>['status'=>['code'=>401]]], 200, 'failed', '401'],
+            [['response'=>['status'=>['code'=>450]]], 400, 'failed', '450'],
+            [['response'=>['status'=>['code'=>451]]], 200, 'unknown', '451'],
+            [['response'=>['status'=>['code'=>200]]], 200, 'unknown', '200'],
+            [[], 503, 'unknown', 'provider_error'],
+        ];
+    }
+
+    public function test_test_sender_cannot_open_booking_and_no_network_is_used()
+    {
+        \App\Models\AppointmentSmsSetting::central()->update(['sender'=>'APITEST']);
+        $this->post($this->profile->publicUrl(), $this->data())->assertSessionHasErrors('sms');
+        \Illuminate\Support\Facades\Http::assertNothingSent();
+    }
+
+    public function test_provider_error_is_retained_without_message_or_credentials()
+    {
+        \Illuminate\Support\Facades\Http::swap(new \Illuminate\Http\Client\Factory());
+        \Illuminate\Support\Facades\Http::fake(fn () => \Illuminate\Support\Facades\Http::response(['response'=>['status'=>['code'=>402, 'message'=>'private-data']]], 200));
+        $this->post($this->profile->publicUrl(), $this->data())->assertRedirect();
+        $challenge = \App\Models\AppointmentSmsChallenge::firstOrFail();
+        $this->assertSame('402', $challenge->error_code);
+        $this->assertSame('failed', $challenge->send_status);
+        $this->assertStringNotContainsString('private-data', json_encode($challenge->getAttributes()));
+    }
+
+    public function test_provider_migration_preserves_records_and_clears_old_credentials()
+    {
+        $appointment = $this->booking->book($this->profile, $this->data());
+        $before = $appointment->fresh()->getAttributes();
+        DB::table('appointment_sms_settings')->update(['api_key'=>null, 'api_hash'=>null, 'sender'=>null, 'enabled'=>true, 'account_sid'=>'old', 'auth_token'=>'old']);
+        $migration = require database_path('migrations/2026_09_26_000003_switch_sms_to_iletimerkezi.php');
+        $migration->up();
+        $settings = \App\Models\AppointmentSmsSetting::central();
+        $this->assertFalse($settings->enabled);
+        $this->assertNull($settings->getRawOriginal('auth_token'));
+        $this->assertSame($before, $appointment->fresh()->getAttributes());
+        $settings->update(['enabled'=>true, 'api_key'=>'new-key', 'api_hash'=>'new-hash', 'sender'=>'SANAYI']);
+        $migration->up();
+        $this->assertTrue($settings->fresh()->ready());
+    }
+
+    public function test_currency_is_fixed_for_all_settings_and_formatters()
+    {
+        $this->actingAs($this->owner);
+        foreach (['CURRENCY'=>'USD', 'CURRENCY_SYMBOL'=>'$'] as $key=>$value) {
+            DB::table('settings')->insert(['parent_id'=>$this->owner->id, 'type'=>'payment', 'name'=>$key, 'value'=>$value]);
+        }
+        foreach ([settings(), settingsById($this->owner->id), invoicePaymentSettings($this->owner->id), subscriptionPaymentSettings()] as $settings) {
+            $this->assertSame('TRY', $settings['CURRENCY']);
+            $this->assertSame('₺', $settings['CURRENCY_SYMBOL']);
+        }
+        $this->assertSame('1.234,50 ₺', priceFormat(1234.5));
+        $this->assertSame('1.234,50 ₺', settingPriceFormat(['CURRENCY_SYMBOL'=>'$'], 1234.5));
+        $this->withoutMiddleware(\App\Http\Middleware\XSS::class);
+        $this->post('/settings/payment', ['CURRENCY'=>'EUR', 'CURRENCY_SYMBOL'=>'€', 'stripe_payment'=>'on'])->assertSessionHasNoErrors();
+        $this->assertSame('TRY', DB::table('settings')->where('parent_id',$this->owner->id)->where('name','CURRENCY')->value('value'));
+        $this->assertSame(0, DB::table('settings')->where('name','STRIPE_PAYMENT')->count());
+        $this->post('/settings/company', ['company_name'=>'Servis', 'company_email'=>'test@example.test', 'company_phone'=>'123', 'company_address'=>'Test', 'CURRENCY'=>'EUR', 'CURRENCY_SYMBOL'=>'€'])->assertSessionHasNoErrors();
+        $this->assertSame('₺', DB::table('settings')->where('parent_id',$this->owner->id)->where('name','CURRENCY_SYMBOL')->value('value'));
+    }
+
+    public function test_retired_gateway_routes_are_absent_and_sms_placeholder_is_visible()
+    {
+        foreach (app('router')->getRoutes() as $route) {
+            $this->assertDoesNotMatchRegularExpression('/stripe|paypal|flutterwave|razorpay|paystack|twilio/i', $route->uri());
+        }
+        $this->actingAs($this->owner)->withoutMiddleware(\App\Http\Middleware\XSS::class);
+        $this->get('/settings')->assertOk()->assertSee('SMS Sistemi')->assertSee('yakında')
+            ->assertDontSee('name="CURRENCY"',false)->assertDontSee('name="CURRENCY_SYMBOL"',false)
+            ->assertDontSee('stripe_payment')->assertDontSee('Twilio');
+    }
+
+    public function test_currency_migration_preserves_bank_settings()
+    {
+        DB::table('settings')->insert([
+            ['parent_id'=>$this->owner->id,'name'=>'CURRENCY','value'=>'USD'],
+            ['parent_id'=>$this->owner->id,'name'=>'STRIPE_KEY','value'=>'retired'],
+            ['parent_id'=>$this->owner->id,'name'=>'bank_name','value'=>'Test banka'],
+        ]);
+        $migration=require database_path('migrations/2026_09_26_000004_standardize_currency_and_retire_gateways.php');
+        $migration->up();
+        $migration->up();
+        $this->assertSame('TRY',DB::table('settings')->where('name','CURRENCY')->value('value'));
+        $this->assertSame('Test banka',DB::table('settings')->where('name','bank_name')->value('value'));
+        $this->assertSame(0,DB::table('settings')->where('name','STRIPE_KEY')->count());
     }
 }

@@ -7,8 +7,8 @@ class AppointmentSmsSetting extends Model
 {
     public $incrementing = false;
     protected $guarded = [];
-    protected $hidden = ['auth_token'];
-    protected $casts = ['enabled' => 'boolean', 'auth_token' => 'encrypted'];
+    protected $hidden = ['auth_token', 'api_key', 'api_hash'];
+    protected $casts = ['enabled' => 'boolean', 'api_key' => 'encrypted', 'api_hash' => 'encrypted'];
 
     public static function central(): self
     {
@@ -25,7 +25,7 @@ class AppointmentSmsSetting extends Model
 
     public function ready(): bool
     {
-        return $this->enabled && $this->account_sid && $this->auth_token && ($this->from_number || $this->messaging_service_sid);
+        return $this->enabled && $this->api_key && $this->api_hash && $this->sender && strtoupper($this->sender) !== 'APITEST';
     }
 
     public function renderMessage(string $template, array $values): string

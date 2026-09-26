@@ -198,17 +198,9 @@ class UserController extends Controller
                         }
                     }
                     if ($notification->enabled_sms == 1) {
-                        $twilio_sid = getSettingsValByName('twilio_sid');
-                        if (!empty($twilio_sid)) {
-                            send_twilio_msg($user->phone_number, $notification_responce['sms_message']);
-                        }
+
                     }
-                    if ($notification->enabled_whatsapp == 1 && !empty($user->phone_number)) {
-                        sendWhatshappSms([
-                            'to' => $user->phone_number,
-                            'body' => $notification_responce['sms_message']
-                        ]);
-                    }
+
                 }
 
                 return redirect()->route('users.index')->with('success', __('User successfully created.') . '</br>' . $errorMessage);

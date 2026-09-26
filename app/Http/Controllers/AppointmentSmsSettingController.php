@@ -15,8 +15,9 @@ class AppointmentSmsSettingController extends Controller
     {
         $this->authorizeAdmin();
         $smsSettings = AppointmentSmsSetting::central();
+        $challenges = \App\Models\AppointmentSmsChallenge::latest('id')->limit(20)->get();
         $messages = AppointmentSmsMessage::with('appointment.profile')->latest('id')->paginate(20);
-        return view('appointments.sms-settings', compact('smsSettings', 'messages'));
+        return view('appointments.sms-settings', compact('smsSettings', 'messages', 'challenges'));
     }
 
     public function save(Request $request)
@@ -24,13 +25,11 @@ class AppointmentSmsSettingController extends Controller
         $this->authorizeAdmin();
         $data = $request->validate([
             'enabled' => 'required|boolean', 'brand' => 'required|string|max:80',
-            'account_sid' => ['nullable', 'regex:/^AC[a-f0-9]{32}$/i'],
-            'auth_token' => 'nullable|string|min:16|max:200',
-            'from_number' => ['nullable', 'regex:/^\+[1-9]\d{7,14}$/'],
-            'messaging_service_sid' => ['nullable', 'regex:/^MG[a-f0-9]{32}$/i'],
+            'api_key' => 'nullable|string|max:200', 'api_hash' => 'nullable|string|max:200',
+            'sender' => 'nullable|string|max:11',
             'daily_limit' => 'required|integer|min:1|max:10000',
             'verification_template' => 'required|string|max:480', 'approval_template' => 'required|string|max:480',
-        ], [], ['auth_token' => 'Auth Token', 'account_sid' => 'Account SID', 'daily_limit' => 'Günlük doğrulama SMS sınırı']);
+        ], [], ['api_key' => 'API Anahtarı', 'api_hash' => 'API Hash', 'daily_limit' => 'Günlük doğrulama SMS sınırı']);
         foreach (['verification_template' => ['kod', 'isletme', 'marka'], 'approval_template' => ['isletme', 'tarih', 'saat', 'marka']] as $field => $allowed) {
             preg_match_all('/\{([^{}]+)\}/u', $data[$field], $matches);
             if (array_diff($matches[1], $allowed)) throw ValidationException::withMessages([$field => 'Şablonda desteklenmeyen bir değişken var.']);
@@ -42,9 +41,11 @@ class AppointmentSmsSettingController extends Controller
         AppointmentSmsSetting::central();
         DB::transaction(function () use ($data) {
             $settings = AppointmentSmsSetting::lockForUpdate()->findOrFail(1);
-            if (empty($data['auth_token'])) unset($data['auth_token']);
+            foreach (['api_key', 'api_hash'] as $secret) {
+                if (empty($data[$secret])) unset($data[$secret]);
+            }
             $settings->fill($data);
-            if ($settings->enabled && !$settings->ready()) throw ValidationException::withMessages(['enabled' => 'Etkinleştirmek için Account SID, Auth Token ve gönderici numarası veya Messaging Service SID girin.']);
+            if ($settings->enabled && !$settings->ready()) throw ValidationException::withMessages(['enabled' => 'Etkinleştirmek için API Anahtarı, API Hash ve onaylı gönderici başlığını girin. APITEST başlığı doğrulama kodunu değiştirdiği için kullanılamaz.']);
             $settings->save();
         });
         return back()->with('success', 'Merkezi randevu SMS ayarları kaydedildi.');

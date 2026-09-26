@@ -8,7 +8,6 @@ use App\Models\PackageTransaction;
 use App\Models\Subscription;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
-use Stripe;
 
 class SubscriptionController extends Controller
 {
@@ -159,82 +158,5 @@ class SubscriptionController extends Controller
         }
     }
 
-    public function stripePayment(Request $request, $ids)
-    {
-        if (\Auth::user()->can('buy pricing packages')) {
-            $settings = subscriptionPaymentSettings();
-            $authUser = \Auth::user();
-            $id = \Illuminate\Support\Facades\Crypt::decrypt($ids);
-            $subscription = Subscription::find($id);
-            if ($subscription) {
-                try {
-                    $amount = Coupon::couponApply($id, $request->coupon);
-                    $packageTransId = uniqid('', true);
-                    if ($amount > 0) {
-                        Stripe\Stripe::setApiKey($settings['STRIPE_SECRET']);
-                        $data = Stripe\Charge::create(
-                            [
-                                "amount" => 100 * $amount,
-                                "currency" => $settings['CURRENCY'],
-                                "source" => $request->stripeToken,
-                                "description" => " Subscription - " . $subscription->name,
-                                "metadata" => ["package_transaction_id" => $packageTransId],
-                                'shipping' => [
-                                    'name' => $request->name,
-                                    'address' => [
-                                        'line1' => $request->state ?? 'NA',
-                                        'city' => $request->city ?? 'NA',
-                                        'postal_code' => $request->zipcode ?? '000000',
-                                        'country' => $request->country ?? 'NA',
-                                    ]
-                                ],
 
-                            ]
-                        );
-                    } else {
-                        $data['amount_refunded'] = 0;
-                        $data['failure_code'] = '';
-                        $data['paid'] = 1;
-                        $data['captured'] = 1;
-                        $data['status'] = 'succeeded';
-                    }
-
-                    if ($data['amount_refunded'] == 0 && empty($data['failure_code']) && $data['paid'] == 1 && $data['captured'] == 1) {
-
-                        if ($data['status'] == 'succeeded') {
-                            $data['holder_name'] = $request->name;
-                            $data['subscription_id'] = $subscription->id;
-                            $data['amount'] = $amount;
-                            $data['subscription_transactions_id'] = $packageTransId;
-                            $data['payment_type'] = 'Stripe';
-                            PackageTransaction::transactionData($data);
-
-                            if ($subscription->couponCheck() > 0 && !empty($request->coupon)) {
-                                $couhis['coupon'] = $request->coupon;
-                                $couhis['package'] = $subscription->id;
-                                CouponHistory::couponData($couhis);
-                            }
-
-                            $assignPlan = assignSubscription($subscription->id);
-                            if ($assignPlan['is_success']) {
-                                return redirect()->route('subscriptions.index')->with('success', __('Subscription activate successfully.'));
-                            } else {
-                                return redirect()->route('subscriptions.index')->with('error', __($assignPlan['error']));
-                            }
-                        } else {
-                            return redirect()->route('subscriptions.index')->with('error', __('Your payment failed.'));
-                        }
-                    } else {
-                        return redirect()->route('subscriptions.index')->with('error', __('Transaction failed.'));
-                    }
-                } catch (\Exception $e) {
-                    return redirect()->route('subscriptions.index')->with('error', __($e->getMessage()));
-                }
-            } else {
-                return redirect()->route('subscriptions.index')->with('error', __('Subscription is not found.'));
-            }
-        } else {
-            return redirect()->back()->with('error', __('Permission denied.'));
-        }
-    }
 }

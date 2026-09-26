@@ -184,17 +184,9 @@ class ServiceController extends Controller
                     }
                 }
                 if ($notification->enabled_sms == 1) {
-                    $twilio_sid = getSettingsValByName('twilio_sid');
-                    if (!empty($twilio_sid)) {
-                        send_twilio_msg($service->clients->phone_number, $notificationResponse['sms_message']);
-                    }
+
                 }
-                if ($notification->enabled_whatsapp == 1 && !empty($service->clients->phone_number)) {
-                    sendWhatshappSms([
-                        'to' => $service->clients->phone_number,
-                        'body' => $notificationResponse['sms_message']
-                    ]);
-                }
+
             }
 
 
@@ -219,17 +211,9 @@ class ServiceController extends Controller
                     }
                 }
                 if ($notification->enabled_sms == 1) {
-                    $twilio_sid = getSettingsValByName('twilio_sid');
-                    if (!empty($twilio_sid)) {
-                        send_twilio_msg($service->assigns->phone_number, $notificationResponse['sms_message']);
-                    }
+
                 }
-                if ($notification->enabled_whatsapp == 1 && !empty($service->assigns->phone_number)) {
-                    sendWhatshappSms([
-                        'to' => $service->assigns->phone_number,
-                        'body' => $notificationResponse['sms_message']
-                    ]);
-                }
+
             }
 
             return redirect()->route('service.index')->with('success', __('Service successfully created.') . '' . $errorMessage);

@@ -297,274 +297,27 @@ class SettingController extends Controller
 
 
 
-   public function paymentData(Request $request)
+    public function paymentData(Request $request)
     {
-        $validator = \Validator::make(
-            $request->all(),
-            [
-                'CURRENCY' => 'required',
-                'CURRENCY_SYMBOL' => 'required',
-            ]
-        );
-        if ($validator->fails()) {
-            $messages = $validator->getMessageBag();
-            return redirect()->back()->with('error', $messages->first());
-        }
-
-        $currencyArray = [
-            'CURRENCY' => $request->CURRENCY,
-            'CURRENCY_SYMBOL' => $request->CURRENCY_SYMBOL,
-            'bank_transfer_payment' => $request->bank_transfer_payment ?? 'off',
-            'STRIPE_PAYMENT' => $request->stripe_payment ?? 'off',
-            'paypal_payment' => $request->paypal_payment ?? 'off',
-            'flutterwave_payment' => $request->flutterwave_payment ?? 'off',
-            'paystack_payment' => $request->paystack_payment ?? 'off',
-            'razorpay_payment' => $request->razorpay_payment ?? 'off',
-        ];
-        foreach ($currencyArray as $key => $val) {
-            if (!empty($val)) {
-
-                \DB::insert(
-                    'insert into settings (`value`, `name`, `type`,`parent_id`) values (?, ?, ?,?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`) ',
-                    [
-                        $val,
-                        $key,
-                        'payment',
-                        parentId(),
-                    ]
-                );
+        abort_unless(auth()->check() && auth()->user()->can('manage payment settings'), 403);
+        $data = $request->validate([
+            'bank_transfer_payment' => 'nullable|in:on,off',
+            'bank_name' => 'required_if:bank_transfer_payment,on|nullable|string|max:255',
+            'bank_holder_name' => 'required_if:bank_transfer_payment,on|nullable|string|max:255',
+            'bank_account_number' => 'required_if:bank_transfer_payment,on|nullable|string|max:255',
+            'bank_ifsc_code' => 'nullable|string|max:255',
+            'bank_other_details' => 'nullable|string|max:2000',
+        ]);
+        $data['bank_transfer_payment'] = $data['bank_transfer_payment'] ?? 'off';
+        $data['CURRENCY'] = 'TRY';
+        $data['CURRENCY_SYMBOL'] = '₺';
+        \DB::transaction(function () use ($data) {
+            foreach ($data as $key => $value) {
+                \DB::table('settings')->updateOrInsert(['name'=>$key, 'parent_id'=>parentId()], ['value'=>$value ?? '', 'type'=>'payment']);
             }
-        }
-
-        //        For Bank Transfer Settings
-        if (isset($request->bank_transfer_payment)) {
-            $validator = \Validator::make(
-                $request->all(),
-                [
-                    'bank_name' => 'required',
-                    'bank_holder_name' => 'required',
-                    'bank_account_number' => 'required',
-                    'bank_ifsc_code' => 'required',
-                ]
-            );
-            if ($validator->fails()) {
-                $messages = $validator->getMessageBag();
-                return redirect()->back()->with('error', $messages->first());
-            }
-
-            $bankArray = [
-                'bank_transfer_payment' => $request->bank_transfer_payment ?? 'off',
-                'bank_name' => $request->bank_name,
-                'bank_holder_name' => $request->bank_holder_name,
-                'bank_account_number' => $request->bank_account_number,
-                'bank_ifsc_code' => $request->bank_ifsc_code,
-                'bank_other_details' => !empty($request->bank_other_details) ? $request->bank_other_details : '',
-            ];
-
-            foreach ($bankArray as $key => $val) {
-                if (!empty($val)) {
-
-                    \DB::insert(
-                        'insert into settings (`value`, `name`, `type`,`parent_id`) values (?, ?, ?,?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`) ',
-                        [
-                            $val,
-                            $key,
-                            'payment',
-                            parentId(),
-                        ]
-                    );
-                }
-            }
-        }
-
-        // For Strip Settings
-        if (isset($request->stripe_payment)) {
-            $validator = \Validator::make(
-                $request->all(),
-                [
-                    'stripe_key' => 'required',
-                    'stripe_secret' => 'required',
-                ]
-            );
-            if ($validator->fails()) {
-                $messages = $validator->getMessageBag();
-                return redirect()->back()->with('error', $messages->first());
-            }
-
-            $stripeArray = [
-                'STRIPE_PAYMENT' => $request->stripe_payment ?? 'off',
-                'STRIPE_KEY' => $request->stripe_key,
-                'STRIPE_SECRET' => $request->stripe_secret,
-            ];
-
-            foreach ($stripeArray as $key => $val) {
-                if (!empty($val)) {
-
-                    \DB::insert(
-                        'insert into settings (`value`, `name`, `type`,`parent_id`) values (?, ?, ?,?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`) ',
-                        [
-                            $val,
-                            $key,
-                            'payment',
-                            parentId(),
-                        ]
-                    );
-                }
-            }
-        }
-
-
-        // For Paypal Settings
-        if (isset($request->paypal_payment)) {
-            $validator = \Validator::make(
-                $request->all(),
-                [
-                    'paypal_mode' => 'required',
-                    'paypal_client_id' => 'required',
-                    'paypal_secret_key' => 'required',
-                ]
-            );
-            if ($validator->fails()) {
-                $messages = $validator->getMessageBag();
-                return redirect()->back()->with('error', $messages->first());
-            }
-
-            $paypalArray = [
-                'paypal_payment' => $request->paypal_payment ?? 'off',
-                'paypal_mode' => $request->paypal_mode,
-                'paypal_client_id' => $request->paypal_client_id,
-                'paypal_secret_key' => $request->paypal_secret_key,
-            ];
-
-            foreach ($paypalArray as $key => $val) {
-                if (!empty($val)) {
-
-                    \DB::insert(
-                        'insert into settings (`value`, `name`, `type`,`parent_id`) values (?, ?, ?,?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`) ',
-                        [
-                            $val,
-                            $key,
-                            'payment',
-                            parentId(),
-                        ]
-                    );
-                }
-            }
-        }
-
-
-        // For Flutterwave Settings
-        if (isset($request->flutterwave_payment)) {
-            $validator = \Validator::make(
-                $request->all(),
-                [
-                    'flutterwave_public_key' => 'required',
-                    'flutterwave_secret_key' => 'required',
-                ]
-            );
-            if ($validator->fails()) {
-                $messages = $validator->getMessageBag();
-                return redirect()->back()->with('error', $messages->first());
-            }
-
-            $flutterwaveArray = [
-                'flutterwave_payment' => $request->flutterwave_payment ?? 'off',
-                'flutterwave_public_key' => $request->flutterwave_public_key,
-                'flutterwave_secret_key' => $request->flutterwave_secret_key,
-            ];
-
-            foreach ($flutterwaveArray as $key => $val) {
-                if (!empty($val)) {
-
-                    \DB::insert(
-                        'insert into settings (`value`, `name`, `type`,`parent_id`) values (?, ?, ?,?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`) ',
-                        [
-                            $val,
-                            $key,
-                            'payment',
-                            parentId(),
-                        ]
-                    );
-                }
-            }
-        }
-        // For paystack Settings
-        if (isset($request->paystack_payment)) {
-            $validator = \Validator::make(
-                $request->all(),
-                [
-                    'paystack_public_key' => 'required',
-                    'paystack_secret_key' => 'required',
-                ]
-            );
-            if ($validator->fails()) {
-                $messages = $validator->getMessageBag();
-                return redirect()->back()->with('error', $messages->first());
-            }
-
-            $paystackArray = [
-                'paystack_payment' => $request->paystack_payment ?? 'off',
-                'paystack_public_key' => $request->paystack_public_key,
-                'paystack_secret_key' => $request->paystack_secret_key,
-            ];
-
-            foreach ($paystackArray as $key => $val) {
-                if (!empty($val)) {
-
-                    \DB::insert(
-                        'insert into settings (`value`, `name`, `type`,`parent_id`) values (?, ?, ?,?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`) ',
-                        [
-                            $val,
-                            $key,
-                            'payment',
-                            parentId(),
-                        ]
-                    );
-                }
-            }
-        }
-
-        if (isset($request->razorpay_payment)) {
-            $validator = \Validator::make(
-                $request->all(),
-                [
-                    'razorpay_public_key' => 'required',
-                    'razorpay_secret_key' => 'required',
-                ]
-            );
-            if ($validator->fails()) {
-                $messages = $validator->getMessageBag();
-                return redirect()->back()->with('error', $messages->first());
-            }
-
-            $razorpayArray = [
-                'razorpay_payment' => $request->razorpay_payment ?? 'off',
-                'razorpay_public_key' => $request->razorpay_public_key,
-                'razorpay_secret_key' => $request->razorpay_secret_key,
-            ];
-
-            foreach ($razorpayArray as $key => $val) {
-                if (!empty($val)) {
-
-                    \DB::insert(
-                        'insert into settings (`value`, `name`, `type`,`parent_id`) values (?, ?, ?,?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`) ',
-                        [
-                            $val,
-                            $key,
-                            'payment',
-                            parentId(),
-                        ]
-                    );
-                }
-            }
-        }
-
-        return redirect()->back()->with('success', __('Payment successfully saved.'))->with('tab', 'payment_settings');
+        });
+        return back()->with('success', __('Payment successfully saved.'))->with('tab', 'payment_settings');
     }
-
-    //    ---------------------- Company  --------------------------------------------------------
-
-
 
     public function companyData(Request $request)
     {
@@ -588,11 +341,12 @@ class SettingController extends Controller
         }
 
         $settings = array_replace($request->all(), [
-            'timezone' => 'Europe/Istanbul', 'company_date_format' => 'd M Y', 'company_time_format' => 'H:i',
+            'CURRENCY' => 'TRY', 'CURRENCY_SYMBOL' => '₺', 'timezone' => 'Europe/Istanbul', 'company_date_format' => 'd M Y', 'company_time_format' => 'H:i',
         ]);
         unset($settings['_token']);
 
         foreach ($settings as $key => $val) {
+            if (preg_match('/^(stripe|paypal|flutterwave|razorpay|paystack|twilio)_/i', $key)) continue;
             if (!empty($val)) {
 
                 \DB::table('settings')->updateOrInsert(
@@ -676,6 +430,7 @@ class SettingController extends Controller
         }
         unset($settings['meta_seo_image']);
         foreach ($settings as $key => $val) {
+            if (preg_match('/^(stripe|paypal|flutterwave|razorpay|paystack|twilio)_/i', $key)) continue;
             if (!empty($val)) {
 
                 \DB::insert(
@@ -793,35 +548,6 @@ class SettingController extends Controller
         }
 
         throw ValidationException::withMessages(['otp' => 'Incorrect value. Please try again...']);
-    }
-
-    // ---------------------- Twilio Setting --------------------------------
-     public function twilio(Request $request)
-    {
-        if (!Auth::check()) {
-            return redirect()->back()->with('error', __('Permission Denied.'));
-        }
-
-        $validator = \Validator::make($request->all(), [
-            'twilio_sid' => 'required',
-            'twilio_token' => 'required',
-            'twilio_from_number' => 'required',
-            'twilio_whatsapp_number' => 'required',
-        ]);
-
-        if ($validator->fails()) {
-            return redirect()->back()->with('error', $validator->messages()->first());
-        }
-
-        foreach (['twilio_sid', 'twilio_token', 'twilio_from_number', 'twilio_whatsapp_number'] as $key) {
-            \DB::insert(
-                'INSERT INTO settings (`value`, `name`, `parent_id`) VALUES (?, ?, ?)
-            ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)',
-                [$request->$key, $key, parentId()]
-            );
-        }
-
-        return redirect()->back()->with('success', __('twilio settings updated successfully.'))->with('tab', 'twilio');
     }
 
     public function openai(Request $request)

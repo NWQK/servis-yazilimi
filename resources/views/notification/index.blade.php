@@ -39,8 +39,6 @@
                                     <th>{{ __('Module') }}</th>
                                     <th>{{ __('Subject') }}</th>
                                     <th>{{ __('Email Enable') }}</th>
-                                    <th>{{ __('Enabled_Whatsapp') }}</th>
-                                    <th>{{ __('SMS Enable') }}</th>
                                     @if (Gate::check('edit notification') || Gate::check('delete notification'))
                                         <th>{{ __('Action') }}</th>
                                     @endif
@@ -57,21 +55,6 @@
                                             @else
                                                 <span class="d-inline badge text-bg-danger">{{ __('Disable') }}</span>
                                             @endif
-                                        </td>
-                                        <td>
-                                            @if ($item->enabled_whatsapp == 1)
-                                                <span class="d-inline badge text-bg-success">{{ __('Enable') }}</span>
-                                            @else
-                                                <span class="d-inline badge text-bg-danger">{{ __('Disable') }}</span>
-                                            @endif
-                                        </td>
-                                        <td>
-                                            @if ($item->enabled_sms == 1)
-                                                <span class="d-inline badge text-bg-success">{{ __('Enable') }}</span>
-                                            @else
-                                                <span class="d-inline badge text-bg-danger">{{ __('Disable') }}</span>
-                                            @endif
-
                                         </td>
                                         @if (Gate::check('edit notification') || Gate::check('delete notification'))
                                             <td>

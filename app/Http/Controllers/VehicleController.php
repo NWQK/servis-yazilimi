@@ -115,17 +115,9 @@ class VehicleController extends Controller
                     }
                 }
                 if ($notification->enabled_sms == 1) {
-                    $twilio_sid = getSettingsValByName('twilio_sid');
-                    if (!empty($twilio_sid)) {
-                        send_twilio_msg($vehicle->clients->phone_number, $notificationResponse['sms_message']);
-                    }
+
                 }
-                if ($notification->enabled_whatsapp == 1 && !empty($vehicle->clients->phone_number)) {
-                    sendWhatshappSms([
-                        'to' => $vehicle->clients->phone_number,
-                        'body' => $notificationResponse['sms_message']
-                    ]);
-                }
+
             }
             return redirect()->route('vehicle.index')->with('success', __('Vehicle successfully created.') . '</br>' . $errorMessage);
         } else {
