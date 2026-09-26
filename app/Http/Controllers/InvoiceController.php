@@ -64,6 +64,7 @@ class InvoiceController extends Controller
                 $request->all(),
                 [
                     'invoice_date' => 'required',
+                    'discount_amount' => Invoice::DISCOUNT_RULE,
                     'client' => 'required',
                     'service' => ['required', \Illuminate\Validation\Rule::exists('services', 'id')->where('parent_id', parentId())->where('client', $request->client)],
                 ]
@@ -77,6 +78,7 @@ class InvoiceController extends Controller
             $invoice = new Invoice();
             $invoice->invoice_id = $this->invoiceNumber();
             $invoice->invoice_date = $request->invoice_date;
+            if ($request->exists('discount_amount')) $invoice->discount_amount = $request->discount_amount ?? 0;
             $invoice->client = $request->client;
             $invoice->service = $request->service;
             $invoice->external_labor_amount = Service::where('parent_id', parentId())->findOrFail($request->service)->external_labor_amount;
@@ -225,6 +227,7 @@ class InvoiceController extends Controller
                 $request->all(),
                 [
                     'invoice_date' => 'required',
+                    'discount_amount' => Invoice::DISCOUNT_RULE,
                     'client' => 'required',
                     'service' => ['required', \Illuminate\Validation\Rule::exists('services', 'id')->where('parent_id', parentId())->where('client', $request->client)],
                 ]
@@ -242,6 +245,7 @@ class InvoiceController extends Controller
                 $invoice->service = $request->service;
                 $invoice->external_labor_amount = Service::where('parent_id', parentId())->findOrFail($request->service)->external_labor_amount;
                 $invoice->invoice_date = $request->invoice_date;
+            if ($request->exists('discount_amount')) $invoice->discount_amount = $request->discount_amount ?? 0;
                 $invoice->save();
             $existingTypeIds = InvoiceService::where('invoice_id', $invoice->id)->pluck('id')->toArray();
             $updatedTypeIds = [];

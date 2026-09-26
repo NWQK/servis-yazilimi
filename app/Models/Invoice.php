@@ -8,10 +8,13 @@ use Illuminate\Database\Eloquent\Model;
 class Invoice extends Model
 {
     use HasFactory;
-    protected $casts = ['external_labor_amount' => 'decimal:2'];
+    protected $casts = ['external_labor_amount' => 'decimal:2', 'discount_amount' => 'decimal:2'];
+
+    public const DISCOUNT_RULE = 'nullable|numeric|min:0|max:9999999999.99|regex:/^\d+(\.\d{1,2})?$/';
 
     protected $fillable = [
         'external_labor_amount',
+        'discount_amount',
         'invoice_id',
         'client',
         'service',
@@ -118,7 +121,17 @@ class Invoice extends Model
 
     public function getInvoiceAllTotalAmount()
     {
-        return ($this->getInvoiceServiceAmount() + $this->getInvoiceItemAmount());
+        return round(max(0, $this->getInvoiceGrossAmount() - $this->getInvoiceDiscountAmount()), 2);
+    }
+
+    public function getInvoiceGrossAmount()
+    {
+        return round($this->getInvoiceServiceAmount() + $this->getInvoiceItemAmount(), 2);
+    }
+
+    public function getInvoiceDiscountAmount()
+    {
+        return round(min(max(0, (float) $this->discount_amount), max(0, $this->getInvoiceGrossAmount())), 2);
     }
 
     public function getInvoiceTotalDueAmount()

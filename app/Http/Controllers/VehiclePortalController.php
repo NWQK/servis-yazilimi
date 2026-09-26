@@ -97,9 +97,11 @@ class VehiclePortalController extends Controller
             $line['tax'] = $line['subtotal'] * $rate / 100;
             return $line;
         });
-        $total = $lines->sum('subtotal') + $lines->sum('tax');
+        $gross = round($lines->sum('subtotal') + $lines->sum('tax'), 2);
+        $discount = min(max(0, (float) $invoice->discount_amount), max(0, $gross));
+        $total = round(max(0, $gross - $discount), 2);
         $paid = $invoice->payments->sum('amount');
         $settings = $this->displaySettings($parentId);
-        return $this->page('vehicle_portal.invoice', compact('code', 'vehicle', 'invoice', 'lines', 'total', 'paid', 'settings'));
+        return $this->page('vehicle_portal.invoice', compact('code', 'vehicle', 'invoice', 'lines', 'total', 'discount', 'paid', 'settings'));
     }
 }

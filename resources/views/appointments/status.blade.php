@@ -12,7 +12,7 @@
 @endswitch</p></div>
 <section class="booking-panel"><h2>{{ dateFormat($appointment->starts_at) }}</h2><p class="booking-status-time">{{ timeFormat($appointment->starts_at) }}–{{ timeFormat($appointment->ends_at) }}</p><p>{{ $profile->display_name }}</p>
     <hr><label for="status-link">Kişisel takip bağlantınız</label><input id="status-link" readonly value="{{ $appointment->statusUrl() }}">
-    <p class="booking-muted">Bu sayfayı yer imlerine ekleyebilir veya bağlantısını saklayabilirsiniz. SMS gönderilmiyor. Bu bağlantıya sahip olanlar randevu durumunuzu görebilir.</p>
+    <p class="booking-muted">Bu sayfayı yer imlerine ekleyebilir veya bağlantısını saklayabilirsiniz. Randevunuzun güncel durumunu buradan takip edebilirsiniz. Bu bağlantıya sahip olanlar randevu durumunuzu görebilir.</p>
     <a class="booking-button" href="{{ route('booking.status', [$profile->public_id, $appointment->public_token]) }}">Durumu yenile</a> <a class="booking-secondary" href="{{ route('booking.show', $profile->public_id) }}">Randevu sayfasına dön</a>
 </section>
 @endsection

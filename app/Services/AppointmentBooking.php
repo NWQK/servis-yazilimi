@@ -10,6 +10,8 @@ use Illuminate\Validation\ValidationException;
 
 class AppointmentBooking
 {
+    public const BOOKING_WINDOW_DAYS = 7;
+
     public function profileForOwner(int $ownerId): AppointmentProfile
     {
         return DB::transaction(function () use ($ownerId) {
@@ -31,7 +33,7 @@ class AppointmentBooking
     public function availableHours(AppointmentProfile $profile, string $date): array
     {
         $day = CarbonImmutable::createFromFormat('!Y-m-d', $date, 'Europe/Istanbul');
-        if (!$profile->is_active || $day->lt(today()) || $day->gt(today()->addDays(90))) return [];
+        if (!$profile->is_active || $day->lt(today()) || $day->gt(today()->addDays(self::BOOKING_WINDOW_DAYS))) return [];
         $reserved = $profile->appointments()->whereNotNull('occupied_at')->whereDate('occupied_at', $date)
             ->get()->map(fn ($appointment) => (int) $appointment->starts_at->format('G'))->all();
         return array_values(array_filter($profile->weekly_hours[$day->isoWeekday()] ?? [],
@@ -79,6 +81,7 @@ class AppointmentBooking
             else $appointment->occupied_at = null;
             if ($status === 'completed') $appointment->completed_at = now();
             $appointment->save();
+            if ($status === 'approved') app(AppointmentSms::class)->queueApproval($appointment);
             return $appointment;
         });
     }

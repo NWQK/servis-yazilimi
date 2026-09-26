@@ -474,4 +474,47 @@ class InventoryAccountingTest extends TestCase
         $this->post('/invoice/item/destroy', ['id' => $line->id])->assertRedirect();
         $this->assertSame(5, (int) $item->fresh()->quantity);
     }
+
+    public function test_invoice_discount_updates_totals_portal_and_paid_income_without_stock_changes()
+    {
+        $item = $this->purchase(5);
+        $vehicle = Vehicle::create(['parent_id' => $this->owner->id, 'client' => $this->owner->id, 'license_plate' => '34 IND 01']);
+        $service = Service::create(['parent_id' => $this->owner->id, 'vehicle' => $vehicle->id, 'client' => $this->owner->id, 'external_labor_amount' => 100]);
+        $data = ['invoice_date' => now()->toDateString(), 'client' => $this->owner->id, 'service' => $service->id,
+            'item' => [$item->id], 'quantity' => [2], 'types' => [], 'discount_amount' => '50.25'];
+        $this->post('/invoice', $data)->assertRedirect()->assertSessionMissing('error');
+        $invoice = Invoice::firstOrFail();
+        $this->assertEquals(700, $invoice->getInvoiceGrossAmount());
+        $this->assertEquals(649.75, $invoice->getInvoiceAllTotalAmount());
+        $this->assertEquals(649.75, $invoice->getInvoiceTotalDueAmount());
+        $this->assertSame(0, $invoice->payments()->count());
+        $this->get('/invoice/'.encrypt($invoice->id).'/edit')->assertOk()->assertSee('name="discount_amount"', false)->assertSee('50.25');
+        $this->get('/invoice/'.encrypt($invoice->id))->assertOk()->assertSee('İndirim')->assertSee('649,75');
+        $pool = app(\App\Services\VehicleQrPool::class);
+        $pool->replenish($this->owner->id);
+        $code = \App\Models\VehicleQrCode::available()->first();
+        $pool->markPrinted($this->owner->id, [$code->id]);
+        $pool->assignExisting($this->owner->id, $vehicle->id, $code->id);
+        $this->get('/q/'.$code->token.'/invoice/'.$invoice->id)->assertOk()->assertSee('İndirim')->assertViewHas('total', 649.75)->assertViewHas('discount', 50.25);
+        DB::table('invoice_payments')->insert(['invoice_id' => $invoice->id, 'parent_id' => $this->owner->id, 'amount' => 649.75, 'payment_date' => now()->toDateString()]);
+        $data['item_id'] = [$invoice->items()->first()->id];
+        $data['discount_amount'] = '100.50';
+        for ($i = 0; $i < 2; $i++) $this->put('/invoice/'.encrypt($invoice->id), $data)->assertRedirect()->assertSessionMissing('error');
+        $this->assertEquals(599.50, $invoice->fresh()->getInvoiceAllTotalAmount());
+        $this->assertEquals(599.50, $invoice->payments()->sum('amount'));
+        $this->assertSame(2, $invoice->payments()->count());
+        $this->assertSame(3, (int) $item->fresh()->quantity);
+        foreach (['-1', 'abc', '1.999'] as $invalid) {
+            $this->put('/invoice/'.encrypt($invoice->id), array_replace($data, ['discount_amount' => $invalid]))->assertSessionHas('error');
+            $this->assertEquals(100.50, $invoice->fresh()->discount_amount);
+        }
+        $this->put('/invoice/'.encrypt($invoice->id), array_replace($data, ['discount_amount' => '']))->assertRedirect()->assertSessionMissing('error');
+        $this->assertEquals(0, $invoice->fresh()->discount_amount);
+        $this->assertEquals(100.50, $invoice->fresh()->getInvoiceTotalDueAmount());
+        $this->assertEquals(599.50, $invoice->payments()->sum('amount'));
+        $this->put('/invoice/'.encrypt($invoice->id), array_replace($data, ['discount_amount' => '1000']))->assertRedirect()->assertSessionMissing('error');
+        $this->assertEquals(700, $invoice->fresh()->getInvoiceDiscountAmount());
+        $this->assertEquals(0, $invoice->fresh()->getInvoiceAllTotalAmount());
+        $this->assertEquals(0, $invoice->payments()->sum('amount'));
+    }
 }

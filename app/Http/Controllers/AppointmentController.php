@@ -22,6 +22,21 @@ class AppointmentController extends Controller
         return view('appointments.settings', compact('profile'));
     }
 
+    public function notifications()
+    {
+        abort_unless(auth()->user()->type === 'owner', 403);
+        $query = Appointment::whereHas('profile', fn ($query) => $query->where('owner_id', auth()->id()))
+            ->where('status', 'pending');
+        $count = (clone $query)->count();
+        $items = $query->orderByDesc('id')->limit(10)->get()->map(fn ($appointment) => [
+            'id' => $appointment->id,
+            'title' => $appointment->customer_name.' randevu talep etti',
+            'date' => dateFormat($appointment->starts_at).' · '.timeFormat($appointment->starts_at),
+            'url' => route('appointments.index', ['status' => 'pending', 'date' => $appointment->starts_at->toDateString()]),
+        ]);
+        return response()->json(['count' => $count, 'items' => $items])->header('Cache-Control', 'private, no-store');
+    }
+
     public function saveSettings(Request $request, AppointmentBooking $booking)
     {
         $profile = $this->profile($booking);
@@ -59,7 +74,11 @@ class AppointmentController extends Controller
     {
         $profile = $this->profile($booking);
         $data = $request->validate(['status' => ['required', Rule::in(array_keys(Appointment::statuses()))]]);
-        $booking->changeStatus($profile, $id, $data['status']);
-        return back()->with('success', 'Randevu durumu güncellendi. Müşteri takip bağlantısından güncel durumu görebilir.');
+        $appointment = $booking->changeStatus($profile, $id, $data['status']);
+        $message = $data['status'] === 'approved' ? app(\App\Services\AppointmentSms::class)->dispatchApproval($id) : null;
+        $text = 'Randevu durumu güncellendi.';
+        if ($message) $text .= $message->status === 'accepted' ? ' Onay SMS’i gönderim için Twilio’ya iletildi.' : ' Onay SMS’i gönderimi tamamlanamadı; süper admin SMS panelinden kontrol edebilir.';
+        elseif ($data['status'] === 'approved' && !$appointment->phone_verified_at) $text .= ' Bu eski kaydın telefonu doğrulanmadığı için SMS gönderilmedi.';
+        return back()->with('success', $text);
     }
 }

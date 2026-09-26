@@ -4,7 +4,7 @@
 @section('content')
 <div class="card"><div class="card-body">
     <div class="d-flex justify-content-between flex-wrap gap-2"><div><h5>Randevu talepleri</h5><p>{{ $pendingCount }} talep onay bekliyor.</p></div><a class="btn btn-outline-secondary align-self-start" href="{{ route('appointments.settings') }}">Çalışma günleri ve saatleri</a></div>
-    <p class="text-muted">Bekleyen ve onaylanan talepler ilgili saati ayırır. SMS gönderilmez; müşteri kişisel takip bağlantısından durumunu görebilir.</p>
+    <p class="text-muted">Telefonu SMS koduyla doğrulanan yeni talepler burada görünür. Onayladığınızda müşteriye onay SMS’i gönderilir. Bekleyen ve onaylanan talepler ilgili saati ayırır.</p>
     @if (!$profile->is_active)<div class="alert alert-warning">Yeni randevu alımı kapalı. Randevu ayarlarından çalışma saatlerini seçip talep alımını açabilirsiniz.</div>@endif
     @if ($errors->any())<div class="alert alert-danger" role="alert">{{ $errors->first() }}</div>@endif
     <form method="get" class="row align-items-end mb-3">

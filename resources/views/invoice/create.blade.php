@@ -50,6 +50,7 @@
             </div>
         </div>
         <div class="col-sm-12"><div class="card"><div class="card-body">
+            @include('invoice.discount_field')
             <label for="invoice_external_labor" class="form-label">Harici işçilik tutarı ({{ settings()['CURRENCY_SYMBOL'] }})</label>
             <input id="invoice_external_labor" class="form-control" value="0,00" readonly>
             <small class="text-muted">Seçilen servisten alınır ve fatura toplamına eklenir. Değiştirmek için servisi düzenleyin.</small>

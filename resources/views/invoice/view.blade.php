@@ -340,6 +340,10 @@
                                                         <td>{{ priceFormat($invoice?->getInvoiceServiceAmount()) }}
                                                         </td>
                                                     </tr>
+                                                    @if ($invoice->getInvoiceDiscountAmount() > 0)
+                                                        <tr><th>İndirim öncesi toplam :</th><td>{{ priceFormat($invoice->getInvoiceGrossAmount()) }}</td></tr>
+                                                        <tr><th>İndirim :</th><td>−{{ priceFormat($invoice->getInvoiceDiscountAmount()) }}</td></tr>
+                                                    @endif
                                                     <tr>
                                                         <th>{{ __('Grand Total') }} :</th>
                                                         <td class="h5">

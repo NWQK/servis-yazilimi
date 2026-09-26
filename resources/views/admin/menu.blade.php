@@ -46,6 +46,7 @@
                     </li>
                 @endif
                 @if (\Auth::user()->type == 'super admin')
+                    <li class="pc-item {{ $routeName === 'appointments.sms-settings' ? 'active' : '' }}"><a href="{{ route('appointments.sms-settings') }}" class="pc-link"><span class="pc-micon"><i class="ti ti-message"></i></span><span class="pc-mtext">Randevu SMS ayarları</span></a></li>
                     @if (Gate::check('manage user'))
                         <li class="pc-item {{ in_array($routeName, ['users.index', 'users.show']) ? 'active' : '' }}">
                             <a href="{{ route('users.index') }}" class="pc-link">

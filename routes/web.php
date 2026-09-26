@@ -38,6 +38,10 @@ use App\Http\Controllers\VehicleQrController;
 use App\Http\Controllers\VehiclePortalController;
 
 Route::middleware(['auth', 'XSS'])->prefix('appointments')->name('appointments.')->group(function () {
+    Route::get('/sms-settings', [\App\Http\Controllers\AppointmentSmsSettingController::class, 'index'])->name('sms-settings');
+    Route::post('/sms-settings', [\App\Http\Controllers\AppointmentSmsSettingController::class, 'save'])->name('sms-settings.save');
+    Route::post('/sms-messages/{id}/retry', [\App\Http\Controllers\AppointmentSmsSettingController::class, 'retry'])->whereNumber('id')->middleware('throttle:5,1')->name('sms.retry');
+    Route::get('/notifications', [\App\Http\Controllers\AppointmentController::class, 'notifications'])->name('notifications');
     Route::get('/', [\App\Http\Controllers\AppointmentController::class, 'index'])->name('index');
     Route::get('/settings', [\App\Http\Controllers\AppointmentController::class, 'settings'])->name('settings');
     Route::post('/settings', [\App\Http\Controllers\AppointmentController::class, 'saveSettings'])->name('settings.save');
@@ -45,9 +49,12 @@ Route::middleware(['auth', 'XSS'])->prefix('appointments')->name('appointments.'
 });
 Route::prefix('randevu/{publicId}')->where(['publicId' => '[a-f0-9-]{36}'])
     ->withoutMiddleware(\App\Http\Middleware\Verify2FA::class)->name('booking.')->group(function () {
-        Route::get('/', [\App\Http\Controllers\PublicAppointmentController::class, 'show'])->middleware('throttle:60,1')->name('show');
-        Route::post('/', [\App\Http\Controllers\PublicAppointmentController::class, 'store'])->middleware('throttle:5,10')->name('store');
-        Route::get('/talep/{token}', [\App\Http\Controllers\PublicAppointmentController::class, 'status'])->where('token', '[a-f0-9]{64}')->middleware('throttle:60,1')->name('status');
+        Route::get('/dogrula/{token}', [\App\Http\Controllers\PublicAppointmentController::class, 'verification'])->where('token', '[a-f0-9]{64}')->middleware('throttle:60,1,otp-view')->name('verify');
+        Route::post('/dogrula/{token}', [\App\Http\Controllers\PublicAppointmentController::class, 'verify'])->where('token', '[a-f0-9]{64}')->middleware('throttle:10,1,otp-check')->name('verify.submit');
+        Route::post('/dogrula/{token}/yeniden', [\App\Http\Controllers\PublicAppointmentController::class, 'resend'])->where('token', '[a-f0-9]{64}')->middleware('throttle:3,5,otp-resend')->name('verify.resend');
+        Route::get('/', [\App\Http\Controllers\PublicAppointmentController::class, 'show'])->middleware('throttle:60,1,booking-view')->name('show');
+        Route::post('/', [\App\Http\Controllers\PublicAppointmentController::class, 'store'])->middleware('throttle:5,10,booking-start')->name('store');
+        Route::get('/talep/{token}', [\App\Http\Controllers\PublicAppointmentController::class, 'status'])->where('token', '[a-f0-9]{64}')->middleware('throttle:60,1,booking-status')->name('status');
     });
 
 Route::middleware(['auth', 'XSS'])->prefix('vehicle-qr')->name('vehicle-qr.')->group(function () {

@@ -126,6 +126,9 @@
                         </a>
                     </li>
                 @endif
+                @if (\Auth::user()->type == 'owner')
+                    @include('appointments.notifications')
+                @endif
                 <li class="dropdown pc-h-item header-user-profile">
                     <a class="pc-head-link head-link-primary dropdown-toggle arrow-none me-0"
                         data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="false"
