@@ -53,6 +53,9 @@ class AppointmentTest extends TestCase
         $migration = require database_path('migrations/2026_09_25_000002_create_appointments.php');
         \Illuminate\Support\Facades\Schema::drop('appointments');
         $migration->up();
+        // Restore later columns after recreating the historical base table.
+        (require database_path('migrations/2026_09_27_000001_appointment_cancellation_and_expiry.php'))->up();
+        (require database_path('migrations/2026_09_27_000002_create_booking_directory.php'))->up();
         $appointment = $this->booking->book($this->profile, $this->data());
         $before = $appointment->fresh()->getAttributes();
         $migration->up();
@@ -189,6 +192,175 @@ class AppointmentTest extends TestCase
         $this->assertSame([], $this->booking->availableHours($this->profile, '2026-10-03'));
         $this->assertSame(0, Appointment::count());
         $this->assertSame(1, \App\Models\AppointmentSmsChallenge::count());
+    }
+
+    public function test_customer_cancel_frees_slot_and_notifies_only_owner_until_viewed()
+    {
+        $appointment = $this->booking->book($this->profile, $this->data(['hour' => 23]));
+        $this->booking->changeStatus($this->profile, $appointment->id, 'approved');
+        $url = route('booking.cancel', [$this->profile->public_id, $appointment->public_token]);
+        $other = User::create(['name'=>'Other', 'email'=>'cancel@example.test', 'password'=>'test', 'type'=>'owner']);
+        $otherProfile = $this->booking->profileForOwner($other->id);
+        $this->post(route('booking.cancel', [$otherProfile->public_id, $appointment->public_token]))->assertNotFound();
+        $this->post($url)->assertSessionHasNoErrors()->assertRedirect($appointment->statusUrl());
+        $this->assertNull($appointment->fresh()->occupied_at);
+        $this->assertTrue($appointment->fresh()->cancelled_by_customer);
+        $this->assertContains(23, $this->booking->availableHours($this->profile, '2026-09-25'));
+        $this->actingAs($other)->getJson('/appointments/notifications')->assertJsonPath('count', 0);
+        $this->actingAs($this->owner)->getJson('/appointments/notifications')->assertJsonPath('count', 1)
+            ->assertJsonPath('items.0.title', 'Ayşe Test randevusunu iptal etti');
+        $this->get('/appointments?status=pending')->assertOk();
+        $this->assertNull($appointment->fresh()->cancellation_read_at);
+        $this->get('/appointments?status=cancelled')->assertOk();
+        $this->assertNotNull($appointment->fresh()->cancellation_read_at);
+        $this->post($url)->assertSessionHasNoErrors();
+        $this->getJson('/appointments/notifications')->assertJsonPath('count', 0);
+        $replacement = $this->booking->book($this->profile, $this->data(['hour'=>23]));
+        $this->assertNotSame($appointment->id, $replacement->id);
+        \Illuminate\Support\Facades\Http::assertNothingSent();
+    }
+
+    public function test_cancellation_cutoff_boundary_and_pending_cancellation()
+    {
+        $appointment = $this->booking->book($this->profile, $this->data(['hour'=>23]));
+        $appointment->update(['customer_cancel_until'=>now()]);
+        $this->booking->cancelByCustomer($this->profile, $appointment->public_token);
+        $this->assertSame('cancelled', $appointment->fresh()->status);
+        $second = $this->booking->book($this->profile, $this->data(['hour'=>23]));
+        $second->update(['customer_cancel_until'=>now()->subSecond()]);
+        $this->post(route('booking.cancel', [$this->profile->public_id, $second->public_token]))->assertSessionHasErrors('cancellation');
+        $this->assertSame('pending', $second->fresh()->status);
+        $this->assertNotNull($second->fresh()->occupied_at);
+    }
+
+    public function test_expiry_frees_slot_without_expiring_approved_appointments()
+    {
+        $pending = $this->booking->book($this->profile, $this->data(['hour'=>23]));
+        $approved = $this->booking->book($this->profile, $this->data(['hour'=>10]));
+        $this->booking->changeStatus($this->profile, $approved->id, 'approved');
+        $pending->update(['pending_expires_at'=>now()]);
+        $approved->update(['pending_expires_at'=>now()]);
+        $this->artisan('appointments:expire')->assertExitCode(0);
+        $this->artisan('appointments:expire')->assertExitCode(0);
+        $this->assertSame('expired', $pending->fresh()->status);
+        $this->assertNull($pending->fresh()->occupied_at);
+        $this->assertSame('approved', $approved->fresh()->status);
+        $this->assertNotNull($approved->fresh()->occupied_at);
+        $this->actingAs($this->owner)->post('/appointments/'.$pending->id.'/status', ['status'=>'approved'])->assertSessionHasErrors('status');
+        $this->getJson('/appointments/notifications')->assertJsonPath('count', 0);
+        $this->assertContains(23, $this->booking->availableHours($this->profile, '2026-09-25'));
+        $this->booking->book($this->profile, $this->data(['hour'=>23]));
+        $this->assertSame(3, Appointment::count());
+    }
+
+    public function test_lazy_expiry_persists_when_customer_cancellation_is_rejected()
+    {
+        $appointment = $this->booking->book($this->profile, $this->data(['hour'=>23]));
+        $appointment->update(['pending_expires_at'=>now()]);
+        $this->post(route('booking.cancel', [$this->profile->public_id, $appointment->public_token]))->assertSessionHasErrors('cancellation');
+        $this->assertSame('expired', $appointment->fresh()->status);
+        $this->assertNull($appointment->fresh()->occupied_at);
+        $this->get($appointment->statusUrl())->assertOk()->assertDontSee('Randevuyu iptal et');
+    }
+
+    public function test_policy_settings_validate_and_only_change_future_request_deadlines()
+    {
+        $old = $this->booking->book($this->profile, $this->data(['hour'=>23]));
+        $this->assertSame('2026-09-25 20:15:00', $old->pending_expires_at->toDateTimeString());
+        $this->assertSame('2026-09-25 21:00:00', $old->customer_cancel_until->toDateTimeString());
+        $this->actingAs($this->owner);
+        $settings = ['display_name'=>'Test', 'is_active'=>1, 'hours'=>[5=>[9,10,23]], 'cancellation_cutoff_hours'=>0, 'pending_timeout_hours'=>1];
+        $this->post('/appointments/settings', $settings)->assertSessionHasNoErrors();
+        $new = $this->booking->book($this->profile, $this->data(['hour'=>10]));
+        $this->assertSame('2026-09-25 09:15:00', $new->pending_expires_at->toDateTimeString());
+        $this->assertTrue($new->customer_cancel_until->equalTo($new->starts_at));
+        $this->assertTrue($old->pending_expires_at->equalTo($old->fresh()->pending_expires_at));
+        $this->post('/appointments/settings', array_replace($settings, ['pending_timeout_hours'=>0, 'cancellation_cutoff_hours'=>-1]))
+            ->assertSessionHasErrors(['pending_timeout_hours','cancellation_cutoff_hours']);
+        $soon = $this->booking->book($this->profile, $this->data(['hour'=>9]));
+        $this->assertTrue($soon->pending_expires_at->equalTo($soon->starts_at));
+    }
+
+    public function test_policy_migration_backfills_old_records_and_can_be_repeated()
+    {
+        $appointment = $this->booking->book($this->profile, $this->data(['hour'=>23]));
+        $appointment->update(['pending_expires_at'=>null, 'customer_cancel_until'=>null]);
+        $migration = require database_path('migrations/2026_09_27_000001_appointment_cancellation_and_expiry.php');
+        $migration->up();
+        $before = $appointment->fresh()->getAttributes();
+        $this->assertNotNull($before['pending_expires_at']);
+        $this->assertNotNull($before['customer_cancel_until']);
+        $migration->up();
+        $this->assertSame($before, $appointment->fresh()->getAttributes());
+    }
+
+    private function publishDirectory(): \App\Models\BookingService
+    {
+        $service = \App\Models\BookingService::firstOrFail();
+        $this->profile->update(['directory_region'=>'34-avrupa','directory_visible'=>true,'public_address'=>'Test adresi']);
+        DB::table('booking_offerings')->insert(['appointment_profile_id'=>$this->profile->id,'booking_service_id'=>$service->id,'vehicle_type'=>'motosiklet']);
+        return $service;
+    }
+
+    public function test_directory_steps_filter_region_vehicle_service_and_visibility()
+    {
+        $service = $this->publishDirectory();
+        $this->get('/')->assertOk()->assertSee('Konumumu kullan');
+        $this->get('/randevu')->assertOk()->assertSee('İstanbul Avrupa')->assertSee('İstanbul Anadolu')->assertSee('Düzce');
+        $this->get('/randevu?region=34-avrupa')->assertOk()->assertSee('Ne kullanıyorsunuz?');
+        $this->get('/randevu?region=34-avrupa&vehicle=motosiklet')->assertOk()->assertSee($service->name);
+        $url = '/randevu?region=34-avrupa&vehicle=motosiklet&service='.$service->id;
+        $this->get($url)->assertOk()->assertSee($this->profile->display_name)->assertSee('Test adresi');
+        $this->get(str_replace('34-avrupa','34-anadolu',$url))->assertOk()->assertDontSee('Test adresi');
+        $this->get(str_replace('motosiklet','otomobil',$url))->assertOk()->assertDontSee('Test adresi');
+        $this->profile->update(['directory_visible'=>false]);
+        $this->get($url)->assertOk()->assertDontSee('Test adresi');
+        $this->profile->update(['directory_visible'=>true,'is_active'=>false]);
+        $this->get($url)->assertOk()->assertDontSee('Test adresi');
+        $this->get('/randevu?region=unknown')->assertSessionHasErrors('region');
+    }
+
+    public function test_selected_service_survives_date_and_sms_verification_into_appointment()
+    {
+        $service = $this->publishDirectory();
+        $selection = ['vehicle'=>'motosiklet','service'=>$service->id];
+        $this->get($this->profile->publicUrl().'?'.http_build_query($selection + ['date'=>'2026-09-25']))->assertOk()
+            ->assertSee('name="vehicle" value="motosiklet"', false)->assertSee($service->name);
+        $this->post($this->profile->publicUrl(), $this->data($selection))->assertSessionHasNoErrors();
+        $challenge = \App\Models\AppointmentSmsChallenge::firstOrFail();
+        $this->post(route('booking.verify.submit', [$this->profile->public_id,$challenge->token]), ['code'=>$this->verificationCode()])->assertSessionHasNoErrors();
+        $appointment = Appointment::firstOrFail();
+        $this->assertSame('Motosiklet',$appointment->requested_vehicle);
+        $this->assertSame($service->name,$appointment->requested_service);
+        $service->update(['name'=>'Yeni ad']);
+        $this->assertNotSame($service->name,$appointment->fresh()->requested_service);
+        $this->actingAs($this->owner)->get('/appointments')->assertOk()->assertSee($appointment->requested_service);
+    }
+
+    public function test_service_removed_during_verification_cannot_be_booked()
+    {
+        $service = $this->publishDirectory();
+        $this->post($this->profile->publicUrl(),$this->data(['vehicle'=>'motosiklet','service'=>$service->id]));
+        $challenge = \App\Models\AppointmentSmsChallenge::firstOrFail();
+        $code = $this->verificationCode();
+        DB::table('booking_offerings')->delete();
+        $this->post(route('booking.verify.submit',[$this->profile->public_id,$challenge->token]),['code'=>$code])->assertSessionHasErrors('service');
+        $this->assertSame(0,Appointment::count());
+    }
+
+    public function test_directory_settings_and_catalog_are_role_scoped()
+    {
+        $service = \App\Models\BookingService::firstOrFail();
+        $this->actingAs($this->owner)->post('/appointments/settings', ['display_name'=>'Servis','directory_visible'=>1,'directory_region'=>'34-avrupa','offerings'=>['motosiklet:'.$service->id]])->assertSessionHasNoErrors();
+        $this->assertSame(1,DB::table('booking_offerings')->count());
+        $this->post('/appointments/settings',['display_name'=>'Servis','directory_visible'=>1,'directory_region'=>'34'])->assertSessionHasErrors('directory_region');
+        $this->get('/appointments/catalog')->assertForbidden();
+        $this->post('/appointments/catalog',['name'=>'Test'])->assertForbidden();
+        $this->owner->update(['type'=>'super admin']);
+        $this->withoutMiddleware(\App\Http\Middleware\XSS::class);
+        $this->get('/appointments/catalog')->assertOk();
+        $this->post('/appointments/catalog',['name'=>'Yeni hizmet','vehicle_types'=>['agir-vasita'],'is_active'=>1])->assertSessionHasNoErrors();
+        $this->assertSame(['agir-vasita'],\App\Models\BookingService::where('name','Yeni hizmet')->firstOrFail()->vehicle_types);
     }
 
     private function verificationCode(): string

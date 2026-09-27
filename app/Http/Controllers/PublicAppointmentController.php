@@ -24,12 +24,14 @@ class PublicAppointmentController extends Controller
     public function show(Request $request, string $publicId, AppointmentBooking $booking)
     {
         $profile = $this->profile($publicId);
+        $selection = $request->validate(['vehicle'=>['nullable', \Illuminate\Validation\Rule::in(array_keys(config('booking_directory.vehicles')))], 'service'=>'nullable|integer']);
+        $selectedService = app(\App\Services\BookingDirectory::class)->selection($profile, $selection['vehicle'] ?? null, $selection['service'] ?? null);
         $data = $request->validate(['date' => 'nullable|date_format:Y-m-d|after_or_equal:today|before_or_equal:' . today()->addDays(AppointmentBooking::BOOKING_WINDOW_DAYS)->toDateString()]);
         $date = $data['date'] ?? today()->toDateString();
         $hours = $booking->availableHours($profile, $date);
         $requestKey = (string) Str::uuid();
         $smsReady = AppointmentSmsSetting::central()->ready();
-        return $this->page('appointments.public', compact('profile', 'date', 'hours', 'requestKey', 'smsReady'));
+        return $this->page('appointments.public', compact('profile', 'date', 'hours', 'requestKey', 'smsReady', 'selection', 'selectedService'));
     }
 
     public function store(Request $request, string $publicId, AppointmentBooking $booking)
@@ -42,9 +44,11 @@ class PublicAppointmentController extends Controller
             'license_plate' => 'nullable|string|max:20', 'notes' => 'nullable|string|max:1000',
             'date' => 'required|date_format:Y-m-d|after_or_equal:today|before_or_equal:' . today()->addDays(AppointmentBooking::BOOKING_WINDOW_DAYS)->toDateString(),
             'hour' => 'required|integer|min:0|max:23', 'request_key' => 'required|uuid',
+            'vehicle'=>['nullable', \Illuminate\Validation\Rule::in(array_keys(config('booking_directory.vehicles')))], 'service'=>'nullable|integer',
         ], ['phone.regex' => 'Başında 0 veya +90 olmadan, 5 ile başlayan 10 haneli cep telefonu numaranızı girin. Örnek: 5551234567.'],
             ['customer_name' => 'Ad soyad', 'phone' => 'Telefon numarası', 'date' => 'Randevu tarihi', 'hour' => 'Randevu saati']);
         $data['phone'] = '+90'.$data['phone'];
+        app(\App\Services\BookingDirectory::class)->selection($profile, $data['vehicle'] ?? null, $data['service'] ?? null);
         $challenge = app(AppointmentSms::class)->start($profile, $data, $request->ip());
         return redirect()->route('booking.verify', [$profile->public_id, $challenge->token]);
     }
@@ -78,10 +82,19 @@ class PublicAppointmentController extends Controller
         return back()->with('success', 'Yeni kod istendi. Gönderim durumunu aşağıdan kontrol edebilirsiniz.');
     }
 
-    public function status(string $publicId, string $token)
+    public function status(string $publicId, string $token, AppointmentBooking $booking)
     {
         $profile = $this->profile($publicId);
         $appointment = $profile->appointments()->where('public_token', $token)->firstOrFail();
+        $booking->expirePending($profile->id);
+        $appointment->refresh();
         return $this->page('appointments.status', compact('profile', 'appointment'));
+    }
+
+    public function cancel(string $publicId, string $token, AppointmentBooking $booking)
+    {
+        $profile = $this->profile($publicId);
+        $appointment = $booking->cancelByCustomer($profile, $token);
+        return redirect($appointment->statusUrl())->with('success', 'Randevunuz iptal edildi. İşletmeye bildirim gönderildi.');
     }
 }

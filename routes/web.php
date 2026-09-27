@@ -38,6 +38,8 @@ use App\Http\Controllers\VehicleQrController;
 use App\Http\Controllers\VehiclePortalController;
 
 Route::middleware(['auth', 'XSS'])->prefix('appointments')->name('appointments.')->group(function () {
+    Route::get('/catalog', [\App\Http\Controllers\BookingDirectoryController::class, 'catalog'])->name('catalog');
+    Route::post('/catalog', [\App\Http\Controllers\BookingDirectoryController::class, 'saveCatalog'])->name('catalog.save');
     Route::get('/sms-settings', [\App\Http\Controllers\AppointmentSmsSettingController::class, 'index'])->name('sms-settings');
     Route::post('/sms-settings', [\App\Http\Controllers\AppointmentSmsSettingController::class, 'save'])->name('sms-settings.save');
     Route::post('/sms-messages/{id}/retry', [\App\Http\Controllers\AppointmentSmsSettingController::class, 'retry'])->whereNumber('id')->middleware('throttle:5,1')->name('sms.retry');
@@ -47,6 +49,7 @@ Route::middleware(['auth', 'XSS'])->prefix('appointments')->name('appointments.'
     Route::post('/settings', [\App\Http\Controllers\AppointmentController::class, 'saveSettings'])->name('settings.save');
     Route::post('/{id}/status', [\App\Http\Controllers\AppointmentController::class, 'status'])->whereNumber('id')->name('status');
 });
+Route::get('/randevu', [\App\Http\Controllers\BookingDirectoryController::class, 'index'])->withoutMiddleware(\App\Http\Middleware\Verify2FA::class)->name('directory.index');
 Route::prefix('randevu/{publicId}')->where(['publicId' => '[a-f0-9-]{36}'])
     ->withoutMiddleware(\App\Http\Middleware\Verify2FA::class)->name('booking.')->group(function () {
         Route::get('/dogrula/{token}', [\App\Http\Controllers\PublicAppointmentController::class, 'verification'])->where('token', '[a-f0-9]{64}')->middleware('throttle:60,1,otp-view')->name('verify');
@@ -55,6 +58,7 @@ Route::prefix('randevu/{publicId}')->where(['publicId' => '[a-f0-9-]{36}'])
         Route::get('/', [\App\Http\Controllers\PublicAppointmentController::class, 'show'])->middleware('throttle:60,1,booking-view')->name('show');
         Route::post('/', [\App\Http\Controllers\PublicAppointmentController::class, 'store'])->middleware('throttle:5,10,booking-start')->name('store');
         Route::get('/talep/{token}', [\App\Http\Controllers\PublicAppointmentController::class, 'status'])->where('token', '[a-f0-9]{64}')->middleware('throttle:60,1,booking-status')->name('status');
+        Route::post('/talep/{token}/iptal', [\App\Http\Controllers\PublicAppointmentController::class, 'cancel'])->where('token', '[a-f0-9]{64}')->middleware('throttle:10,1,booking-cancel')->name('cancel');
     });
 
 Route::middleware(['auth', 'XSS'])->prefix('vehicle-qr')->name('vehicle-qr.')->group(function () {
@@ -88,7 +92,7 @@ use GuzzleHttp\Psr7\Query;
 
 require __DIR__ . '/auth.php';
 
-Route::get('/', [HomeController::class, 'index'])->middleware(
+Route::get('/', [\App\Http\Controllers\BookingDirectoryController::class, 'home'])->middleware(
     [
 
         'XSS',

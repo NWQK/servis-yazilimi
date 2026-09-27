@@ -1,17 +1,23 @@
 @extends('appointments.layout')
 @section('title', 'Randevu al')
 @section('content')
+@if($selectedService)
+<section class="booking-panel"><strong>{{ config('booking_directory.vehicles.'.$selection['vehicle']) }} · {{ $selectedService->name }}</strong><p>Seçiminiz randevu talebinizle birlikte işletmeye iletilecek.</p><a href="{{ route('directory.index', ['region'=>$profile->directory_region, 'vehicle'=>$selection['vehicle']]) }}">← Hizmet seçimine dön</a></section>
+@endif
+<p class="booking-muted">Müşteri iptali: randevudan {{ $profile->cancellation_cutoff_hours }} saat öncesine kadar. İşletmenin yanıt süresi en fazla {{ $profile->pending_timeout_hours }} saattir; randevu saati daha erkense talep o saatte kapanır.</p>
+
 <div class="booking-hero"><p class="booking-eyebrow">SİZE UYGUN BİR ZAMAN</p><h1>Servis randevunuzu planlayın.</h1><p>Tarih ve saat seçin, talebinizi işletmeye iletin. Üyelik gerekmez.</p></div>
 @if ($errors->any())<div class="booking-alert" role="alert">{{ $errors->first() }}</div>@endif
 @if (!$profile->is_active || !$smsReady)
     <section class="booking-panel"><h2>Şu anda yeni randevu alınmıyor.</h2><p>Lütfen daha sonra tekrar kontrol edin.</p></section>
 @else
 <div class="booking-columns"><section class="booking-panel"><h2><span class="booking-step">1</span> Tarih seçin</h2>
-    <form method="get" action="{{ route('booking.show', $profile->public_id) }}"><label for="booking-date">Randevu günü</label><input id="booking-date" name="date" type="date" required value="{{ $date }}" min="{{ today()->toDateString() }}" max="{{ today()->addDays(\App\Services\AppointmentBooking::BOOKING_WINDOW_DAYS)->toDateString() }}"><p class="booking-muted">Bugünden itibaren en fazla 1 hafta sonrası için randevu alabilirsiniz.</p><button class="booking-button" type="submit">Uygun saatleri göster</button></form>
+    <form method="get" action="{{ route('booking.show', $profile->public_id) }}">@include('appointments.selection-fields')<label for="booking-date">Randevu günü</label><input id="booking-date" name="date" type="date" required value="{{ $date }}" min="{{ today()->toDateString() }}" max="{{ today()->addDays(\App\Services\AppointmentBooking::BOOKING_WINDOW_DAYS)->toDateString() }}"><p class="booking-muted">Bugünden itibaren en fazla 1 hafta sonrası için randevu alabilirsiniz.</p><button class="booking-button" type="submit">Uygun saatleri göster</button></form>
     <div class="booking-help"><strong>Nasıl çalışır?</strong><p>Her randevu aralığı 1 saattir. Telefonunuza gelen kodu doğrulayınca talebiniz işletmeye iletilir ve saat sizin için ayrılır. İşletme onayladığında randevunuz kesinleşir ve onay SMS’i gönderilir.</p><p>Doğrulama tamamlanana kadar saat başka bir müşteri tarafından alınabilir.</p></div>
 </section><section class="booking-panel"><h2><span class="booking-step">2</span> {{ dateFormat($date) }}</h2>
 @if (count($hours))
     <form method="post" action="{{ route('booking.store', $profile->public_id) }}">@csrf
+        @include('appointments.selection-fields')
         <input type="hidden" name="date" value="{{ $date }}"><input type="hidden" name="request_key" value="{{ old('request_key', $requestKey) }}">
         <fieldset class="booking-slots"><legend>Uygun saatler</legend>@foreach ($hours as $hour)<label class="booking-slot"><input type="radio" name="hour" value="{{ $hour }}" required @checked((string) old('hour', '') === (string) $hour)><span>{{ sprintf('%02d:00', $hour) }}</span></label>@endforeach</fieldset>
         <label for="customer_name">Ad soyad</label><input id="customer_name" name="customer_name" autocomplete="name" required maxlength="150" value="{{ old('customer_name') }}">

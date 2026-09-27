@@ -16,6 +16,13 @@
     <input type="hidden" name="is_active" value="0">
     <label class="booking-switch"><input type="checkbox" name="is_active" value="1" @checked(old('is_active', $profile->is_active))> Müşterilerden randevu talebi al</label>
     <p class="text-muted mt-2">Kapalı olduğunda yeni talep alınmaz. Mevcut talepler silinmez.</p>
+    @include('appointments.directory-settings')
+    <h5 class="mt-4">İptal ve yanıt süreleri</h5>
+    <div class="row">
+        <div class="form-group col-md-6"><label for="cancellation_cutoff_hours">Müşteri kaç saat öncesine kadar iptal edebilir?</label><input class="form-control" id="cancellation_cutoff_hours" type="number" name="cancellation_cutoff_hours" min="0" max="168" required value="{{ old('cancellation_cutoff_hours', $profile->cancellation_cutoff_hours) }}"><small>0 seçerseniz randevu başlayana kadar iptal edilebilir.</small></div>
+        <div class="form-group col-md-6"><label for="pending_timeout_hours">Cevapsız talep kaç saat sonra kapansın?</label><input class="form-control" id="pending_timeout_hours" type="number" name="pending_timeout_hours" min="1" max="168" required value="{{ old('pending_timeout_hours', $profile->pending_timeout_hours) }}"><small>Randevu saati daha erkense talep o saatte kapanır. Onaylanan randevular etkilenmez.</small></div>
+    </div>
+    <p class="text-muted">Süre değişiklikleri yeni randevu taleplerine uygulanır. Mevcut taleplerin son tarihleri korunur.</p>
     <h5 class="mt-4">Haftalık çalışma saatleri</h5>
     <p>Her kutu bir saatlik randevuyu temsil eder. <strong class="booking-green">Yeşil saatler açık</strong>, diğer saatler kapalıdır. Örneğin 09:00 kutusu 09:00–10:00 aralığını açar. Tüm saatler İstanbul saatidir.</p>
     <p class="text-muted">Bir günde hiç saat seçmezseniz o gün kapalı olur. Saatleri kapatmak mevcut randevuları iptal etmez; onları Randevular sayfasından yönetin.</p>

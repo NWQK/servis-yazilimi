@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Model;
 class AppointmentProfile extends Model
 {
     protected $guarded = ['id', 'public_id', 'owner_id'];
-    protected $casts = ['weekly_hours' => 'array', 'is_active' => 'boolean'];
+    protected $casts = ['weekly_hours' => 'array', 'is_active' => 'boolean',
+        'cancellation_cutoff_hours' => 'integer', 'pending_timeout_hours' => 'integer'];
 
     public function owner() { return $this->belongsTo(User::class, 'owner_id'); }
     public function appointments() { return $this->hasMany(Appointment::class); }
