@@ -121,14 +121,9 @@ class HomeController extends Controller
             } else {
                 $landingPage = getSettingsValByName('landing_page');
                 if ($landingPage == 'on') {
-                    $subscriptions = Subscription::get();
-                    $menus = Page::where('enabled', 1)->get();
-                    $FAQs = FAQ::where('enabled', 1)->get();
-
-                    $user = \App\Models\User::find(1);
                     \App::setLocale('tr');
 
-                    return view('layouts.landing', compact('subscriptions', 'menus', 'FAQs'));
+                    return view('marketing.landing');
                 } else {
                     return redirect()->route('login');
                 }

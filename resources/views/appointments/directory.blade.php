@@ -1,6 +1,6 @@
 <!doctype html>
-<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Taşıtınıza ve ihtiyacınıza uygun servisi bulun, kolayca randevu talep edin."><title>Servis bul · Sanayi Randevu</title><link rel="stylesheet" href="{{ asset('css/booking-directory.css') }}"><script defer src="{{ asset('js/booking-directory.js') }}"></script></head>
-<body><header class="directory-header"><a class="directory-brand" href="{{ route('directory.index') }}"><span class="brand-symbol" aria-hidden="true">↗</span>sanayi<span>randevu</span></a><a class="owner-link" href="{{ route('login') }}">İşletme girişi <span aria-hidden="true">↗</span></a></header>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="description" content="Taşıtınıza ve ihtiyacınıza uygun servisi bulun, kolayca randevu talep edin."><meta name="theme-color" content="#e32228"><title>Servis bul · Sanayi Randevu</title><link rel="icon" type="image/svg+xml" href="{{ asset('images/brand/sanayirandevu-mark.svg') }}"><link rel="stylesheet" href="{{ asset('css/booking-directory.css') }}"><link rel="stylesheet" href="{{ asset('css/sanayi-customer.css') }}"><script defer src="{{ asset('js/booking-directory.js') }}"></script></head>
+<body class="sr-customer sr-directory">@include('components.public-brand', ['directoryHeader' => true])
 <main class="directory-main">
 @php($step = !$region ? 1 : (!$vehicle ? 2 : (!$service ? 3 : 4)))
 <nav class="steps" aria-label="Randevu adımları">@foreach (['Konum','Taşıt','Hizmet','Servis'] as $label)<span @if($loop->iteration === $step) aria-current="step" @endif class="{{ $loop->iteration <= $step ? 'reached' : '' }}"><b>{{ $loop->iteration }}</b>{{ $label }}</span>@endforeach</nav>
@@ -24,5 +24,5 @@
 @if($shops->hasPages())<nav class="pagination" aria-label="İşletme sayfaları">@if($shops->previousPageUrl())<a class="city" href="{{ $shops->previousPageUrl() }}">← Önceki</a>@endif<span>{{ $shops->currentPage() }} / {{ $shops->lastPage() }}</span>@if($shops->nextPageUrl())<a class="city" href="{{ $shops->nextPageUrl() }}">Sonraki →</a>@endif</nav>@endif
 <p class="muted">İşletmeler ada göre sıralanır. Uygun gün ve saatleri işletmenin sayfasında görebilirsiniz.</p>
 @endif
-<footer class="directory-footer"><span>Servisi bul. Zamanını seç. Yoluna devam et.</span><span>Üyelik gerekmez · Randevular işletme onayına tabidir.</span></footer>
+<footer class="directory-footer"><span>Servisi bul. Zamanını seç. Yoluna devam et. <a href="{{ route('marketing.index') }}"><u>Sanayi Randevu’yu tanıyın</u></a></span><span>Üyelik gerekmez · Randevular işletme onayına tabidir.</span></footer>
 </main></body></html>

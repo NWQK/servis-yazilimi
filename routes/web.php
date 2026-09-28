@@ -92,6 +92,8 @@ use GuzzleHttp\Psr7\Query;
 
 require __DIR__ . '/auth.php';
 
+Route::view('/tanitim', 'marketing.landing')->withoutMiddleware(\App\Http\Middleware\Verify2FA::class)->name('marketing.index');
+
 Route::get('/', [\App\Http\Controllers\BookingDirectoryController::class, 'home'])->middleware(
     [
 
