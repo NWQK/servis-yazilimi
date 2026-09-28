@@ -20,17 +20,19 @@ class VehicleQrPool
         }, 5);
     }
 
-    public function createVehicle(int $parentId, int $qrId, callable $create): Vehicle
+    public function createVehicle(int $parentId, ?int $qrId, callable $create): Vehicle
     {
-        return DB::transaction(function () use ($parentId, $qrId, $create) {
+        $vehicle = DB::transaction(function () use ($parentId, $qrId, $create) {
             $this->lockOwner($parentId);
-            $qr = $this->readyCode($parentId, $qrId);
+            $qr = $qrId ? $this->readyCode($parentId, $qrId) : VehicleQrCode::create(['parent_id'=>$parentId,'token'=>bin2hex(random_bytes(32))]);
             $vehicle = $create();
             abort_unless((int) $vehicle->parent_id === $parentId, 404);
             $this->assign($qr, $vehicle);
             $this->fill($parentId);
             return $vehicle;
         }, 5);
+        DB::afterCommit(fn () => app(VehicleRegistrationSms::class)->send($vehicle));
+        return $vehicle;
     }
 
     public function assignExisting(int $parentId, int $vehicleId, int $qrId): void

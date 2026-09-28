@@ -97,10 +97,8 @@
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('phone_number', __('Phone Number'), ['class' => 'form-label']) }}
-                                            {{ Form::text('phone_number', null, ['class' => 'form-control', 'placeholder' => __('Enter Phone Number'), 'required' => 'required']) }}
-                                            <small class="form-text text-muted">
-                                                {{ __('Please enter the number with country code. e.g., +91XXXXXXXXXX') }}
-                                            </small>
+                                            <x-tr-phone :value="$user->phone_number" :required="true" />
+
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('state', __('State'), ['class' => 'form-label']) }}

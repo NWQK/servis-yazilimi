@@ -25,6 +25,7 @@
 @endpush
 
 @section('content')
+    <div class="card"><div class="card-header"><h5>Elden satışlar · {{ priceFormat($counterTotal) }}</h5><p class="mb-0">Seçilen tarih aralığındaki tahsil edilmiş satışlar. Müşteri ve fatura durumu filtreleri bu listeye uygulanmaz.</p></div><div class="card-body"><div class="table-responsive"><table class="table"><thead><tr><th>Tarih</th><th>Ürün</th><th>Adet</th><th>Birim fiyat</th><th>Tahsilat</th></tr></thead><tbody>@forelse($counterSales as $sale)<tr><td>{{ dateFormat($sale->sale_date) }}</td><td>{{ $sale->item_title }}</td><td>{{ $sale->quantity }}</td><td>{{ priceFormat($sale->unit_price) }}</td><td>{{ priceFormat($sale->amount) }}</td></tr>@empty<tr><td colspan="5">Bu tarih aralığında elden satış yok.</td></tr>@endforelse</tbody></table></div>{{ $counterSales->links() }}</div></div>
     <div class="row">
         <div class="col-sm-12">
             <div class="card table-card">

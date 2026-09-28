@@ -15,7 +15,7 @@
     <div class="table-responsive"><table class="table"><thead><tr><th>Tarih / saat</th><th>Müşteri</th><th>Talep</th><th>Durum</th><th>İşlemler</th></tr></thead><tbody>
     @forelse ($appointments as $appointment)
         <tr><td>{{ dateFormat($appointment->starts_at) }}<br>{{ timeFormat($appointment->starts_at) }}–{{ timeFormat($appointment->ends_at) }}</td>
-            <td>{{ $appointment->customer_name }}<br>{{ $appointment->phone }}<br><small>{{ $appointment->license_plate }}</small>@if($appointment->requested_service)<br><strong>{{ $appointment->requested_vehicle }} · {{ $appointment->requested_service }}</strong>@endif</td>
+            <td>{{ $appointment->customer_name }}<br>{{ $appointment->phone }}@if($appointment->verification_bypassed)<br><small>SMS doğrulaması olmadan alındı</small>@endif<br><small>{{ $appointment->license_plate }}</small>@if($appointment->requested_service)<br><strong>{{ $appointment->requested_vehicle }} · {{ $appointment->requested_service }}</strong>@endif</td>
             <td style="white-space:pre-wrap;max-width:320px;overflow-wrap:anywhere">{{ $appointment->notes ?: '—' }}</td>
             <td>{{ \App\Models\Appointment::statuses()[$appointment->status] }}
                 @if ($appointment->cancelled_by_customer)<br><small>Müşteri tarafından iptal edildi.</small>@endif

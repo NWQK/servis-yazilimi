@@ -1,13 +1,16 @@
 @extends('layouts.app')
-@section('page-title', 'Randevu SMS ayarları')
-@section('breadcrumb')<li class="breadcrumb-item">Randevu SMS ayarları</li>@endsection
+@section('page-title', 'SMS ayarları')
+@section('breadcrumb')<li class="breadcrumb-item">SMS ayarları</li>@endsection
 @section('content')
 <div class="card"><div class="card-body">
-    <h5>Merkezi SMS hesabı — İleti Merkezi</h5><p>Tüm işletmelerin randevu doğrulama ve onay mesajları bu hesaptan gönderilir.</p>
+    <h5>Merkezi SMS hesabı — İleti Merkezi</h5><p>Tüm işletmelerin randevu ve araç takip mesajları bu hesaptan gönderilir.</p>
     @if ($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
     <form method="post" action="{{ route('appointments.sms-settings.save') }}">@csrf
-        <input name="enabled" type="hidden" value="0"><label class="mb-3"><input name="enabled" type="checkbox" value="1" @checked(old('enabled', $smsSettings->enabled))> SMS ile randevu alımını etkinleştir</label>
-        <p class="text-muted">SMS kapalıysa yeni randevu talebi alınmaz. Mevcut talepler ve takip bağlantıları korunur. Başlangıçta yalnızca Türkiye cep telefonu numaraları kabul edilir.</p>
+        <input name="enabled" type="hidden" value="0"><label class="mb-3"><input name="enabled" type="checkbox" value="1" @checked(old('enabled', $smsSettings->enabled))> Merkezi SMS gönderimini etkinleştir</label>
+        <div><input name="verification_required" type="hidden" value="0"><label><input name="verification_required" type="checkbox" value="1" @checked(old('verification_required', $smsSettings->verification_required))> Randevuda SMS doğrulaması zorunlu olsun</label></div>
+        <p class="text-muted">Doğrulama kapalıyken SMS hesabı kapalı olsa bile randevu alınabilir. Doğrulama açıkken SMS gönderimi çalışır durumda olmalıdır. Mevcut randevular korunur.</p>
+        <div><input name="vehicle_sms_enabled" type="hidden" value="0"><label><input name="vehicle_sms_enabled" type="checkbox" value="1" @checked(old('vehicle_sms_enabled', $smsSettings->vehicle_sms_enabled))> Araç kaydedildiğinde sahibine takip bağlantısını SMS ile gönder</label></div>
+        <div class="form-group mt-3"><label for="vehicle_template">Araç takip bağlantısı mesajı</label><textarea id="vehicle_template" name="vehicle_template" class="form-control" rows="3" maxlength="480" required>{{ old('vehicle_template', $smsSettings->vehicle_template) }}</textarea><small>Değişkenler: {isletme}, {link}, {plaka}, {marka}. {link} zorunludur. Gönderim için merkezi SMS açık olmalıdır.</small></div>
         <div class="row">
         <div class="form-group col-md-6"><label for="brand">Proje adı</label><input id="brand" class="form-control" name="brand" value="{{ old('brand', $smsSettings->brand) }}" maxlength="80" required></div>
         <div class="form-group col-md-6"><label for="api_key">İleti Merkezi API Anahtarı</label><input id="api_key" class="form-control" type="password" name="api_key" autocomplete="new-password" value=""><small>{{ $smsSettings->api_key ? 'Anahtar kayıtlı. Değiştirmek istemiyorsanız boş bırakın.' : 'Henüz anahtar girilmedi.' }}</small></div>
@@ -20,6 +23,7 @@
         <button class="btn btn-secondary">Ayarları kaydet</button>
     </form>
 </div></div>
+<div class="card"><div class="card-body"><h5>Son araç kayıt SMS’leri</h5><p>Sağlayıcının kabulü teslim garantisi değildir. Hatalı telefon veya SMS ayarları araç kaydını engellemez.</p><div class="table-responsive"><table class="table"><thead><tr><th>Araç / işletme no.</th><th>Telefon</th><th>Durum</th><th>Kayıt / hata</th></tr></thead><tbody>@foreach($vehicleMessages as $message)<tr><td>{{ $message->vehicle_id }} / {{ $message->parent_id }}</td><td>•••• {{ substr($message->recipient ?? '', -4) }}</td><td>{{ ['pending'=>'Bekliyor','sending'=>'Gönderiliyor','accepted'=>'Sağlayıcı kabul etti','failed'=>'Gönderilemedi','unknown'=>'Sonuç belirsiz'][$message->status] ?? $message->status }}</td><td>{{ $message->provider_sid ?? $message->error_code ?? '—' }}</td></tr>@endforeach</tbody></table></div></div></div>
 <div class="card"><div class="card-body"><h5>Randevu onay SMS’leri</h5>
 <p>“SMS sağlayıcısı kabul etti” teslim edildi anlamına gelmez. Belirsiz veya sürmekte görünen gönderimi tekrar göndermeden önce SMS sağlayıcısı kayıtlarından kontrol edin.</p>
 <div class="table-responsive"><table class="table"><thead><tr><th>İşletme</th><th>Randevu</th><th>Telefon</th><th>Gönderim durumu</th><th>SMS sağlayıcısı kaydı / hata</th><th>İşlem</th></tr></thead><tbody>

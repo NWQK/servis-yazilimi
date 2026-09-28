@@ -53,7 +53,7 @@ class VehicleController extends Controller
                     'client' => ['required', Rule::exists('users', 'id')->where('parent_id', parentId())->where('type', 'client')],
                     'type' => ['required', Rule::exists('vehicle_types', 'id')->where('parent_id', parentId())],
                     'brand' => ['required', Rule::exists('vehicle_brands', 'id')->where('parent_id', parentId())->where('type', $request->type)],
-                    'qr_code_id' => 'required|integer',
+                    'qr_code_id' => 'nullable|integer|min:1',
                     'color' => 'nullable|string|max:255',
                     'license_plate' => 'required',
                     'engine_type' => 'nullable|string|max:255',
@@ -72,7 +72,7 @@ class VehicleController extends Controller
 
                 return redirect()->back()->withInput()->with('error', $messages->first());
             }
-            $vehicle = app(VehicleQrPool::class)->createVehicle(parentId(), (int) $request->qr_code_id, function () use ($request) {
+            $vehicle = app(VehicleQrPool::class)->createVehicle(parentId(), $request->filled('qr_code_id') ? (int) $request->qr_code_id : null, function () use ($request) {
                 $vehicle = new Vehicle();
                 $vehicle->vehicle_id = $this->vehicleNumber();
                 $vehicle->client = $request->client;

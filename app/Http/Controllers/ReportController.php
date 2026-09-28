@@ -75,7 +75,12 @@ class ReportController extends Controller
             }
 
             $invoices = $invoices->get();
-            return view('report.income', compact('invoices', 'clients', 'status'));
+            $counterQuery = DB::table('counter_sales')->where('parent_id', parentId());
+            if ($request->filled('start_date')) $counterQuery->where('sale_date', '>=', $request->start_date);
+            if ($request->filled('end_date')) $counterQuery->where('sale_date', '<=', $request->end_date);
+            $counterTotal = (clone $counterQuery)->sum('amount');
+            $counterSales = $counterQuery->orderByDesc('id')->paginate(20, ['*'], 'sales_page')->withQueryString();
+            return view('report.income', compact('invoices', 'clients', 'status', 'counterSales', 'counterTotal'));
         } else {
             return redirect()->back()->with('error', __('Permission Denied!'));
         }
@@ -112,6 +117,9 @@ class ReportController extends Controller
         // DD($incomeQuery);
 
         $incomeData = $incomeQuery->groupBy('month')->pluck('income', 'month');
+        $counterIncome = DB::table('counter_sales')->selectRaw('MONTH(sale_date) as month, SUM(amount) as income')
+            ->where('parent_id', parentId())->whereYear('sale_date', $year)->groupBy('month')->pluck('income','month');
+        foreach ($counterIncome as $month=>$amount) $incomeData[$month] = ($incomeData[$month] ?? 0) + $amount;
 
         // ✅ Expenses
         $expenseQuery = Expense::selectRaw('MONTH(date) as month, SUM(amount) as expense')
@@ -172,7 +180,8 @@ public function incomeByMonth($year = null)
             ->whereYear('payment_date', $year)
             ->where('invoice_payments.parent_id', parentId());
 
-        $payment['income'][] = (float) number_format($incomeQuery->sum('invoice_payments.amount'), 2, '.', '');
+        $counterIncome = DB::table('counter_sales')->where('parent_id',parentId())->whereYear('sale_date',$year)->whereMonth('sale_date',$month)->sum('amount');
+        $payment['income'][] = (float) number_format($incomeQuery->sum('invoice_payments.amount') + $counterIncome, 2, '.', '');
 
         $expenseQuery = Expense::whereMonth('date', $month)
             ->whereYear('date', $year)

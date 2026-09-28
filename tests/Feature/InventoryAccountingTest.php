@@ -33,6 +33,63 @@ class InventoryAccountingTest extends TestCase
         $this->stock = app(InventoryAccounting::class);
     }
 
+    public function test_counter_sale_is_paid_once_and_stock_is_deducted_without_invoice()
+    {
+        $item = $this->purchase(5);
+        $data = ['quantity'=>2,'unit_price'=>300,'request_key'=>(string)\Illuminate\Support\Str::uuid()];
+        $this->get('/item/'.$item->id.'/counter-sale')->assertOk()->assertSee('Satışı ve tahsilatı kaydet');
+        for ($i=0;$i<2;$i++) $this->post('/item/'.$item->id.'/counter-sale',$data)->assertSessionHasNoErrors();
+        $this->assertSame(3,(int)$item->fresh()->quantity);
+        $this->assertSame(1,DB::table('counter_sales')->count());
+        $this->assertEquals(600,DB::table('counter_sales')->sum('amount'));
+        $this->assertSame(0,Invoice::count());
+        $this->assertSame(0,DB::table('invoice_payments')->count());
+        $this->assertSame(1,Expense::count());
+        $report = app(\App\Http\Controllers\ReportController::class)->incomeByMonth(now()->year);
+        $this->assertEquals(600,$report['income'][now()->month-1]);
+        $this->get('/report/income')->assertOk()->assertViewHas('counterTotal',600)->assertSee('Elden satışlar');
+        DB::connection()->getPdo()->sqliteCreateFunction('MONTH',fn ($date)=>(int)substr($date,5,2));
+        $this->get('/report/profit-loss?year='.now()->year)->assertOk()->assertViewHas('report',fn ($rows)=>collect($rows)->sum('income') == 600);
+        $item->delete();
+        $this->assertEquals(600,DB::table('counter_sales')->sum('amount'));
+    }
+
+    public function test_counter_sale_rejects_short_stock_changed_price_and_foreign_item()
+    {
+        $item = $this->purchase(1);
+        $data = ['quantity'=>2,'unit_price'=>300,'request_key'=>(string)\Illuminate\Support\Str::uuid()];
+        $url = '/item/'.$item->id.'/counter-sale';
+        $this->post($url,$data)->assertSessionHasErrors('item');
+        $this->post($url,array_replace($data,['quantity'=>1,'unit_price'=>200]))->assertSessionHasErrors('item');
+        $this->post($url,array_replace($data,['quantity'=>-1]))->assertSessionHasErrors('quantity');
+        $item->parent_id = 999; $item->save();
+        $this->post($url,array_replace($data,['quantity'=>1]))->assertNotFound();
+        $this->assertSame(0,DB::table('counter_sales')->count());
+        $this->assertSame(1,(int)$item->fresh()->quantity);
+    }
+
+    public function test_invoice_deletion_requires_choice_and_can_leave_stock_unchanged()
+    {
+        $item = $this->purchase(5); $invoice = $this->invoice();
+        $this->stock->add($invoice,['item'=>$item->id,'quantity'=>2]);
+        $this->assertSame(3,(int)$item->fresh()->quantity);
+        $this->assertSame(0,$invoice->payments()->count());
+        $this->get('/invoice/'.$invoice->id.'/delete-confirmation')->assertOk()->assertSee('stoklara tekrar eklensin mi');
+        $this->delete('/invoice/'.$invoice->id)->assertSessionHasErrors('return_stock');
+        $this->assertNotNull($invoice->fresh());
+        $this->delete('/invoice/'.$invoice->id,['return_stock'=>0])->assertRedirect(route('invoice.index'));
+        $this->assertSame(3,(int)$item->fresh()->quantity);
+        $this->assertNull($invoice->fresh());
+        $this->assertSame(0,InvoiceItem::count());
+    }
+
+    public function test_new_booking_services_migration_is_repeatable()
+    {
+        $migration = require database_path('migrations/2026_09_28_000001_create_counter_sales.php');
+        $migration->up();
+        foreach (['Kaporta ve boya','Diğer hizmetler'] as $name) $this->assertSame(1,DB::table('booking_services')->where('name',$name)->count());
+    }
+
     private function attributes(int $quantity = 5): array
     {
         return ['title' => 'Castrol motor yağı', 'item_code' => 'OIL-1', 'quantity' => $quantity,
@@ -293,7 +350,7 @@ class InventoryAccountingTest extends TestCase
         $item = $this->purchase(5);
         $invoice = $this->invoice();
         $this->stock->add($invoice, ['item' => $item->id, 'quantity' => 3]);
-        $this->delete('/invoice/' . $invoice->id)->assertRedirect(route('invoice.index'));
+        $this->delete('/invoice/' . $invoice->id, ['return_stock'=>1])->assertRedirect(route('invoice.index'));
         $this->assertSame(5, (int) $item->fresh()->quantity);
         $this->assertSame(0, InvoiceItem::count());
         $this->assertSame(1, Expense::count());

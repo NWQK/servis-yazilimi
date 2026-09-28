@@ -2,8 +2,9 @@
     @if (auth()->user()->type !== 'client' && auth()->user()->can('create vehicle'))
         <div class="mb-3 p-3 border rounded">
             @if ($vehicle->qrCode)
-                <strong>QR etiketi: {{ $vehicle->qrCode->label }}</strong>
-                <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener" href="{{ route('vehicle-qr.print', ['ids' => [$vehicle->qrCode->id]]) }}">Tekrar yazdır</a>
+                <strong>Araç takip bağlantısı: {{ $vehicle->qrCode->label }}</strong>
+                <input class="form-control my-2" aria-label="Araç takip bağlantısı" readonly value="{{ $vehicle->qrCode->publicUrl() }}">
+                <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener" href="{{ route('vehicle-qr.print', ['ids' => [$vehicle->qrCode->id]]) }}">QR olarak yazdır / PDF</a>
                 <a class="btn btn-sm btn-outline-secondary" target="_blank" rel="noopener noreferrer" href="{{ $vehicle->qrCode->publicUrl() }}">Müşteri görünümü</a>
             @elseif (auth()->user()->can('edit vehicle'))
                 <form method="post" action="{{ route('vehicle-qr.assign', $vehicle) }}">

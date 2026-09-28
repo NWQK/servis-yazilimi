@@ -9,6 +9,31 @@ use Illuminate\Validation\ValidationException;
 
 class InventoryAccounting
 {
+    public function counterSale(int $tenant, int $actor, int $itemId, int $quantity, string $requestKey, $expectedPrice): object
+    {
+        return $this->transaction($tenant, function () use ($tenant, $actor, $itemId, $quantity, $requestKey, $expectedPrice) {
+            $existing = DB::table('counter_sales')->where('parent_id',$tenant)->where('request_key',$requestKey)->first();
+            if ($existing) {
+                if ((int)$existing->item_id !== $itemId || (int)$existing->quantity !== $quantity) $this->invalid('Bu satış isteği daha önce farklı bilgilerle kaydedildi. Sayfayı yenileyin.');
+                return $existing;
+            }
+            $item = Item::where('parent_id',$tenant)->lockForUpdate()->findOrFail($itemId);
+            if ($quantity < 1 || $quantity > 100000000 || $quantity > (int)$item->quantity) $this->invalid('Satış adedi geçersiz veya yeterli stok yok.');
+            if ($this->money($expectedPrice) !== $this->money($item->sales_price)) $this->invalid('Ürünün satış fiyatı değişti. Satış ekranını yeniden açın.');
+            if (!$item->inventory_key) $item->inventory_key = (string)Str::uuid();
+            $item->quantity -= $quantity;
+            $item->save();
+            $movement = $this->movement($item, 'counter_sale', -$quantity, $item->sales_price);
+            $id = DB::table('counter_sales')->insertGetId([
+                'parent_id'=>$tenant, 'created_by'=>$actor, 'request_key'=>$requestKey, 'inventory_key'=>$item->inventory_key,
+                'item_id'=>$item->id, 'item_title'=>$item->title, 'quantity'=>$quantity, 'unit_price'=>$this->money($item->sales_price),
+                'amount'=>$this->money($item->sales_price,$quantity), 'sale_date'=>now()->toDateString(),
+                'stock_movement_id'=>$movement, 'created_at'=>now(), 'updated_at'=>now(),
+            ]);
+            return DB::table('counter_sales')->find($id);
+        });
+    }
+
     public function transaction(int $tenant, callable $work)
     {
         return DB::transaction(function () use ($tenant, $work) {

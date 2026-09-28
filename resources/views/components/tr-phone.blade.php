@@ -1,0 +1,3 @@
+@props(['name'=>'phone_number','value'=>'','required'=>false,'landline'=>false])
+<div class="input-group"><span class="input-group-text">+90</span><input class="form-control" id="{{ $name }}" name="{{ $name }}" type="tel" inputmode="numeric" autocomplete="tel-national" minlength="10" maxlength="10" pattern="{{ $landline ? '[2-5]' : '5' }}[0-9]{9}" placeholder="{{ $landline ? '2121234567' : '5551234567' }}" value="{{ old($name, \App\Support\TurkishPhone::national($value)) }}" @required($required) aria-describedby="{{ $name }}-help"></div>
+<small id="{{ $name }}-help" class="text-muted">Başında 0 veya +90 olmadan 10 hane yazın.</small>

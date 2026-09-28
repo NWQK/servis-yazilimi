@@ -56,6 +56,7 @@ class AppointmentTest extends TestCase
         // Restore later columns after recreating the historical base table.
         (require database_path('migrations/2026_09_27_000001_appointment_cancellation_and_expiry.php'))->up();
         (require database_path('migrations/2026_09_27_000002_create_booking_directory.php'))->up();
+        (require database_path('migrations/2026_09_28_000004_vehicle_links_and_sms_controls.php'))->up();
         $appointment = $this->booking->book($this->profile, $this->data());
         $before = $appointment->fresh()->getAttributes();
         $migration->up();
@@ -363,6 +364,39 @@ class AppointmentTest extends TestCase
         $this->assertSame(['agir-vasita'],\App\Models\BookingService::where('name','Yeni hizmet')->firstOrFail()->vehicle_types);
     }
 
+    public function test_optional_verification_books_without_sms_and_cannot_be_overridden_by_guest()
+    {
+        $settings = \App\Models\AppointmentSmsSetting::central();
+        $settings->update(['verification_required'=>false,'enabled'=>false]);
+        $this->get($this->profile->publicUrl())->assertOk()->assertSee('Randevu talebi oluştur')->assertDontSee('Randevu al — SMS kodu gönder');
+        $data = $this->data();
+        $this->post($this->profile->publicUrl(),$data)->assertSessionHasNoErrors();
+        $this->post($this->profile->publicUrl(),$data)->assertSessionHasNoErrors();
+        $this->assertSame(1,Appointment::count());
+        $appointment = Appointment::firstOrFail();
+        $this->assertNull($appointment->phone_verified_at);
+        $this->assertTrue((bool)$appointment->verification_bypassed);
+        \Illuminate\Support\Facades\Http::assertNothingSent();
+        $this->actingAs($this->owner)->getJson('/appointments/notifications')->assertJsonPath('count',1);
+        $settings->update(['verification_required'=>true]);
+        $this->post($this->profile->publicUrl(),$this->data(['hour'=>10,'verification_bypassed'=>true,'verification_required'=>false]))->assertSessionHasErrors('sms');
+        $this->assertSame(1,Appointment::count());
+    }
+
+    public function test_sms_templates_and_verification_switch_are_admin_only()
+    {
+        $settings = \App\Models\AppointmentSmsSetting::central();
+        $data = $settings->only(['brand','sender','daily_limit','verification_template','approval_template']);
+        $data += ['enabled'=>0,'verification_required'=>0,'vehicle_sms_enabled'=>1,'vehicle_template'=>'{isletme}: {link}'];
+        $this->actingAs($this->owner)->post('/appointments/sms-settings',$data)->assertForbidden();
+        $this->owner->update(['type'=>'super admin']);
+        $this->withoutMiddleware(\App\Http\Middleware\XSS::class);
+        $this->post('/appointments/sms-settings',$data)->assertSessionHasNoErrors();
+        $this->assertFalse($settings->fresh()->verification_required);
+        $this->post('/appointments/sms-settings',array_replace($data,['vehicle_template'=>'Bağlantı yok']))->assertSessionHasErrors('vehicle_template');
+        $this->get('/appointments/sms-settings')->assertOk()->assertSee('Araç takip bağlantısı mesajı');
+    }
+
     private function verificationCode(): string
     {
         $request = \Illuminate\Support\Facades\Http::recorded()->last()[0];
@@ -596,7 +630,7 @@ class AppointmentTest extends TestCase
         $this->post('/settings/payment', ['CURRENCY'=>'EUR', 'CURRENCY_SYMBOL'=>'€', 'stripe_payment'=>'on'])->assertSessionHasNoErrors();
         $this->assertSame('TRY', DB::table('settings')->where('parent_id',$this->owner->id)->where('name','CURRENCY')->value('value'));
         $this->assertSame(0, DB::table('settings')->where('name','STRIPE_PAYMENT')->count());
-        $this->post('/settings/company', ['company_name'=>'Servis', 'company_email'=>'test@example.test', 'company_phone'=>'123', 'company_address'=>'Test', 'CURRENCY'=>'EUR', 'CURRENCY_SYMBOL'=>'€'])->assertSessionHasNoErrors();
+        $this->post('/settings/company', ['company_name'=>'Servis', 'company_email'=>'test@example.test', 'company_phone'=>'2121234567', 'company_address'=>'Test', 'CURRENCY'=>'EUR', 'CURRENCY_SYMBOL'=>'€'])->assertSessionHasNoErrors();
         $this->assertSame('₺', DB::table('settings')->where('parent_id',$this->owner->id)->where('name','CURRENCY_SYMBOL')->value('value'));
     }
 

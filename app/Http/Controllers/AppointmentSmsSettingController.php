@@ -17,7 +17,8 @@ class AppointmentSmsSettingController extends Controller
         $smsSettings = AppointmentSmsSetting::central();
         $challenges = \App\Models\AppointmentSmsChallenge::latest('id')->limit(20)->get();
         $messages = AppointmentSmsMessage::with('appointment.profile')->latest('id')->paginate(20);
-        return view('appointments.sms-settings', compact('smsSettings', 'messages', 'challenges'));
+        $vehicleMessages = \App\Models\VehicleSmsMessage::latest('id')->limit(20)->get();
+        return view('appointments.sms-settings', compact('smsSettings', 'messages', 'challenges', 'vehicleMessages'));
     }
 
     public function save(Request $request)
@@ -29,12 +30,20 @@ class AppointmentSmsSettingController extends Controller
             'sender' => 'nullable|string|max:11',
             'daily_limit' => 'required|integer|min:1|max:10000',
             'verification_template' => 'required|string|max:480', 'approval_template' => 'required|string|max:480',
+            'verification_required'=>'sometimes|required|boolean', 'vehicle_sms_enabled'=>'sometimes|required|boolean',
+            'vehicle_template'=>'sometimes|required|string|max:480',
         ], [], ['api_key' => 'API Anahtarı', 'api_hash' => 'API Hash', 'daily_limit' => 'Günlük doğrulama SMS sınırı']);
         foreach (['verification_template' => ['kod', 'isletme', 'marka'], 'approval_template' => ['isletme', 'tarih', 'saat', 'marka']] as $field => $allowed) {
             preg_match_all('/\{([^{}]+)\}/u', $data[$field], $matches);
             if (array_diff($matches[1], $allowed)) throw ValidationException::withMessages([$field => 'Şablonda desteklenmeyen bir değişken var.']);
         }
         if (!str_contains($data['verification_template'], '{kod}')) throw ValidationException::withMessages(['verification_template' => 'Doğrulama mesajında {kod} bulunmalıdır.']);
+        if (isset($data['vehicle_template'])) {
+            preg_match_all('/\{([^{}]+)\}/u',$data['vehicle_template'],$matches);
+            if (array_diff($matches[1],['isletme','link','plaka','marka']) || !str_contains($data['vehicle_template'],'{link}')) {
+                throw ValidationException::withMessages(['vehicle_template'=>'Araç mesajında {link} zorunludur. Yalnızca {isletme}, {link}, {plaka}, {marka} kullanılabilir.']);
+            }
+        }
         foreach (['{isletme}', '{tarih}', '{saat}'] as $field) {
             if (!str_contains($data['approval_template'], $field)) throw ValidationException::withMessages(['approval_template' => 'Onay mesajında {isletme}, {tarih} ve {saat} bulunmalıdır.']);
         }

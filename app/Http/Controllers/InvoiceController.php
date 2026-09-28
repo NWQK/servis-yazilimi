@@ -283,12 +283,21 @@ class InvoiceController extends Controller
     }
 
 
-    public function destroy(Invoice $invoice)
+    public function deleteConfirmation(int $id)
     {
         abort_unless(auth()->user()->can('delete invoice'), 403);
-        app(InventoryAccounting::class)->transaction(parentId(), function () use ($invoice) {
+        $invoice = Invoice::where('parent_id', parentId())->with('items')->findOrFail($id);
+        return view('invoice.delete', compact('invoice'));
+    }
+
+    public function destroy(Request $request, Invoice $invoice)
+    {
+        abort_unless(auth()->user()->can('delete invoice'), 403);
+        $request->validate(['return_stock'=>'required|boolean']);
+        app(InventoryAccounting::class)->transaction(parentId(), function () use ($invoice, $request) {
             $invoice = Invoice::where('parent_id', parentId())->lockForUpdate()->findOrFail($invoice->id);
-            app(InventoryAccounting::class)->sync($invoice, []);
+            if ($request->boolean('return_stock')) app(InventoryAccounting::class)->sync($invoice, []);
+            else $invoice->items()->delete();
             $invoice->types()->delete();
             $invoice->payments()->delete();
             $invoice->delete();

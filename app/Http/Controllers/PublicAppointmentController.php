@@ -30,8 +30,10 @@ class PublicAppointmentController extends Controller
         $date = $data['date'] ?? today()->toDateString();
         $hours = $booking->availableHours($profile, $date);
         $requestKey = (string) Str::uuid();
-        $smsReady = AppointmentSmsSetting::central()->ready();
-        return $this->page('appointments.public', compact('profile', 'date', 'hours', 'requestKey', 'smsReady', 'selection', 'selectedService'));
+        $smsSettings = AppointmentSmsSetting::central();
+        $verificationRequired = $smsSettings->verification_required;
+        $smsReady = !$verificationRequired || $smsSettings->ready();
+        return $this->page('appointments.public', compact('profile', 'date', 'hours', 'requestKey', 'smsReady', 'selection', 'selectedService', 'verificationRequired'));
     }
 
     public function store(Request $request, string $publicId, AppointmentBooking $booking)
@@ -49,6 +51,11 @@ class PublicAppointmentController extends Controller
             ['customer_name' => 'Ad soyad', 'phone' => 'Telefon numarası', 'date' => 'Randevu tarihi', 'hour' => 'Randevu saati']);
         $data['phone'] = '+90'.$data['phone'];
         app(\App\Services\BookingDirectory::class)->selection($profile, $data['vehicle'] ?? null, $data['service'] ?? null);
+        if (!AppointmentSmsSetting::central()->verification_required) {
+            $data['verification_bypassed'] = true;
+            $appointment = $booking->book($profile,$data);
+            return redirect($appointment->statusUrl());
+        }
         $challenge = app(AppointmentSms::class)->start($profile, $data, $request->ip());
         return redirect()->route('booking.verify', [$profile->public_id, $challenge->token]);
     }

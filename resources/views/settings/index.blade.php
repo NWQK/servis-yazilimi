@@ -236,7 +236,7 @@
                                             <div class="col-md-6">
                                                 <div class="form-group">
                                                     {{ Form::label('phone_number', __('Phone Number'), ['class' => 'form-label']) }}
-                                                    {{ Form::number('phone_number', null, ['class' => 'form-control', 'placeholder' => __('Enter your Phone Number')]) }}
+                                                    <x-tr-phone :value="$loginUser->phone_number" />
                                                     <small class="form-text text-muted">
                                                         {{ __('Please enter the number with country code. e.g., +91XXXXXXXXXX') }}
                                                     </small>
@@ -420,7 +420,7 @@
                                             </div>
                                             <div class="form-group col-md-6">
                                                 {{ Form::label('company_phone', __('Phone Number'), ['class' => 'form-label']) }}
-                                                {{ Form::text('company_phone', $settings['company_phone'], ['class' => 'form-control', 'placeholder' => __('Enter company phone')]) }}
+                                                <x-tr-phone name="company_phone" :value="$settings['company_phone']" :required="true" :landline="true" />
                                             </div>
                                             <div class="form-group col-md-6">
                                                 {{ Form::label('company_address', __('Address'), ['class' => 'form-label']) }}

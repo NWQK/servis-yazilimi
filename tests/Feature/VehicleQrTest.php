@@ -44,6 +44,52 @@ class VehicleQrTest extends TestCase
         Gate::before(fn ($user) => $user->type === 'owner' ? true : null);
     }
 
+    public function test_vehicle_without_label_gets_permanent_printable_link_and_one_sms()
+    {
+        $this->owner->update(['phone_number'=>'05551234567']);
+        $settings = \App\Models\AppointmentSmsSetting::central();
+        $settings->update(['enabled'=>true,'vehicle_sms_enabled'=>true,'api_key'=>'fake-key','api_hash'=>'fake-hash','sender'=>'SANAYI']);
+        \Illuminate\Support\Facades\Http::fake(['api.iletimerkezi.com/*'=>\Illuminate\Support\Facades\Http::response(['response'=>['status'=>['code'=>200],'order'=>['id'=>'12345']]],200)]);
+        $vehicle = $this->pool->createVehicle($this->owner->id,null,function () {
+            $v = $this->vehicle(); $v->client = $this->owner->id; $v->save(); return $v;
+        });
+        $url = $vehicle->qrCode->publicUrl();
+        $this->assertSame(10,VehicleQrCode::available()->count());
+        $this->assertNotNull($vehicle->qrCode->assigned_at);
+        $this->assertNull($vehicle->qrCode->printed_at);
+        \Illuminate\Support\Facades\Http::assertSent(fn ($request)=>$request['request']['order']['message']['receipents']['number'] === ['905551234567'] && str_contains($request['request']['order']['message']['text'],$url));
+        app(\App\Services\VehicleRegistrationSms::class)->send($vehicle);
+        \Illuminate\Support\Facades\Http::assertSentCount(1);
+        $this->get($url)->assertOk();
+        $this->actingAs($this->owner)->get('/vehicle-qr/print?ids[]='.$vehicle->qrCode->id)->assertOk();
+        $this->assertSame($url,$vehicle->fresh()->qrCode->publicUrl());
+        $this->assertSame('accepted',\App\Models\VehicleSmsMessage::firstOrFail()->status);
+    }
+
+    public function test_vehicle_sms_uses_selected_qr_and_failure_preserves_vehicle()
+    {
+        $this->owner->update(['phone_number'=>'5551234567']);
+        \App\Models\AppointmentSmsSetting::central()->update(['enabled'=>true,'api_key'=>'fake-key','api_hash'=>'fake-hash','sender'=>'SANAYI']);
+        \Illuminate\Support\Facades\Http::fake(['api.iletimerkezi.com/*'=>\Illuminate\Support\Facades\Http::response([],503)]);
+        $code = $this->ready();
+        $vehicle = $this->pool->createVehicle($this->owner->id,$code->id,function () {
+            $v=$this->vehicle(); $v->client=$this->owner->id; $v->save(); return $v;
+        });
+        $this->assertSame($code->token,$vehicle->qrCode->token);
+        $this->assertNotNull($vehicle->fresh());
+        $this->assertSame('unknown',\App\Models\VehicleSmsMessage::firstOrFail()->status);
+        \Illuminate\Support\Facades\Http::assertSent(fn ($request)=>str_contains($request['request']['order']['message']['text'],$code->publicUrl()));
+    }
+
+    public function test_phone_forms_use_national_format_and_reject_prefixes_on_submit()
+    {
+        $this->actingAs($this->owner)->get('/client/create')->assertOk()->assertSee('pattern="5[0-9]{9}"',false)->assertSee('+90');
+        foreach (['05551234567','+905551234567','555123456','55512345678'] as $phone) {
+            $this->post('/client',['phone_number'=>$phone])->assertSessionHasErrors('phone_number');
+        }
+        $this->assertSame('5551234567',\App\Support\TurkishPhone::national('+90 555 123 45 67'));
+    }
+
     private function owner($email)
     {
         return User::create(['name' => 'Test Servis', 'email' => $email, 'password' => bcrypt('test-password'), 'type' => 'owner', 'lang' => 'tr']);

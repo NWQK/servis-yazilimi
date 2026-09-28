@@ -95,7 +95,7 @@
                                         </div>
                                         <div class="col-md-6">
                                             {{ Form::label('phone_number', __('Phone Number'), ['class' => 'form-label fw-semibold']) }}
-                                            {{ Form::text('phone_number', old('phone_number'), ['class' => 'form-control', 'placeholder' => __('e.g. +91XXXXXXXXXX'), 'required' => true]) }}
+                                            <x-tr-phone  :required="true" />
                                         </div>
                                         <div class="col-md-6">
                                             {{ Form::label('state', __('State'), ['class' => 'form-label fw-semibold']) }}

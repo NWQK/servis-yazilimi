@@ -304,6 +304,9 @@ Route::resource('item', ItemController::class)->middleware(
         'XSS',
     ]
 );
+Route::get('item/{id}/counter-sale', [ItemController::class, 'sale'])->whereNumber('id')->middleware(['auth','XSS'])->name('item.sale');
+Route::post('item/{id}/counter-sale', [ItemController::class, 'sell'])->whereNumber('id')->middleware(['auth','XSS'])->name('item.sell');
+Route::get('invoice/{id}/delete-confirmation', [InvoiceController::class, 'deleteConfirmation'])->whereNumber('id')->middleware(['auth','XSS'])->name('invoice.delete-confirmation');
 
 //-------------------------------Vehicle Type-------------------------------------------
 Route::resource('vehicle-type', VehicleTypeController::class)->middleware(

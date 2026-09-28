@@ -81,7 +81,7 @@ class ClientController extends Controller
             'notes'        => 'nullable|string',
             'type' => ['required', Rule::exists('vehicle_types', 'id')->where('parent_id', parentId())],
             'brand' => ['required', Rule::exists('vehicle_brands', 'id')->where('parent_id', parentId())->where('type', $request->type)],
-            'qr_code_id' => 'required|integer',
+            'qr_code_id' => 'nullable|integer|min:1',
             'color'        => 'nullable|string|max:255',
             'license_plate' => 'required',
             'engine_type'  => 'nullable|string|max:255',
@@ -119,7 +119,7 @@ class ClientController extends Controller
         }
 
         $userRole = Role::where('name', 'client')->where('parent_id', parentId())->first();
-        $vehicle = app(VehicleQrPool::class)->createVehicle(parentId(), (int) $request->qr_code_id,
+        $vehicle = app(VehicleQrPool::class)->createVehicle(parentId(), $request->filled('qr_code_id') ? (int) $request->qr_code_id : null,
             function () use ($request, $userRole, &$user, &$client, &$service, &$invoice) {
                 $user                    = new User();
                 $user->name              = $request->name;

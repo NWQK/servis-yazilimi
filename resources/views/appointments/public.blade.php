@@ -13,7 +13,7 @@
 @else
 <div class="booking-columns"><section class="booking-panel"><h2><span class="booking-step">1</span> Tarih seçin</h2>
     <form method="get" action="{{ route('booking.show', $profile->public_id) }}">@include('appointments.selection-fields')<label for="booking-date">Randevu günü</label><input id="booking-date" name="date" type="date" required value="{{ $date }}" min="{{ today()->toDateString() }}" max="{{ today()->addDays(\App\Services\AppointmentBooking::BOOKING_WINDOW_DAYS)->toDateString() }}"><p class="booking-muted">Bugünden itibaren en fazla 1 hafta sonrası için randevu alabilirsiniz.</p><button class="booking-button" type="submit">Uygun saatleri göster</button></form>
-    <div class="booking-help"><strong>Nasıl çalışır?</strong><p>Her randevu aralığı 1 saattir. Telefonunuza gelen kodu doğrulayınca talebiniz işletmeye iletilir ve saat sizin için ayrılır. İşletme onayladığında randevunuz kesinleşir ve onay SMS’i gönderilir.</p><p>Doğrulama tamamlanana kadar saat başka bir müşteri tarafından alınabilir.</p></div>
+    <div class="booking-help"><strong>Nasıl çalışır?</strong>@if($verificationRequired)<p>Her randevu aralığı 1 saattir. Telefonunuza gelen kodu doğrulayınca talebiniz işletmeye iletilir ve saat sizin için ayrılır. İşletme onayladığında randevunuz kesinleşir ve onay SMS’i gönderilir.</p><p>Doğrulama tamamlanana kadar saat başka bir müşteri tarafından alınabilir.</p>@else<p>Tarih ve saati seçip bilgilerinizi gönderin. Talebiniz doğrudan işletmeye iletilir; SMS kodu gerekmez. Randevu işletme onayından sonra kesinleşir. Sonucu kişisel takip bağlantınızdan görebilirsiniz.</p>@endif</div>
 </section><section class="booking-panel"><h2><span class="booking-step">2</span> {{ dateFormat($date) }}</h2>
 @if (count($hours))
     <form method="post" action="{{ route('booking.store', $profile->public_id) }}">@csrf
@@ -27,7 +27,7 @@
         <label for="license_plate">Plaka <span class="booking-muted">(isteğe bağlı)</span></label><input id="license_plate" name="license_plate" maxlength="20" value="{{ old('license_plate') }}">
         <label for="notes">İhtiyacınızı kısaca yazın <span class="booking-muted">(isteğe bağlı)</span></label><textarea id="notes" name="notes" maxlength="1000" rows="3" placeholder="Örneğin yağ bakımı veya fren kontrolü">{{ old('notes') }}</textarea>
         <div class="booking-trap" aria-hidden="true"><label>Web sitesi<input name="website" tabindex="-1" autocomplete="off"></label></div>
-        <button class="booking-button" type="submit">Randevu al — SMS kodu gönder</button><p class="booking-muted">Telefonunuza doğrulama kodu gönderilir. Kodu doğruladıktan sonra işletmenin onayı beklenir.</p>
+        <button class="booking-button" type="submit">{{ $verificationRequired ? 'Randevu al — SMS kodu gönder' : 'Randevu talebi oluştur' }}</button><p class="booking-muted">{{ $verificationRequired ? 'Telefonunuza doğrulama kodu gönderilir. Kodu doğruladıktan sonra işletmenin onayı beklenir.' : 'Talebiniz işletmeye iletilir. Açılan takip bağlantısını saklayın.' }}</p>
     </form>
 @else
     <div class="booking-empty"><h3>Bu gün için uygun saat yok.</h3><p>İşletme kapalı olabilir veya saatler dolmuş olabilir. Başka bir tarih seçebilirsiniz.</p></div>

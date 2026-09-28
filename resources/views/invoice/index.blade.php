@@ -88,7 +88,8 @@
                                                             data-title="{{ __('Edit') }}"> <i data-feather="edit"></i></a>
                                                     @endcan
                                                     @can('delete invoice')
-                                                        <a class=" avtar avtar-xs btn-link-danger text-danger confirm_dialog"
+                                                        <a class=" avtar avtar-xs btn-link-danger text-danger customModal"
+                                                            data-url="{{ route('invoice.delete-confirmation', $invoice->id) }}" data-title="Faturayı sil"
                                                             data-bs-toggle="tooltip"
                                                             data-bs-original-title="{{ __('Detete') }}" href="#"> <i
                                                                 data-feather="trash-2"></i></a>

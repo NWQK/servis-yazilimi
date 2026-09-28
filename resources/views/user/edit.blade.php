@@ -20,10 +20,8 @@
         </div>
         <div class="form-group col-md-6">
             {{ Form::label('phone_number', __('Phone Number'), ['class' => 'form-label']) }}
-            {{ Form::text('phone_number', null, ['class' => 'form-control', 'placeholder' => __('Enter Phone Number')]) }}
-            <small class="form-text text-muted">
-                {{ __('Please enter the number with country code. e.g., +91XXXXXXXXXX') }}
-            </small>
+            <x-tr-phone :value="$user->phone_number"  />
+
 
         </div>
         <div class="form-group {{ \Auth::user()->type == 'super admin' ? 'col-md-6 col-lg-6' : 'col-md-12 col-lg-12' }}">

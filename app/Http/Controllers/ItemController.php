@@ -12,6 +12,20 @@ use App\Services\InventoryAccounting;
 
 class ItemController extends Controller
 {
+    public function sale(int $id)
+    {
+        abort_unless(auth()->user()->can('edit item') && auth()->user()->can('create invoice payment'), 403);
+        $item = Item::where('parent_id', parentId())->findOrFail($id);
+        return view('item.sale', ['item'=>$item, 'requestKey'=>(string)\Illuminate\Support\Str::uuid()]);
+    }
+
+    public function sell(Request $request, int $id, InventoryAccounting $accounting)
+    {
+        abort_unless(auth()->user()->can('edit item') && auth()->user()->can('create invoice payment'), 403);
+        $data = $request->validate(['quantity'=>'required|integer|min:1|max:100000000', 'request_key'=>'required|uuid', 'unit_price'=>'required|numeric|min:0|max:9999999.99']);
+        $sale = $accounting->counterSale(parentId(), auth()->id(), $id, (int)$data['quantity'], $data['request_key'], $data['unit_price']);
+        return redirect()->route('item.index')->with('success', $sale->quantity.' adet '.$sale->item_title.' satışı kaydedildi. Tahsilat: '.priceFormat($sale->amount));
+    }
 
     public function index(Request $request)
     {

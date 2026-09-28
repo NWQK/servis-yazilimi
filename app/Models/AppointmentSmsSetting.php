@@ -8,7 +8,7 @@ class AppointmentSmsSetting extends Model
     public $incrementing = false;
     protected $guarded = [];
     protected $hidden = ['auth_token', 'api_key', 'api_hash'];
-    protected $casts = ['enabled' => 'boolean', 'api_key' => 'encrypted', 'api_hash' => 'encrypted'];
+    protected $casts = ['enabled' => 'boolean', 'verification_required'=>'boolean', 'vehicle_sms_enabled'=>'boolean', 'api_key' => 'encrypted', 'api_hash' => 'encrypted'];
 
     public static function central(): self
     {

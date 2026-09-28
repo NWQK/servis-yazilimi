@@ -1,4 +1,5 @@
 @extends('layouts.app')
+@push('script-page')<script src="{{ asset('js/counter-sales.js') }}"></script>@endpush
 
 @section('page-title')
     {{ __('Item') }}
@@ -81,6 +82,9 @@
                                         @if (Gate::check('edit item') || Gate::check('delete item') || Gate::check('show item'))
                                             <td>
                                                 <div class="cart-action">
+                                                    @if(Gate::check('edit item') && Gate::check('create invoice payment'))
+                                                        <a class="btn btn-sm btn-outline-secondary customModal" href="#" data-url="{{ route('item.sale', $item->id) }}" data-title="Elden satış">Elden satış yap</a>
+                                                    @endif
                                                     {!! Form::open(['method' => 'DELETE', 'route' => ['item.destroy', $item->id]]) !!}
                                                     @can('show item')
                                                         <a class="avtar avtar-xs btn-link-warning text-warning customModal"

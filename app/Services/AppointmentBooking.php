@@ -88,6 +88,7 @@ class AppointmentBooking
                 'customer_cancel_until' => $start->subHours($profile->cancellation_cutoff_hours ?? 2),
                 'requested_vehicle' => $selectedService ? config('booking_directory.vehicles.'.$data['vehicle']) : null,
                 'requested_service' => $selectedService?->name,
+                'verification_bypassed' => !empty($data['verification_bypassed']),
             ]);
         });
     }

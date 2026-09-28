@@ -101,8 +101,8 @@ class AppointmentSms
 
     public function queueApproval(Appointment $appointment): void
     {
-        if (!$appointment->phone_verified_at) return;
         $settings = AppointmentSmsSetting::central();
+        if (!$appointment->phone_verified_at && !($appointment->verification_bypassed && $settings->ready())) return;
         AppointmentSmsMessage::firstOrCreate(['appointment_id' => $appointment->id], [
             'recipient' => $appointment->phone,
             'body' => $settings->renderMessage($settings->approval_template, ['{isletme}' => $appointment->profile->display_name,
