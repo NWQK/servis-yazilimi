@@ -71,8 +71,10 @@ class InvoiceController extends Controller
                 return redirect()->back()->with('error', $messages->first());
             }
 
-            $invoice = app(InventoryAccounting::class)->transaction(parentId(), function () use ($request) {
+            $billing = \App\Services\InvoiceBilling::validated($request);
+            $invoice = app(InventoryAccounting::class)->transaction(parentId(), function () use ($request, $billing) {
             $invoice = new Invoice();
+            $invoice->customer_details = $request->exists('billing') ? $billing : null;
             $invoice->invoice_id = $this->invoiceNumber();
             $invoice->invoice_date = $request->invoice_date;
             if ($request->exists('discount_amount')) $invoice->discount_amount = $request->discount_amount ?? 0;
@@ -227,8 +229,17 @@ class InvoiceController extends Controller
                 return redirect()->back()->with('error', $messages->first());
             }
 
-            $invoice = app(InventoryAccounting::class)->transaction(parentId(), function () use ($request, $id) {
+            $billing = \App\Services\InvoiceBilling::validated($request);
+            $invoice = app(InventoryAccounting::class)->transaction(parentId(), function () use ($request, $id, $billing) {
                 $invoice = Invoice::where('parent_id', parentId())->lockForUpdate()->findOrFail($id);
+                if ((int) $invoice->client !== (int) $request->client) {
+                    $invoice->customer_details = array_replace(
+                        \App\Services\InvoiceBilling::customer(parentId(), (int) $request->client),
+                        array_filter($billing, fn ($value) => $value !== null && $value !== '')
+                    );
+                } elseif ($request->exists('billing')) {
+                    $invoice->customer_details = $billing;
+                }
                 $previousTotal = $invoice->getInvoiceAllTotalAmount();
                 $invoice->client = $request->client;
                 $invoice->service = $request->service;

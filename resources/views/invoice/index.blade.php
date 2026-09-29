@@ -58,7 +58,7 @@
                                             {{ servicePrefix() }}{{ !empty($invoice->services) ? $invoice->services->service_id : '' }}
                                         </td>
                                         <td>{{ dateFormat($invoice->invoice_date) }}</td>
-                                        <td>{{ priceFormat( number_format($invoice->getInvoiceAllTotalAmount(), 2)) }}</td>
+                                        <td>{{ priceFormat($invoice->getInvoiceAllTotalAmount()) }}</td>
                                         <td>
                                             @if ($invoice->status == 0)
                                                 <span

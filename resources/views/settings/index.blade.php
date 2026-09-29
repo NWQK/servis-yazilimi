@@ -73,6 +73,7 @@
                                     </li>
                                 @endif
                                 @if (Gate::check('manage company settings'))
+                                    <li class="nav-item"><a class="nav-link {{ $activeTab === 'invoice_business' ? 'active' : '' }}" data-bs-toggle="tab" href="#invoice_business" role="tab"><div class="d-flex align-items-center"><i class="ti ti-file-invoice me-2 f-20"></i><div><h5 class="mb-0">İşletme bilgileri</h5><small class="text-muted">Faturada gösterilecek bilgiler</small></div></div></a></li>
                                     <li class="nav-item">
                                         <a class="nav-link {{ empty($activeTab) || $activeTab == 'company_settings' ? ' active ' : '' }}"
                                             id="profile-tab-4" data-bs-toggle="tab" href="#company_settings" role="tab"
@@ -205,6 +206,7 @@
                         </div>
                         <div class="col-lg-8">
                             <div class="tab-content">
+                                @include('settings.invoice_business')
                                 @if (auth()->user()->type === 'owner')
                                 <div class="tab-pane" id="sms_system" role="tabpanel"><h5>SMS Sistemi</h5><p>İşletmeye özel SMS ayarları yakında kullanıma açılacaktır. Randevu SMS’leri sistem yöneticisi tarafından yönetilir.</p></div>
                                 @endif

@@ -8,9 +8,23 @@ use Illuminate\Database\Eloquent\Model;
 class Invoice extends Model
 {
     use HasFactory;
-    protected $casts = ['external_labor_amount' => 'decimal:2', 'discount_amount' => 'decimal:2'];
+    protected $casts = ['external_labor_amount' => 'decimal:2', 'discount_amount' => 'decimal:2', 'business_details' => 'array', 'customer_details' => 'array'];
 
     public const DISCOUNT_RULE = 'nullable|numeric|min:0|max:9999999999.99|regex:/^\d+(\.\d{1,2})?$/';
+
+    protected static function booted()
+    {
+        static::creating(function (Invoice $invoice) {
+            $invoice->customer_details = array_replace(
+                \App\Services\InvoiceBilling::customer((int) $invoice->parent_id, $invoice->client),
+                array_filter($invoice->customer_details ?? [], fn ($value) => $value !== null && $value !== '')
+            );
+            // Also covers invoices created automatically by the service/customer wizard.
+            if ($invoice->business_details === null) {
+                $invoice->business_details = \App\Services\InvoiceBilling::business((int) $invoice->parent_id);
+            }
+        });
+    }
 
     protected $fillable = [
         'external_labor_amount',

@@ -1,12 +1,13 @@
 @extends('vehicle_portal.layout')
 @section('title', 'Fatura ' . $settings['invoice_number_prefix'] . $invoice->invoice_id)
 @section('content')
+<link rel="stylesheet" href="{{ asset('css/invoice-billing.css') }}">
 <div class="actions"><a href="{{ route('vehicle-portal.show', $code->token) }}#invoices">← Faturalara dön</a><button id="print-invoice" type="button">Yazdır / PDF kaydet</button></div>
 <article class="card">
     <span class="eyebrow">FATURA</span><h1>{{ $settings['invoice_number_prefix'] . $invoice->invoice_id }}</h1>
     <p>{{ $vehicle->license_plate }} · {{ $vehicle->display_name }}</p>
     <p>{{ dateFormat($invoice->invoice_date) }} · {{ ['Ödenmedi', 'Kısmen ödendi', 'Ödendi'][$invoice->status] ?? '—' }}</p>
-    <p>{{ $settings['company_address'] }} {{ $settings['company_phone'] }}</p>
+    @include('invoice.billing_display')
     <div class="table-wrap"><table><thead><tr><th>İşlem / ürün</th><th>Miktar</th><th>Birim fiyat</th><th>Vergi</th><th>Tutar</th></tr></thead><tbody>
     @foreach ($lines as $line)<tr><td><strong>{{ $line['name'] }}</strong><p class="note">{{ $line['description'] }}</p></td><td data-label="Miktar">{{ $line['quantity'] }}</td><td data-label="Birim fiyat">{{ number_format($line['price'], 2, ',', '.') }} {{ $settings['CURRENCY_SYMBOL'] }}</td><td data-label="Vergi">%{{ $line['tax_rate'] }}</td><td data-label="Tutar">{{ number_format($line['subtotal'] + $line['tax'], 2, ',', '.') }} {{ $settings['CURRENCY_SYMBOL'] }}</td></tr>@endforeach
     </tbody></table></div>

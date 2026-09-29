@@ -24,10 +24,14 @@
 @endsection
 @section('content')
     <div class="row" id="invoicePrint">
+        <link rel="stylesheet" href="{{ asset('css/invoice-billing.css') }}">
         <div class="col-sm-12">
             <div class="d-print-none card mb-3">
                 <div class="card-body p-3">
                     <ul class="list-inline ms-auto mb-0 d-flex justify-content-end flex-wrap">
+                        @can('edit invoice')
+                        <li class="list-inline-item"><a class="btn btn-outline-secondary" href="{{ route('invoice.billing.edit', $invoice->id) }}">Müşteri bilgileri ekle</a></li>
+                        @endcan
                         <li class="list-inline-item align-bottom me-2">
                             @can('create invoice payment')
                                 @if ($invoice->status != 2)
@@ -97,35 +101,7 @@
                                 </div>
                             </div>
                         </div>
-                        <div class="col-sm-6">
-                            <div class="border rounded p-3">
-                                <h6 class="mb-0">{{ __('From') }}:</h6>
-                                <h5>{{ !empty($settings['company_name']) ? $settings['company_name'] : ' - ' }}</h5>
-                                <p class="mb-0">
-                                    {{ !empty($settings['company_phone']) ? $settings['company_phone'] : '-' }}</p>
-                                <p class="mb-0">
-                                    {{ !empty($settings['company_email']) ? $settings['company_email'] : '-' }}</p>
-                                <p class="mb-0">
-                                    {{ !empty($settings['company_address']) ? $settings['company_address'] : '-' }}</p>
-                            </div>
-                        </div>
-                        <div class="col-sm-6">
-                            <div class="border rounded p-3">
-                                <h6 class="mb-0">{{ __('To') }}:</h6>
-                                <h5>{{ $invoice->clients->name ?? '-' }}</span>
-                                </h5>
-                                <p class="mb-0">
-                                    <span> {{ $invoice->clients->phone_number ?? '-' }}</span>
-                                </p>
-                                <p class="mb-0">
-                                    <span> {{ $invoice->clients->clients->address ?? '-' }} <br>
-                                        {{ $invoice->clients->clients->city ?? '-' }},
-                                        {{ $invoice->clients->clients->state ?? '-' }},
-                                        {{ $invoice->clients->clients->country ?? '-' }},
-                                        {{ $invoice->clients->clients->zip ?? '-' }}</span>
-                                </p>
-                            </div>
-                        </div>
+                        <div class="col-12">@include('invoice.billing_display')</div>
                         <div class="col-12">
                             <div class="table-responsive">
                                 <table class="table table-hover mb-0">

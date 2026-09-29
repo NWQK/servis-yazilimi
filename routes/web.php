@@ -192,6 +192,7 @@ Route::group(
         Route::post('settings/site-seo', [SettingController::class, 'siteSEOData'])->name('setting.site.seo');
         Route::post('settings/google-recaptcha', [SettingController::class, 'googleRecaptchaData'])->name('setting.google.recaptcha');
         Route::post('settings/company', [SettingController::class, 'companyData'])->name('setting.company');
+        Route::post('settings/invoice-business', [\App\Http\Controllers\InvoiceBillingController::class, 'business'])->name('setting.invoice-business');
         Route::post('settings/2fa', [SettingController::class, 'twofaEnable'])->name('setting.twofa.enable');
 
         Route::get('footer-setting', [SettingController::class, 'footerSetting'])->name('footerSetting');
@@ -381,6 +382,9 @@ Route::group(
         Route::post('invoice/{id}/item/store', [InvoiceController::class, 'invoiceItemStore'])->name('invoice.item.store');
         Route::post('invoice/{id}/item/{tid}/store', [InvoiceController::class, 'invoiceItemDestroy'])->name('invoice.item.destroy');
         Route::resource('invoice', InvoiceController::class);
+        Route::get('invoice-customer/{id}/billing', [\App\Http\Controllers\InvoiceBillingController::class, 'customer'])->whereNumber('id')->name('invoice.billing.customer');
+        Route::get('invoice/{id}/billing', [\App\Http\Controllers\InvoiceBillingController::class, 'edit'])->whereNumber('id')->name('invoice.billing.edit');
+        Route::put('invoice/{id}/billing', [\App\Http\Controllers\InvoiceBillingController::class, 'update'])->whereNumber('id')->name('invoice.billing.update');
 
         Route::post('invoice/{id}/banktransfer/payment', [InvoiceController::class, 'banktransferPayment'])->name(name: 'invoice.banktransfer.payment');
         Route::get('invoice-payment-status/{id}/{status}', [InvoiceController::class, 'invoicePaymentStatus'])->name('invoice.bank.transfer.action');

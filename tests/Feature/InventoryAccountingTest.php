@@ -225,9 +225,100 @@ class InventoryAccountingTest extends TestCase
         return $this->stock->savePurchase($this->owner->id, $this->attributes($quantity));
     }
 
+    public function test_billing_details_are_optional_tenant_scoped_and_do_not_change_money_or_stock()
+    {
+        $this->post('/settings/invoice-business', ['billing' => ['name' => 'Deneme Servis', 'tax_number' => '1234567890', 'phone' => '2121234567', 'unknown' => 'discard']])->assertRedirect()->assertSessionHasNoErrors();
+        $item = $this->purchase(8);
+        $invoice = $this->invoice();
+        $invoice->external_labor_amount = 200;
+        $invoice->discount_amount = 50.25;
+        $invoice->save();
+        $this->stock->add($invoice, ['item' => $item->id, 'quantity' => 4]);
+        $taxId = DB::table('taxes')->insertGetId(['title' => 'KDV', 'rate' => 20, 'parent_id' => $this->owner->id]);
+        $invoice->items()->update(['tax' => (string) $taxId]);
+        DB::table('invoice_payments')->insert(['invoice_id' => $invoice->id, 'parent_id' => $this->owner->id, 'amount' => 500, 'payment_date' => now()->toDateString()]);
+        $this->assertEquals(1589.75, $invoice->fresh()->getInvoiceAllTotalAmount());
+        $this->get('/invoice')->assertOk()->assertSee('1.589,75 ₺');
+        $this->get('/invoice/'.$invoice->id.'/billing')->assertOk()->assertSee('Müşteri bilgileri ekle')->assertDontSee('Müşteri türü')->assertDontSee('billing[type]', false);
+        $data = ['billing' => ['type' => 'company', 'name' => 'Örnek <script>firma</script>', 'tax_number' => '0123456789', 'email' => '', 'phone' => '5321234567', 'extra' => 'discard'], 'discount_amount' => 999, 'parent_id' => 999];
+        $this->put('/invoice/'.$invoice->id.'/billing', $data)->assertRedirect()->assertSessionHasNoErrors();
+        $invoice->refresh();
+        $this->assertArrayNotHasKey('extra', $invoice->customer_details);
+        $this->assertArrayNotHasKey('type', $invoice->customer_details);
+        $this->assertArrayNotHasKey('unknown', $invoice->business_details);
+        $this->assertSame('0123456789', $invoice->customer_details['tax_number']);
+        $this->assertEquals(1589.75, $invoice->getInvoiceAllTotalAmount());
+        $this->assertEquals(500, $invoice->payments()->sum('amount'));
+        $this->assertSame(4, (int) $item->fresh()->quantity);
+        $this->assertSame(1, Expense::count());
+        $this->get('/invoice/'.encrypt($invoice->id))->assertOk()->assertSee('1.589,75')->assertSee('Deneme Servis')->assertSee('Örnek <script>firma</script>')->assertDontSee('<script>firma</script>', false);
+        $this->post('/settings/invoice-business', ['billing' => ['name' => 'Yeni Unvan']])->assertRedirect();
+        $this->assertSame('Deneme Servis', $invoice->fresh()->business_details['name']);
+        $this->assertSame('Yeni Unvan', $this->invoice()->business_details['name']);
+        $this->put('/invoice/'.$invoice->id.'/billing', ['billing' => ['name' => '', 'phone' => '']])->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertNull($invoice->fresh()->customer_details['name']);
+        $this->put('/invoice/'.$invoice->id.'/billing', ['billing' => ['phone' => '05321234567', 'tax_number' => '12']])->assertSessionHasErrors(['billing.phone', 'billing.tax_number']);
+        $invoice->parent_id = 999; $invoice->save();
+        $this->get('/invoice/'.$invoice->id.'/billing')->assertNotFound();
+        $this->put('/invoice/'.$invoice->id.'/billing', $data)->assertNotFound();
+        $staff = User::create(['name'=>'Staff','email'=>'billing-staff@example.test','password'=>bcrypt('test'),'type'=>'staff','parent_id'=>$this->owner->id]);
+        $this->actingAs($staff);
+        $this->put('/invoice/'.$invoice->id.'/billing', $data)->assertForbidden();
+        $this->post('/settings/invoice-business', ['billing'=>['name'=>'Unauthorized']])->assertForbidden();
+        $this->assertSame('Yeni Unvan', \App\Services\InvoiceBilling::business($this->owner->id)['name']);
+    }
+
+    public function test_invoice_create_and_edit_store_optional_billing_and_portal_displays_it()
+    {
+        $vehicle = Vehicle::create(['parent_id'=>$this->owner->id,'license_plate'=>'34 BILL 01']);
+        $service = Service::create(['parent_id'=>$this->owner->id,'client'=>$this->owner->id,'vehicle'=>$vehicle->id]);
+        $data = ['invoice_date'=>now()->toDateString(),'client'=>$this->owner->id,'service'=>$service->id,'types'=>[], 'billing'=>['name'=>'Müşteri Unvanı','type'=>'individual']];
+        $this->post('/invoice', $data)->assertRedirect()->assertSessionHasNoErrors();
+        $invoice = Invoice::firstOrFail();
+        $this->assertSame('Müşteri Unvanı', $invoice->customer_details['name']);
+        $data['billing'] = ['name'=>'Güncel Unvan','address'=>'Örnek adres'];
+        $this->put('/invoice/'.encrypt($invoice->id), $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('Güncel Unvan', $invoice->fresh()->customer_details['name']);
+        $pool = app(\App\Services\VehicleQrPool::class);
+        $pool->replenish($this->owner->id);
+        $code = \App\Models\VehicleQrCode::available()->first();
+        $pool->markPrinted($this->owner->id, [$code->id]);
+        $pool->assignExisting($this->owner->id, $vehicle->id, $code->id);
+        auth()->logout();
+        $this->get('/q/'.$code->token.'/invoice/'.$invoice->id)->assertOk()->assertSee('Güncel Unvan')->assertSee('Örnek adres');
+    }
+
     private function invoice(): Invoice
     {
         return Invoice::create(['parent_id' => $this->owner->id, 'client' => $this->owner->id, 'invoice_id' => 1, 'invoice_date' => '2026-09-23', 'status' => 0]);
+    }
+
+    public function test_invoice_copies_selected_customer_and_keeps_optional_overrides_on_the_invoice()
+    {
+        $client = User::create(['name'=>'Kayıtlı Müşteri','email'=>'customer@example.test','phone_number'=>'+905321234567','password'=>bcrypt('test'),'type'=>'client','parent_id'=>$this->owner->id]);
+        \App\Models\Client::create(['user_id'=>$client->id,'parent_id'=>$this->owner->id,'address'=>'Sanayi sitesi','city'=>'İstanbul','state'=>'Kartal','zip_code'=>'34860']);
+        $this->get('/invoice-customer/'.$client->id.'/billing')->assertOk()->assertJsonFragment(['name'=>'Kayıtlı Müşteri','phone'=>'5321234567','district'=>'Kartal','postcode'=>'34860']);
+        $service = Service::create(['parent_id'=>$this->owner->id,'client'=>$client->id]);
+        $data = ['invoice_date'=>now()->toDateString(),'client'=>$client->id,'service'=>$service->id,'types'=>[], 'billing'=>['name'=>'','tax_office'=>'Örnek vergi dairesi']];
+        $this->post('/invoice',$data)->assertRedirect()->assertSessionHasNoErrors();
+        $invoice = Invoice::firstOrFail();
+        $this->assertSame('Kayıtlı Müşteri',$invoice->customer_details['name']);
+        $this->assertSame('customer@example.test',$invoice->customer_details['email']);
+        $this->assertSame('Sanayi sitesi',$invoice->customer_details['address']);
+        $this->assertSame('Örnek vergi dairesi',$invoice->customer_details['tax_office']);
+        $this->put('/invoice/'.$invoice->id.'/billing',['billing'=>['name'=>'Faturaya özel ad','address'=>'Faturaya özel adres']])->assertRedirect();
+        $this->assertSame('Kayıtlı Müşteri',$client->fresh()->name);
+        $this->get('/invoice/'.$invoice->id.'/billing')->assertOk()->assertSee('Faturaya özel ad');
+        $other = User::create(['name'=>'İkinci Müşteri','email'=>'second@example.test','password'=>bcrypt('test'),'type'=>'client','parent_id'=>$this->owner->id]);
+        $secondService = Service::create(['parent_id'=>$this->owner->id,'client'=>$other->id]);
+        unset($data['billing']);
+        $data['client']=$other->id; $data['service']=$secondService->id;
+        $this->put('/invoice/'.encrypt($invoice->id),$data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame('İkinci Müşteri',$invoice->fresh()->customer_details['name']);
+        $this->assertSame('',$invoice->fresh()->customer_details['address']);
+        $client->parent_id=999; $client->save();
+        $this->get('/invoice-customer/'.$client->id.'/billing')->assertNotFound();
+        $this->assertSame([],\App\Services\InvoiceBilling::customer($this->owner->id,$client->id));
     }
 
     public function test_purchase_creates_one_expense_and_only_new_stock_adds_more_expense()
