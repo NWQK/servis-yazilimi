@@ -31,7 +31,7 @@ class BookingDirectoryController extends Controller
         $shops = null;
         if ($service) {
             $shops = AppointmentProfile::where('directory_visible', true)->where('is_active', true)
-                ->where('directory_region', $region)->whereHas('owner', fn ($q) => $q->where('type', 'owner'))
+                ->where('directory_region', $region)->whereHas('owner', fn ($q) => $q->where('type', 'owner')->whereNull('subscription_suspended_at'))
                 ->whereExists(fn ($q) => $q->selectRaw('1')->from('booking_offerings')
                     ->whereColumn('appointment_profile_id', 'appointment_profiles.id')
                     ->where('vehicle_type', $vehicle)->where('booking_service_id', $service->id))

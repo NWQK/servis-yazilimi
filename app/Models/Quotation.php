@@ -39,7 +39,7 @@ class Quotation extends Model
     }
     public function vehicles()
     {
-        return $this->hasOne('App\Models\Vehicle', 'id', 'vehicle_id');
+        return $this->hasOne('App\Models\Vehicle', 'id', 'vehicle_id')->withTrashed();
     }
     public function types()
     {

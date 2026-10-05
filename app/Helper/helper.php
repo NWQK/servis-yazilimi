@@ -274,6 +274,8 @@ if (!function_exists('assignSubscription')) {
                 \Auth::user()->subscription_expire_date = Carbon::now()->addMonths(3)->isoFormat('YYYY-MM-DD');
             } elseif ($subscription->interval == 'Yearly') {
                 \Auth::user()->subscription_expire_date = Carbon::now()->addYears(1)->isoFormat('YYYY-MM-DD');
+            } elseif ($subscription->interval == 'Unlimited') {
+                \Auth::user()->subscription_expire_date = null;
             } else {
                 \Auth::user()->subscription_expire_date = Carbon::now()->addMonths(1)->isoFormat('YYYY-MM-DD');
             }
@@ -302,6 +304,8 @@ if (!function_exists('assignManuallySubscription')) {
                 $owner->subscription_expire_date = Carbon::now()->addMonths(3)->isoFormat('YYYY-MM-DD');
             } elseif ($subscription->interval == 'Yearly') {
                 $owner->subscription_expire_date = Carbon::now()->addYears(1)->isoFormat('YYYY-MM-DD');
+            } elseif ($subscription->interval == 'Unlimited') {
+                $owner->subscription_expire_date = null;
             } else {
                 $owner->subscription_expire_date = Carbon::now()->addMonths(1)->isoFormat('YYYY-MM-DD');
             }
@@ -320,6 +324,11 @@ if (!function_exists('assignManuallySubscription')) {
 if (!function_exists('SetLimit')) {
     function SetLimit($subscription, $id)
     {
+        if ($subscription->vehicle_limit !== null) {
+            // Vehicle packages do not limit or deactivate customer and staff accounts.
+            User::where('parent_id', $id)->whereNotIn('type', ['super admin', 'owner'])->update(['is_active' => 1]);
+            return;
+        }
         // set user_limit
         $user_limit = $subscription->user_limit;
         $users = User::where('parent_id', '=', $id)->whereNotIn('type', ['super admin', 'owner', 'employee', 'client'])->update(['is_active' => 0]);
@@ -342,27 +351,7 @@ if (!function_exists('SetLimit')) {
         });
     }
 }
-if (!function_exists('smtpDetail')) {
-    function smtpDetail($id)
-    {
-        $settings = emailSettings($id);
-
-        $smtpDetail = config(
-            [
-                'mail.mailers.smtp.transport' => $settings['SERVER_DRIVER'],
-                'mail.mailers.smtp.host' => $settings['SERVER_HOST'],
-                'mail.mailers.smtp.port' => $settings['SERVER_PORT'],
-                'mail.mailers.smtp.encryption' => $settings['SERVER_ENCRYPTION'],
-                'mail.mailers.smtp.username' => $settings['SERVER_USERNAME'],
-                'mail.mailers.smtp.password' => $settings['SERVER_PASSWORD'],
-                'mail.from.address' => $settings['FROM_EMAIL'],
-                'mail.from.name' => $settings['FROM_NAME'],
-            ]
-        );
-
-        return $smtpDetail;
-    }
-}
+if (!function_exists('smtpDetail')) { function smtpDetail($id) { return emailSettings($id); } }
 
 if (!function_exists('clientPrefix')) {
     function clientPrefix()
@@ -560,110 +549,10 @@ if (!function_exists('defaultClientCreate')) {
     }
 }
 
-if (!function_exists('defultTemplate')) {
-    function defultTemplate($id)
-    {
-        $templateData = [
-            'user_create' => [
-                'module' => 'user_create',
-                'name' => 'New User',
-                'short_code' => ['{company_name}', '{company_email}', '{company_phone_number}', '{company_address}', '{company_currency}', '{new_user_name}', '{app_link}', '{username}', '{password}'],
-                'subject' => 'Welcome',
-                'templete' => '
-                    <p><strong>Dear {new_user_name}</strong>,</p><p>&nbsp;</p><blockquote><p>Welcome to {company_name}! We are excited to have you on board and look forward to providing you with an exceptional experience.</p><p>We hope you enjoy your experience with us. If you have any feedback, feel free to share it with us.</p><p>&nbsp;</p><p>Your account details are as follows:</p><p><strong>App Link:</strong> <a href="{app_link}">{app_link}</a></p><p><strong>Username:</strong> {username}</p><p><strong>Password:</strong> {password}</p><p>&nbsp;</p><p>Thank you for choosing .</p></blockquote>',
-            ],
-            'employee_create' => [
-                'module' => 'employee_create',
-                'name' => 'New Employee',
-                'short_code' => ['{company_name}', '{company_email}', '{company_phone_number}', '{company_address}', '{company_currency}', '{new_employee_name}'],
-                'subject' => 'Welcome to {company_name}',
-                'templete' => '
-                    <p><strong>Dear {new_employee_name}</strong>,</p><p>&nbsp;</p><blockquote><p>Welcome to {company_name}!</p><p>We are thrilled to have you join our team. At {company_name}, we strive to create an environment that fosters growth, collaboration, and innovation. We are confident that you will make a valuable contribution to our success.</p><p>If you have any questions or need assistance, please feel free to reach out to us at <a href="mailto:{company_email}">{company_email}</a> or call us at {company_phone_number}.</p><p>&nbsp;</p><p>Our office is located at:</p><p><strong>{company_address}</strong></p><p>&nbsp;</p><p>We look forward to an exciting journey together. Welcome aboard!</p></blockquote>
-                ',
-            ],
-            'client_create' => [
-                'module' => 'client_create',
-                'name' => 'New Client',
-                'short_code' => ['{company_name}', '{company_email}', '{company_phone_number}', '{company_address}', '{company_currency}', '{new_client_name}'],
-                'subject' => 'Welcome to {company_name}',
-                'templete' => '
-                    <p><strong>Dear {new_client_name}</strong>,</p><p>&nbsp;</p><blockquote><p>Welcome to {company_name}!</p><p>We are delighted to have you as a valued client. At {company_name}, we are dedicated to providing you with outstanding service and support tailored to your needs.</p><p>If you have any questions or require assistance, please don’t hesitate to contact us at <a href="mailto:{company_email}">{company_email}</a> or call us at {company_phone_number}. We’re here to help!</p><p>&nbsp;</p><p>Our office is located at:</p><p><strong>{company_address}</strong></p><p>&nbsp;</p><p>Thank you for choosing {company_name}. We look forward to a successful partnership!</p></blockquote>
-                ',
-            ],
-            'vehicle_create' => [
-                'module' => 'vehicle_create',
-                'name' => 'New Vehicle',
-                'short_code' => ['{company_name}', '{company_email}', '{company_phone_number}', '{company_address}', '{company_currency}', '{client_name}', '{vehicle_number}', '{vehicle_type}', '{vehicle_brand}', '{vehicle_model}', '{vehicle_color}', '{license_plate}', '{engine_type}', '{fuel_type}', '{mileage}', '{last_service_date}', '{next_service_date}', '{insurance_details}'],
-                'subject' => 'Your Vehicle Information with {company_name}',
-                'templete' => '
-                    <p><strong>Dear {client_name},</strong></p><p>&nbsp;</p><blockquote><p>Thank you for choosing {company_name}! We are pleased to inform you that your vehicle details have been successfully registered in our system.</p><p>Please find your vehicle details below:</p><ul><li><strong>Vehicle Number:</strong> {vehicle_number}</li><li><strong>Vehicle Type:</strong> {vehicle_type}</li><li><strong>Brand:</strong> {vehicle_brand}</li><li><strong>Model:</strong> {vehicle_model}</li><li><strong>Color:</strong> {vehicle_color}</li><li><strong>License Plate:</strong> {license_plate}</li><li><strong>Engine Type:</strong> {engine_type}</li><li><strong>Fuel Type:</strong> {fuel_type}</li><li><strong>Mileage:</strong> {mileage}</li><li><strong>Last Service Date:</strong> {last_service_date}</li><li><strong>Next Service Due:</strong> {next_service_date}</li><li><strong>Insurance Details:</strong> {insurance_details}</li></ul><p>If you have any questions or require assistance, please feel free to reach out to us at <a href="mailto:{company_email}">{company_email}</a> or call us at {company_phone_number}. We are always here to help!</p><p>&nbsp;</p><p>Thank you for trusting {company_name}.</p></blockquote>
-                ',
-            ],
-            'service_create' => [
-                'module' => 'service_create',
-                'name' => 'New Service',
-                'short_code' => ['{company_name}', '{company_email}', '{company_phone_number}', '{company_address}', '{company_currency}', '{client_name}', '{vehicle_number}', '{vehicle_type}', '{vehicle_brand}', '{vehicle_model}', '{license_plate}', '{engine_type}', '{fuel_type}', '{last_service_date}', '{employee_name}', '{employee_email}', '{employee_phone_number}', '{status}'],
-                'subject' => 'Service Booking Confirmation with {company_name}',
-                'templete' => '
-                    <p><strong>Dear {client_name},</strong></p><p>&nbsp;</p><blockquote><p>Thank you for choosing {company_name} for your vehicle service needs! Your service booking has been successfully created. Below are the details of your booking:</p><ul><li><strong>Vehicle Number:</strong> {vehicle_number}</li><li><strong>Vehicle Type:</strong> {vehicle_type}</li><li><strong>Brand:</strong> {vehicle_brand}</li><li><strong>Model:</strong> {vehicle_model}</li><li><strong>License Plate:</strong> {license_plate}</li><li><strong>Engine Type:</strong> {engine_type}</li><li><strong>Fuel Type:</strong> {fuel_type}</li><li><strong>Last Service Date:</strong> {last_service_date}</li><li><strong>Service Status:</strong> {status}</li></ul><p>Your service will be handled by:</p><ul><li><strong>Employee Name:</strong> {employee_name}</li><li><strong>Email:</strong> {employee_email}</li><li><strong>Phone Number:</strong> {employee_phone_number}</li></ul><p>If you have any questions or need to make changes to your booking, please feel free to contact us at <a href="mailto:{company_email}">{company_email}</a> or call us at {company_phone_number}. We’re here to assist you!</p><p>&nbsp;</p><p>Thank you for trusting {company_name}. We look forward to providing you with excellent service.</p></blockquote>
-                ',
-            ],
-            'service_assign' => [
-                'module' => 'service_assign',
-                'name' => 'Assign Servicce',
-                'short_code' => ['{company_name}', '{company_email}', '{company_phone_number}', '{company_address}', '{company_currency}', '{employee_name}', '{vehicle_number}', '{vehicle_type}', '{vehicle_brand}', '{vehicle_model}', '{license_plate}', '{engine_type}', '{fuel_type}', '{last_service_date}', '{client_name}', '{client_email}', '{client_phone_number}', '{status}'],
-                'subject' => 'Service Assignment Notification - {company_name}',
-                'templete' => '
-                    <p><strong>Dear {employee_name},</strong></p><p>&nbsp;</p><blockquote><p>We are pleased to inform you that a new service has been assigned to you. Below are the details of the assigned service:</p><ul><li><strong>Client Name:</strong> {client_name}</li><li><strong>Client Email:</strong> {client_email}</li><li><strong>Client Phone Number:</strong> {client_phone_number}</li></ul><p>Vehicle Details:</p><ul><li><strong>Vehicle Number:</strong> {vehicle_number}</li><li><strong>Vehicle Type:</strong> {vehicle_type}</li><li><strong>Brand:</strong> {vehicle_brand}</li><li><strong>Model:</strong> {vehicle_model}</li><li><strong>License Plate:</strong> {license_plate}</li><li><strong>Engine Type:</strong> {engine_type}</li><li><strong>Fuel Type:</strong> {fuel_type}</li><li><strong>Last Service Date:</strong> {last_service_date}</li><li><strong>Service Status:</strong> {status}</li></ul><p>If you have any questions or require additional information, please contact us at <a href="mailto:{company_email}">{company_email}</a> or call us at {company_phone_number}.</p><p>&nbsp;</p><p>Thank you for your commitment to providing excellent service at {company_name}.</p></blockquote>
-                ',
-            ],
-            'invoice_create' => [
-                'module' => 'invoice_create',
-                'name' => 'New Invoice',
-                'short_code' => ['{company_name}', '{company_email}', '{company_phone_number}', '{company_address}', '{company_currency}', '{client_name}', '{invoice_number}', '{service_number}', '{invoice_date}', '{total_amount}', '{status}'],
-                'subject' => 'Invoice #{invoice_number} from {company_name}',
-                'templete' => '
-                    <p><strong>Dear {client_name},</strong></p><p>&nbsp;</p><blockquote><p>We are pleased to inform you that an invoice has been generated for the services provided. Below are the details of your invoice:</p><ul><li><strong>Invoice Number:</strong> {invoice_number}</li><li><strong>Service Number:</strong> {service_number}</li><li><strong>Invoice Date:</strong> {invoice_date}</li><li><strong>Total Amount:</strong> {company_currency} {total_amount}</li><li><strong>Status:</strong> {status}</li></ul><p>If you have any questions or require further clarification, please feel free to reach out to us at <a href="mailto:{company_email}">{company_email}</a> or call us at {company_phone_number}.</p><p>&nbsp;</p><p>Thank you for choosing {company_name}. We look forward to serving you again!</p></blockquote>
-                ',
-            ],
-            'payment_create' => [
-                'module' => 'payment_create',
-                'name' => 'New Payment',
-                'short_code' => ['{company_name}', '{company_email}', '{company_phone_number}', '{company_address}', '{company_currency}', '{client_name}', '{invoice_number}', '{total_amount}', '{due_amount}', '{paid_amount}', '{status}'],
-                'subject' => 'Payment Confirmation - Invoice #{invoice_number}',
-                'templete' => '
-                    <p><strong>Dear {client_name},</strong></p><p>&nbsp;</p><blockquote><p>We are pleased to inform you that we have received your payment. Below are the payment details:</p><ul><li><strong>Invoice Number:</strong> {invoice_number}</li><li><strong>Total Amount:</strong> {company_currency} {total_amount}</li><li><strong>Paid Amount:</strong> {company_currency} {paid_amount}</li><li><strong>Due Amount:</strong> {company_currency} {due_amount}</li><li><strong>Status:</strong> {status}</li></ul><p>If you have any questions or need further clarification, please do not hesitate to contact us at <a href="mailto:{company_email}">{company_email}</a> or call us at {company_phone_number}.</p><p>&nbsp;</p><p>Thank you for your prompt payment and for choosing {company_name}. We look forward to serving you again in the future!</p></blockquote>
-                ',
-            ],
+if (!function_exists('defultTemplate')) { function defultTemplate($id) { return defaultTemplate($id); } }
 
-        ];
-
-        // Store all created templates if needed
-        $createdTemplates = [];
-
-        foreach ($templateData as $key => $value) {
-            $template = new Notification();
-            $template->module = $value['module'];
-            $template->name = $value['name'];
-            $template->subject = $value['subject'];
-            $template->message = $value['templete'];
-            $template->short_code = json_encode($value['short_code']);
-            $template->enabled_email = 0;
-            $template->parent_id = $id; // Associate with the provided ID
-            $template->save();
-
-            $createdTemplates[] = $template; // Collect all created templates
-        }
-
-        // Return all created templates if needed
-        return $createdTemplates;
-    }
-}
-
-
-
-if (!function_exists('defaultTemplateList')) {
-    function defaultTemplateList()
+if (!function_exists('legacyEmailTemplateList')) {
+    function legacyEmailTemplateList()
     {
 
         return [
@@ -771,6 +660,8 @@ if (!function_exists('defaultTemplateList')) {
     }
 }
 
+if (!function_exists('defaultTemplateList')) { function defaultTemplateList() { return \App\Services\EmailTemplates::all(); } }
+
 if (!function_exists('defaultTemplate')) {
     function defaultTemplate($id)
     {
@@ -780,7 +671,8 @@ if (!function_exists('defaultTemplate')) {
         $createdTemplates = [];
 
         foreach ($templateData as $key => $value) {
-            $template = new Notification();
+            $template = Notification::firstOrNew(['parent_id' => $id, 'module' => $value['module']]);
+            if ($template->exists) { $createdTemplates[] = $template; continue; }
             $template->module = $value['module'];
             $template->name = $value['name'];
             $template->subject = $value['subject'];
@@ -816,8 +708,9 @@ if (!function_exists('defaultSMSTemplate')) {
             foreach ($Users as $User) {
                 $template = Notification::where('module', $value['module'])->where('parent_id', $User->id)->first();
                 if (empty($template)) {
-                    $template = new Notification();
-                    $template->module = $value['module'];
+                    $template = Notification::firstOrNew(['parent_id' => $id, 'module' => $value['module']]);
+            if ($template->exists) { $createdTemplates[] = $template; continue; }
+            $template->module = $value['module'];
                     $template->name = $value['name'];
                     $template->subject = $value['subject'];
                     $template->message = $value['templete'];
@@ -853,7 +746,7 @@ if (!function_exists('MessageReplace')) {
             if ($notification->module == 'user_create') {
                 $user = User::find($id);
                 $search = ['{company_name}', '{company_email}', '{company_phone_number}', '{company_address}', '{company_currency}', '{new_user_name}', '{app_link}', '{username}', '{password}'];
-                $replace = [$settings['company_name'], $settings['company_email'], $settings['company_phone'], $settings['company_address'], $settings['CURRENCY_SYMBOL'], $user->name, env('APP_URL'), $user->email, $notification['password']];
+                $replace = [$settings['company_name'], $settings['company_email'], $settings['company_phone'], $settings['company_address'], $settings['CURRENCY_SYMBOL'], $user->name, env('APP_URL'), $user->email, $notification['password'] ?? ''];
             }
             if ($notification->module == 'employee_create') {
                 $user = User::find($id);
@@ -868,42 +761,51 @@ if (!function_exists('MessageReplace')) {
             if ($notification->module == 'vehicle_create') {
                 $vehicle = Vehicle::find($id);
                 $search = ['{company_name}', '{company_email}', '{company_phone_number}', '{company_address}', '{company_currency}', '{client_name}', '{vehicle_number}', '{vehicle_type}', '{vehicle_brand}', '{vehicle_model}', '{vehicle_color}', '{license_plate}', '{engine_type}', '{fuel_type}', '{mileage}', '{last_service_date}', '{next_service_date}', '{insurance_details}'];
-                $replace = [$settings['company_name'], $settings['company_email'], $settings['company_phone'], $settings['company_address'], $settings['CURRENCY_SYMBOL'], $vehicle->clients->name, vehiclePrefix() . $vehicle->vehicle_id, $vehicle->types->type, $vehicle->brand_name, $vehicle->model, $vehicle->color, $vehicle->license_plate, $vehicle->engine_type, $vehicle->fuel_type, $vehicle->mileage, dateFormat($vehicle->last_service_date), dateFormat($vehicle->next_service_due_date), $vehicle->insurance_details];
+                $replace = [$settings['company_name'], $settings['company_email'], $settings['company_phone'], $settings['company_address'], $settings['CURRENCY_SYMBOL'], $vehicle->clients->name, vehiclePrefix() . $vehicle->vehicle_id, $vehicle->types?->type ?? '—', $vehicle->model, $vehicle->model, $vehicle->color, $vehicle->license_plate, $vehicle->engine_type, $vehicle->fuel_type, $vehicle->mileage, dateFormat($vehicle->last_service_date), dateFormat($vehicle->next_service_due_date), $vehicle->insurance_details];
             }
             if ($notification->module == 'service_create') {
                 $service = Service::find($id);
-                $vehicle = Vehicle::find($service->vehicle);
+                $vehicle = Vehicle::withTrashed()->find($service->vehicle);
                 $search = ['{company_name}', '{company_email}', '{company_phone_number}', '{company_address}', '{company_currency}', '{client_name}', '{vehicle_number}', '{vehicle_type}', '{vehicle_brand}', '{vehicle_model}', '{license_plate}', '{engine_type}', '{fuel_type}', '{last_service_date}', '{employee_name}', '{employee_email}', '{employee_phone_number}', '{status}'];
-                $replace = [$settings['company_name'], $settings['company_email'], $settings['company_phone'], $settings['company_address'], $settings['CURRENCY_SYMBOL'], $service->clients->name, vehiclePrefix() . $vehicle->vehicle_id, $vehicle->types->type, $vehicle->brand_name, $vehicle->model, $vehicle->license_plate, $vehicle->engine_type, $vehicle->fuel_type, dateFormat($vehicle->last_service_date), $service->assigns->name, $service->assigns->email, $service->assigns->phone_number, $service->status];
+                $replace = [$settings['company_name'], $settings['company_email'], $settings['company_phone'], $settings['company_address'], $settings['CURRENCY_SYMBOL'], $service->clients->name, vehiclePrefix() . $vehicle->vehicle_id, $vehicle->types?->type ?? '—', $vehicle->brand_name, $vehicle->model, $vehicle->license_plate, $vehicle->engine_type, $vehicle->fuel_type, dateFormat($vehicle->last_service_date), $service->assigns?->name ?? '—', $service->assigns?->email ?? '—', $service->assigns?->phone_number ?? '—', $service->status];
             }
             if ($notification->module == 'service_assign') {
                 $service = Service::find($id);
-                $vehicle = Vehicle::find($service->vehicle);
+                $vehicle = Vehicle::withTrashed()->find($service->vehicle);
                 $search = ['{company_name}', '{company_email}', '{company_phone_number}', '{company_address}', '{company_currency}', '{employee_name}', '{vehicle_number}', '{vehicle_type}', '{vehicle_brand}', '{vehicle_model}', '{license_plate}', '{engine_type}', '{fuel_type}', '{last_service_date}', '{client_name}', '{client_email}', '{client_phone_number}', '{status}'];
-                $replace = [$settings['company_name'], $settings['company_email'], $settings['company_phone'], $settings['company_address'], $settings['CURRENCY_SYMBOL'], $service->assigns->name, vehiclePrefix() . $vehicle->vehicle_id, $vehicle->types->type, $vehicle->brand_name, $vehicle->model, $vehicle->license_plate, $vehicle->engine_type, $vehicle->fuel_type, dateFormat($vehicle->last_service_date), $service->clients->name, $service->clients->email, $service->clients->phone_number, $service->status];
+                $replace = [$settings['company_name'], $settings['company_email'], $settings['company_phone'], $settings['company_address'], $settings['CURRENCY_SYMBOL'], $service->assigns?->name ?? '—', vehiclePrefix() . $vehicle->vehicle_id, $vehicle->types?->type ?? '—', $vehicle->brand_name, $vehicle->model, $vehicle->license_plate, $vehicle->engine_type, $vehicle->fuel_type, dateFormat($vehicle->last_service_date), $service->clients->name, $service->clients->email, $service->clients->phone_number, $service->status];
             }
             if ($notification->module == 'invoice_create') {
                 $invoice = Invoice::find($id);
+                $status = 'Kısmen ödendi';
+                $status = 'Kısmen ödendi';
                 if ($invoice->status == 0) {
-                    $status = 'Unpaid';
+                    $status = 'Ödenmedi';
                 }
                 if ($invoice->status == 2) {
-                    $status = 'Paid';
+                    $status = 'Ödendi';
                 }
 
-                $amount = InvoiceItem::where('invoice_id', $invoice->id)->sum('amount');
+                $amount = number_format($invoice->getInvoiceAllTotalAmount(), 2, ',', '.');
                 $search = ['{company_name}', '{company_email}', '{company_phone_number}', '{company_address}', '{company_currency}', '{client_name}', '{invoice_number}', '{service_number}', '{invoice_date}', '{total_amount}', '{status}'];
                 $replace = [$settings['company_name'], $settings['company_email'], $settings['company_phone'], $settings['company_address'], $settings['CURRENCY_SYMBOL'], $invoice->clients->name, invoicePrefix() . $invoice->invoice_id, servicePrefix() . $invoice->services->service_id, dateFormat($invoice->invoice_date), $amount, $status];
             }
             if ($notification->module == 'payment_create') {
                 $invoice = Invoice::find($id);
                 $search = ['{company_name}', '{company_email}', '{company_phone_number}', '{company_address}', '{company_currency}', '{client_name}', '{invoice_number}', '{total_amount}', '{due_amount}', '{paid_amount}', '{status}'];
-                $replace = [$settings['company_name'], $settings['company_email'], $settings['company_phone'], $settings['company_address'], $settings['CURRENCY_SYMBOL'], $invoice->clients->name, invoicePrefix() . $invoice->invoice_id, $invoice->getInvoiceAllTotalAmount(), $invoice->getInvoiceTotalDueAmount(), $invoice->getInvoiceAllTotalAmount() - $invoice->getInvoiceTotalDueAmount(), $notification->status];
+                $replace = [$settings['company_name'], $settings['company_email'], $settings['company_phone'], $settings['company_address'], $settings['CURRENCY_SYMBOL'], $invoice->clients->name, invoicePrefix() . $invoice->invoice_id, number_format($invoice->getInvoiceAllTotalAmount(), 2, ',', '.'), number_format($invoice->getInvoiceTotalDueAmount(), 2, ',', '.'), number_format($invoice->getInvoiceAllTotalAmount() - $invoice->getInvoiceTotalDueAmount(), 2, ',', '.'), __($notification->status ?? 'Paid')];
             }
 
 
+            if (in_array($notification->module, ['vehicle_create', 'service_create', 'service_assign', 'invoice_create', 'payment_create'])) {
+                $publicVehicle = $vehicle ?? null;
+                if (isset($invoice)) { $publicVehicle = Vehicle::find($invoice->services?->vehicle); }
+                $search[] = '{vehicle_link}';
+                $replace[] = $publicVehicle?->qrCode?->publicUrl() ?? '';
+            }
             $return['subject'] = str_replace($search, $replace, $notification->subject);
-            $return['message'] = str_replace($search, $replace, $notification->message);
+            $return['message'] = str_replace($search, array_map(fn($value) => e((string) $value), $replace), $notification->message);
+            $return['message'] = preg_replace('/<a href="">.*?<\/a>/s', '', $return['message']);
             $return['sms_message'] = str_replace($search, $replace, $notification->sms_message);
         }
 
@@ -916,17 +818,17 @@ if (!function_exists('sendEmail')) {
     {
         $datas['settings'] = settings();
         try {
-            emailSettings(parentId());
+            $datas['settings'] = array_merge($datas['settings'], emailSettings(parentId()));
             Mail::to($to)->send(new TestMail($datas));
             return [
                 'status' => 'success',
-                'message' => __('Email successfully sent'),
+                'message' => 'E-posta SMTP sunucusu tarafından gönderim için kabul edildi.',
             ];
         } catch (\Exception $e) {
-            Log::info($e->getMessage());
+            Log::warning('E-posta gönderimi başarısız.', ['parent_id' => parentId(), 'exception_type' => get_class($e)]);
             return [
                 'status' => 'error',
-                'message' => __('We noticed that the email settings have not been configured for this system. As a result, email-related functionalities may not work as expected. please add valide email smtp details first.')
+                'message' => 'E-posta gönderilemedi. SMTP sunucusu, port, şifreleme ve kullanıcı bilgilerini kontrol edin. Ayrıntılar için e-posta sağlayıcınıza başvurun.'
             ];
         }
     }
@@ -940,81 +842,44 @@ if (!function_exists('commonEmailSend')) {
         try {
             if (Auth::check()) {
                 if ($datas['module'] == 'owner_create') {
-                    emailSettings(1);
+                    $datas['settings'] = array_merge($datas['settings'], emailSettings(1));
                 } else {
-                    emailSettings(parentId());
+                    $datas['settings'] = array_merge($datas['settings'], emailSettings(parentId()));
                 }
             } else {
-                emailSettings($datas['parent_id']);
+                $datas['settings'] = array_merge($datas['settings'], emailSettings($datas['parent_id']));
             }
             Mail::to($to)->send(new Common($datas));
             return [
                 'status' => 'success',
-                'message' => __('Email successfully sent'),
+                'message' => 'E-posta SMTP sunucusu tarafından gönderim için kabul edildi.',
             ];
         } catch (\Exception $e) {
-            Log::info($e->getMessage());
+            Log::warning('E-posta gönderimi başarısız.', ['parent_id' => parentId(), 'exception_type' => get_class($e)]);
             return [
                 'status' => 'error',
-                'message' => __('We noticed that the email settings have not been configured for this system. As a result, email-related functionalities may not work as expected. please add valide email smtp details first.')
+                'message' => 'E-posta gönderilemedi. SMTP sunucusu, port, şifreleme ve kullanıcı bilgilerini kontrol edin. Ayrıntılar için e-posta sağlayıcınıza başvurun.'
             ];
         }
     }
 }
 
 
-if (!function_exists('emailSettings')) {
-    function emailSettings($id)
-    {
-        $settingData = DB::table('settings')
-            ->where('type', 'smtp')
-            ->where('parent_id', $id)
-            ->get();
-
-        $result = [
-            'FROM_EMAIL' => "",
-            'FROM_NAME' => "",
-            'SERVER_DRIVER' => "",
-            'SERVER_HOST' => "",
-            'SERVER_PORT' => "",
-            'SERVER_USERNAME' => "",
-            'SERVER_PASSWORD' => "",
-            'SERVER_ENCRYPTION' => "",
-        ];
-
-        foreach ($settingData as $setting) {
-            $result[$setting->name] = $setting->value;
-        }
-
-        // Apply settings dynamically
-        config([
-            'mail.default' => $result['SERVER_DRIVER'] ?? '',
-            'mail.mailers.smtp.host' => $result['SERVER_HOST'] ?? '',
-            'mail.mailers.smtp.port' => $result['SERVER_PORT'] ?? '',
-            'mail.mailers.smtp.encryption' => $result['SERVER_ENCRYPTION'] ?? '',
-            'mail.mailers.smtp.username' => $result['SERVER_USERNAME'] ?? '',
-            'mail.mailers.smtp.password' => $result['SERVER_PASSWORD'] ?? '',
-            'mail.from.name' => $result['FROM_NAME'] ?? '',
-            'mail.from.address' => $result['FROM_EMAIL'] ?? '',
-        ]);
-        return $result;
-    }
-}
-
+if (!function_exists('emailSettings')) { function emailSettings($id) { return app(\App\Services\TenantMailSettings::class)->apply((int) $id); } }
 
 if (!function_exists('sendEmailVerification')) {
     function sendEmailVerification($to, $data)
     {
-        $data['settings'] = emailSettings(1);
         try {
+            $data['settings'] = emailSettings(1);
             Mail::to($to)->send(new EmailVerification($data));
 
             return [
                 'status' => 'success',
-                'message' => __('Email successfully sent'),
+                'message' => 'E-posta SMTP sunucusu tarafından gönderim için kabul edildi.',
             ];
         } catch (\Exception $e) {
-            Log::error('Email Sending Failed: ' . $e->getMessage());
+            Log::warning('Doğrulama e-postası gönderilemedi.', ['exception_type' => get_class($e)]);
 
             return [
                 'status' => 'error',

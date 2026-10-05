@@ -65,7 +65,7 @@ class UserController extends Controller
                 $user->type = 'owner';
                 $user->profile = 'avatar.png';
                 $user->lang = 'tr';
-                $user->subscription = 1;
+                $user->subscription = Subscription::where('vehicle_limit', 50)->value('id') ?? 1;
                 $user->parent_id = parentId();
                 $user->email_verified_at = now();
                 $user->save();

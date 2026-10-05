@@ -91,6 +91,15 @@ use GuzzleHttp\Psr7\Query;
 */
 
 require __DIR__ . '/auth.php';
+Route::middleware(['auth', 'XSS'])->group(function () {
+    Route::get('admin/subscriptions', [\App\Http\Controllers\SubscriptionAdminController::class,'index'])->name('subscription-admin.index');
+    Route::get('admin/subscriptions/{id}/edit', [\App\Http\Controllers\SubscriptionAdminController::class,'edit'])->whereNumber('id')->name('subscription-admin.edit');
+    Route::put('admin/subscriptions/{id}', [\App\Http\Controllers\SubscriptionAdminController::class,'update'])->whereNumber('id')->name('subscription-admin.update');
+    Route::post('admin/subscriptions/{id}/status', [\App\Http\Controllers\SubscriptionAdminController::class,'status'])->whereNumber('id')->name('subscription-admin.status');
+    Route::get('subscriptions/capacity/requests', [\App\Http\Controllers\VehicleCapacityController::class, 'index'])->name('capacity.index');
+    Route::post('subscriptions/capacity/requests', [\App\Http\Controllers\VehicleCapacityController::class, 'store'])->name('capacity.store');
+    Route::post('subscriptions/capacity/requests/{id}', [\App\Http\Controllers\VehicleCapacityController::class, 'review'])->whereNumber('id')->name('capacity.review');
+});
 
 Route::view('/tanitim', 'marketing.landing')->withoutMiddleware(\App\Http\Middleware\Verify2FA::class)->name('marketing.index');
 
@@ -312,6 +321,12 @@ Route::post('item/{id}/counter-sale', [ItemController::class, 'sell'])->whereNum
 Route::get('invoice/{id}/delete-confirmation', [InvoiceController::class, 'deleteConfirmation'])->whereNumber('id')->middleware(['auth','XSS'])->name('invoice.delete-confirmation');
 
 //-------------------------------Vehicle Type-------------------------------------------
+Route::get('vehicles/cleanup', [\App\Http\Controllers\VehicleCleanupController::class,'index'])->middleware(['auth','XSS'])->name('vehicle-cleanup.index');
+Route::delete('vehicles/cleanup', [\App\Http\Controllers\VehicleCleanupController::class,'destroy'])->middleware(['auth','XSS'])->name('vehicle-cleanup.destroy');
+Route::post('vehicles/cleanup/restore', [\App\Http\Controllers\VehicleCleanupController::class,'restore'])->middleware(['auth','XSS'])->name('vehicle-cleanup.restore');
+Route::get('vehicle-type/catalog/import', [\App\Http\Controllers\VehicleCatalogController::class, 'create'])->middleware(['auth','XSS'])->name('vehicle-catalog.create');
+Route::post('vehicle-type/catalog/import', [\App\Http\Controllers\VehicleCatalogController::class, 'store'])->middleware(['auth','XSS'])->name('vehicle-catalog.store');
+Route::delete('vehicle-type/catalog/import/{import}', [\App\Http\Controllers\VehicleCatalogController::class, 'destroy'])->whereNumber('import')->middleware(['auth','XSS'])->name('vehicle-catalog.destroy');
 Route::resource('vehicle-type', VehicleTypeController::class)->middleware(
     [
         'auth',

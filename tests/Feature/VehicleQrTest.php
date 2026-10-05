@@ -189,7 +189,7 @@ class VehicleQrTest extends TestCase
     {
         [$code, $vehicle] = $this->assigned();
         $vehicle->delete();
-        $this->assertNull($code->fresh()->vehicle_id);
+        $this->assertSame($vehicle->id, (int) $code->fresh()->vehicle_id); // Recoverable deletion retains the retired association.
         $this->assertNotNull($code->fresh()->assigned_at);
         $this->assertSame(10, VehicleQrCode::available()->count());
         $this->get('/q/' . $code->token)->assertNotFound();

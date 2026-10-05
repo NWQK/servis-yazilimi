@@ -199,10 +199,9 @@
                                             class="ti ti-check"></i></a>
 
                                     <a href="#!" data-color-type="preset" data-value="bike-and-more"
-                                        aria-label="Bike & More: siyah, beyaz ve kırmızı tema"
+                                        aria-label="Kırmızı ve siyah tema"
                                         class="color_type bike-more-option {{ $settings['color_type'] == 'preset' && $settings['accent_color'] == 'bike-and-more' ? 'active' : '' }}">
-                                        <span class="bike-more-swatch" aria-hidden="true"></span>
-                                        <span>Bike &amp; More</span>
+                                        <i class="ti ti-check" aria-hidden="true"></i>
                                     </a>
 
                                     <input

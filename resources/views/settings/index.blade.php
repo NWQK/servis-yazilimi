@@ -470,6 +470,7 @@
                                     <div class="tab-pane {{ !empty($activeTab) && $activeTab == 'email_SMTP_settings' ? ' active show ' : '' }}"
                                         id="email_SMTP_settings" role="tabpanel" aria-labelledby="email_SMTP_settings">
                                         {{ Form::model($settings, ['route' => ['setting.smtp'], 'method' => 'post']) }}
+                                        <p class="text-muted">İşletmenizin e-posta sağlayıcısından SMTP sunucusu ve kullanıcı bilgilerini alın. Önce kaydedin, ardından kendi adresinize test e-postası gönderin. Fatura bildirimlerini E-posta bildirimleri bölümünden etkinleştirebilirsiniz.</p>
                                         <div class="row">
                                             <div class="form-group col-md-6">
                                                 {{ Form::label('sender_name', __('Sender Name'), ['class' => 'form-label']) }}
@@ -481,7 +482,7 @@
                                             </div>
                                             <div class="form-group col-md-6">
                                                 {{ Form::label('server_driver', __('SMTP Driver'), ['class' => 'form-label']) }}
-                                                {{ Form::text('server_driver', $settings['SERVER_DRIVER'], ['class' => 'form-control', 'placeholder' => __('Enter smtp driver')]) }}
+                                                {{ Form::select('server_driver', ['smtp'=>'SMTP'], 'smtp', ['class' => 'form-control', 'placeholder' => __('Enter smtp driver')]) }}
                                             </div>
                                             <div class="form-group col-md-6">
                                                 {{ Form::label('server_host', __('SMTP Host'), ['class' => 'form-label']) }}
@@ -493,11 +494,11 @@
                                             </div>
                                             <div class="form-group col-md-6">
                                                 {{ Form::label('server_password', __('SMTP Password'), ['class' => 'form-label']) }}
-                                                {{ Form::text('server_password', $settings['SERVER_PASSWORD'], ['class' => 'form-control', 'placeholder' => __('Enter smtp password')]) }}
+                                                {{ Form::password('server_password', ['class'=>'form-control', 'autocomplete'=>'new-password', 'placeholder'=>'Kayıtlı şifreyi korumak için boş bırakın']) }}
                                             </div>
                                             <div class="form-group col-md-6">
                                                 {{ Form::label('server_encryption', __('SMTP Encryption'), ['class' => 'form-label']) }}
-                                                {{ Form::text('server_encryption', $settings['SERVER_ENCRYPTION'], ['class' => 'form-control', 'placeholder' => __('Enter smtp encryption')]) }}
+                                                {{ Form::select('server_encryption', ['tls'=>'TLS (genellikle 587)', 'ssl'=>'SSL (genellikle 465)'], $settings['SERVER_ENCRYPTION'] ?: 'tls', ['class' => 'form-control', 'placeholder' => __('Enter smtp encryption')]) }}
                                             </div>
                                             <div class="form-group col-md-6">
                                                 {{ Form::label('server_port', __('SMTP Port'), ['class' => 'form-label']) }}

@@ -62,7 +62,7 @@ class RegisteredUserController extends Controller
             'password' => Hash::make($request->password),
             'type' => 'owner',
             'lang' => 'tr',
-            'subscription' => 1,
+            'subscription' => \App\Models\Subscription::where('vehicle_limit', 50)->value('id') ?? 1,
             'parent_id' => 1,
         ];
         $owner_email_verification = getSettingsValByName('owner_email_verification');

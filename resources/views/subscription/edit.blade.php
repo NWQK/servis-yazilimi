@@ -10,28 +10,13 @@
             {!! Form::select('interval', $intervals, null, [
                 'class' => 'form-control select2',
                 'required' => 'required',
-                $subscription->id == 1 ? 'disabled' : '' => $subscription->id == 1 ? 'disabled' : '',
             ]) !!}
-            @if ($subscription->id == 1)
-                <input type="hidden" name="interval" value="{{ __((string) $subscription->interval) }}">
-            @endif
         </div>
         <div class="form-group">
             {{ Form::label('package_amount', __('Package Amount'), ['class' => 'form-label']) }}
             {{ Form::number('package_amount', null, ['class' => 'form-control', 'placeholder' => __('Enter package amount'), 'step' => '0.01']) }}
         </div>
-        <div class="form-group">
-            {{ Form::label('user_limit', __('User Limit'), ['class' => 'form-label']) }}
-            {{ Form::number('user_limit', null, ['class' => 'form-control', 'placeholder' => __('Enter user limit'), 'required' => 'required']) }}
-        </div>
-        <div class="form-group">
-            {{ Form::label('client_limit', __('Client Limit'), ['class' => 'form-label']) }}
-            {{ Form::number('client_limit', null, ['class' => 'form-control', 'placeholder' => __('Enter client limit'), 'required' => 'required']) }}
-        </div>
-        <div class="form-group">
-            {{ Form::label('employee_limit', __('Employee Limit'), ['class' => 'form-label']) }}
-            {{ Form::number('employee_limit', null, ['class' => 'form-control', 'placeholder' => __('Enter employee limit'), 'required' => 'required']) }}
-        </div>
+        @include('subscription.vehicle_fields')
 
         <div class="form-group col-md-6">
             <div class="form-check form-switch custom-switch-v1 mb-2">

@@ -30,31 +30,31 @@ class   Common extends Mailable
         $subject = $data['subject'];
         if (!empty($module) && $module == 'owner_create') {
             $data = [
-                'company_logo' => $settings['company_logo'],
+                'company_logo' => ($settings['company_logo'] ?? ''),
                 'message' => $this->data,
-                'company_name' => $settings['company_name'],
-                'company_email' => $settings['company_email'],
+                'company_name' => ($settings['company_name'] ?? 'SanayiRandevu'),
+                'company_email' => ($settings['company_email'] ?? ''),
             ];
         } else {
 
             $data = [
-                'company_logo' => $settings['company_logo'],
-                'company_name' => $settings['company_name'],
+                'company_logo' => ($settings['company_logo'] ?? ''),
+                'company_name' => ($settings['company_name'] ?? 'SanayiRandevu'),
                 'message' => $data['message'],
             ];
         } 
         if (!empty($module) && $module == 'send_email') {
             return  $this->from($settings['FROM_EMAIL'], $settings['FROM_NAME'])
-                ->markdown('email.document')
-                ->subject($subject)
+                ->view('email.document')
+                ->subject($subject)->with(['subject'=>$subject, 'company_name'=>$settings['company_name'] ?? 'SanayiRandevu'])
                 ->with('content', $this->data['message']);
         } elseif (!empty($module) && $module == 'owner_create') {
             return  $this->from($settings['FROM_EMAIL'], $settings['FROM_NAME'])
-                ->markdown('email.owner_create')
-                ->subject($subject)
+                ->view('email.owner_create')
+                ->subject($subject)->with(['subject'=>$subject, 'company_name'=>$settings['company_name'] ?? 'SanayiRandevu'])
                 ->with('content', $data);
         } else {
-            return $this->from($settings['FROM_EMAIL'], $settings['FROM_NAME'])->markdown('email.email_notification')->subject($subject)->with('content', $data);
+            return $this->from($settings['FROM_EMAIL'], $settings['FROM_NAME'])->view('email.email_notification')->subject($subject)->with(['subject'=>$subject, 'company_name'=>$settings['company_name'] ?? 'SanayiRandevu'])->with('content', $data);
         }
     }
 }

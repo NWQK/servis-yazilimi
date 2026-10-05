@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Subscription extends Model
 {
+    protected $casts = ['vehicle_limit' => 'integer', 'vehicle_block_amount' => 'decimal:2'];
     protected $fillable = [
         'title',
         'package_amount',
@@ -14,6 +15,8 @@ class Subscription extends Model
         'client_limit',
         'employee_limit',
         'enabled_logged_history',
+        'vehicle_limit',
+        'vehicle_block_amount',
     ];
 
     public static function intervals()

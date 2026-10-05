@@ -30,7 +30,8 @@ class NotificationController extends Controller
      */
     public function create()
     {
-        $Notifications = Notification::$modules;
+        abort_unless(auth()->user()->can('create notification'), 403);
+        $Notifications = defaultTemplateList();
         $notification_option = [];
         foreach ($Notifications as $key => $value) {
             $notification_option[$key] = $value['name'];
@@ -50,7 +51,7 @@ class NotificationController extends Controller
             $validator = \Validator::make(
                 $request->all(),
                 [
-                    'module' => 'required',
+                    'module' => 'required|in:' . implode(',', array_keys(defaultTemplateList())),
                     'subject' => 'required',
                     'message' => 'required',
                 ]
@@ -64,9 +65,12 @@ class NotificationController extends Controller
             if (empty($exist)) {
                 $notification = new Notification();
                 $notification->module = $request->module;
+                $definition = defaultTemplateList()[$request->module];
+                $notification->name = $definition['name'];
+                $notification->short_code = json_encode($definition['short_code']);
                 $notification->subject = $request->subject;
                 $notification->message = $request->message;
-                $notification->enabled_email = isset($request->enabled_email) ? 1 : 0;
+                $notification->enabled_email = $request->boolean('enabled_email') ? 1 : 0;
                 $notification->enabled_sms = 0;
                 $notification->sms_message = '';
                 $notification->parent_id = parentId();
@@ -100,11 +104,12 @@ class NotificationController extends Controller
      */
     public function edit(Notification $notification)
     {
-        $short_code = $notification->short_code;
+        abort_unless(auth()->user()->can('edit notification') && (int) $notification->parent_id === (int) parentId(), 403);
+        $definition = defaultTemplateList()[$notification->module] ?? null;
         $notification->short_code = json_decode($notification->short_code);
 
 
-        return view('notification.edit', compact('notification'));
+        return view('notification.edit', compact('notification', 'definition'));
     }
 
     /**
@@ -117,6 +122,7 @@ class NotificationController extends Controller
     public function update(Request $request, Notification $notification)
     {
         if (\Auth::user()->can('edit notification')) {
+            abort_unless((int) $notification->parent_id === (int) parentId(), 403);
             $validator = \Validator::make(
                 $request->all(),
                 [
@@ -129,9 +135,11 @@ class NotificationController extends Controller
                 return redirect()->back()->with('error', $messages->first());
             }
 
-            $notification->subject = $request->subject;
-            $notification->message = $request->message;
-            $notification->enabled_email = $request->enabled_email;
+            $definition = defaultTemplateList()[$notification->module] ?? null;
+            $useDefault = $request->boolean('use_default_template') && $definition;
+            $notification->subject = $useDefault ? $definition['subject'] : $request->subject;
+            $notification->message = $useDefault ? $definition['templete'] : $request->message;
+            $notification->enabled_email = $request->boolean('enabled_email') ? 1 : 0;
             $notification->enabled_sms = 0;
             $notification->enabled_whatsapp = 0;
             $notification->save();
@@ -151,6 +159,7 @@ class NotificationController extends Controller
     public function destroy(Notification $notification)
     {
         if (\Auth::user()->can('delete notification')) {
+            abort_unless((int) $notification->parent_id === (int) parentId(), 403);
             $notification->delete();
             return redirect()->back()->with('success', __('Notification successfully deleted.'));
         } else {

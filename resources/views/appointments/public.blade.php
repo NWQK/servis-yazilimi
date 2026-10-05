@@ -8,7 +8,7 @@
 
 <div class="booking-hero"><p class="booking-eyebrow">SİZE UYGUN BİR ZAMAN</p><h1>Servis randevunuzu planlayın.</h1><p>Tarih ve saat seçin, talebinizi işletmeye iletin. Üyelik gerekmez.</p></div>
 @if ($errors->any())<div class="booking-alert" role="alert">{{ $errors->first() }}</div>@endif
-@if (!$profile->is_active || !$smsReady)
+@if (!$profile->is_active || $profile->owner?->hasSuspendedSubscription() || !$smsReady)
     <section class="booking-panel"><h2>Şu anda yeni randevu alınmıyor.</h2><p>Lütfen daha sonra tekrar kontrol edin.</p></section>
 @else
 <div class="booking-columns"><section class="booking-panel"><h2><span class="booking-step">1</span> Tarih seçin</h2>

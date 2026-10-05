@@ -33,6 +33,7 @@
                                 </a>
                             </div>
                         @endif
+                        @include('vehicle_type.catalog_actions')
                     </div>
                 </div>
                 <div class="card-body pt-0">

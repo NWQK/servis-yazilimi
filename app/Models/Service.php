@@ -40,7 +40,7 @@ class Service extends Model
 
     public function vehicles()
     {
-        return $this->hasOne('App\Models\Vehicle', 'id', 'vehicle');
+        return $this->hasOne('App\Models\Vehicle', 'id', 'vehicle')->withTrashed();
     }
     public function clients()
     {

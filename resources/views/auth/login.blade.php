@@ -1,91 +1,47 @@
-@extends('layouts.auth')
-@php
-    $settings = settings();
-@endphp
-@section('tab-title')
-    {{ __('Login') }}
-@endsection
+@extends('layouts.sanayi-auth')
+@section('tab-title', 'İşletme girişi')
+@php($settings = settings())
 @push('script-page')
     @if ($settings['google_recaptcha'] == 'on')
         {!! NoCaptcha::renderJs() !!}
     @endif
 @endpush
 @section('content')
-    @php
-        $registerPage = getSettingsValByName('register_page');
-    @endphp
-    <div class="card">
-        <div class="card-body">
-            <div class="row">
-                <div class="d-flex justify-content-center">
-                    <div class="auth-header">
-                        <h2 class="text-secondary"><b>{{ __('Hi, Welcome Back') }} </b></h2>
-                        <p class="f-16 mt-2">{{ __('Enter your credentials to continue') }}</p>
-                    </div>
-                </div>
-            </div>
-
-            {{ Form::open(['route' => 'login', 'method' => 'post', 'id' => 'loginForm', 'class' => 'login-form']) }}
-            @if (session('error'))
-                <div class="alert alert-danger" role="alert">{{ session('error') }}</div>
-            @endif
-            @if (session('success'))
-                <div class="alert alert-success" role="alert">{{ session('success') }}</div>
-            @endif
-            @if (session('status'))
-                <div class="alert alert-success" role="alert">{{ session('status') }}</div>
-            @endif
-            <div class="form-floating mb-3">
-                <input type="email" class="form-control" id="email" name="email"
-                    placeholder="{{ __('Email address') }}" />
-                <label for="email">{{ __('Email address') }}</label>
-                @error('email')
-                    <span class="invalid-email text-danger" role="alert">
-                        <strong>{{ $message }}</strong>
-                    </span>
-                @enderror
-            </div>
-            <div class="form-floating mb-3">
-                <input type="password" class="form-control" id="password" name="password"
-                    placeholder="{{ __('Password') }}" />
-                <label for="password">{{ __('Password') }}</label>
-                @error('password')
-                    <span class="invalid-password text-danger" role="alert">
-                        <strong>{{ $message }}</strong>
-                    </span>
-                @enderror
-            </div>
-            <div class="d-flex mt-1 justify-content-between">
-                <div class="form-check">
-                    <input class="form-check-input input-primary" type="checkbox" id="agree"
-                        {{ old('remember') ? 'checked' : '' }} />
-                    <label class="form-check-label text-muted" for="agree">{{ __('Remember me') }}</label>
-                </div>
-                @if (Route::has('password.request'))
-                    <a href="{{ route('password.request') }}" class="text-secondary">{{ __('Forgot Password?') }}</a>
-                @endif
-            </div>
-            @if ($settings['google_recaptcha'] == 'on')
-                <div class="form-group">
-                    <label for="email" class="form-label"></label>
-                    {!! NoCaptcha::display() !!}
-                    @error('g-recaptcha-response')
-                        <span class="small text-danger" role="alert">
-                            <strong>{{ $message }}</strong>
-                        </span>
-                    @enderror
-                </div>
-            @endif
-            <div class="d-grid mt-4">
-                <button type="submit" class="btn btn-secondary p-2">{{ __('Sign In') }}</button>
-            </div>
-            @if ($registerPage == 'on')
-                <hr />
-                <h5 class="d-flex justify-content-center">{{ __("Don't Have An Account?") }} <a class="ms-1 text-secondary"
-                        href="{{ route('register') }}">{{ __('Create an account') }}</a>
-                </h5>
-            @endif
-            {{ Form::close() }}
-        </div>
+<div class="login-heading">
+    <span class="login-eyebrow">İŞLETME PANELİ</span>
+    <h1>İşiniz kaldığı yerden<br>devam etsin.</h1>
+    <p>Servisinizi yönetmek için hesabınıza giriş yapın.</p>
+</div>
+<form action="{{ route('login') }}" method="post" id="loginForm" class="login-form">
+    @csrf
+    @foreach (['error', 'success', 'status'] as $message)
+        @if (session($message))<div class="login-message {{ $message === 'error' ? 'login-message-error' : '' }}" role="{{ $message === 'error' ? 'alert' : 'status' }}">{{ session($message) }}</div>@endif
+    @endforeach
+    <div class="login-field">
+        <label for="email">E-posta adresi</label>
+        <input id="email" name="email" type="email" value="{{ old('email') }}" placeholder="ornek@isletmeniz.com" autocomplete="username" inputmode="email" required @error('email') aria-invalid="true" aria-describedby="email-error" @enderror>
+        @error('email')<p class="login-error" id="email-error" role="alert">{{ $message }}</p>@enderror
     </div>
+    <div class="login-field">
+        <label for="password">Şifre</label>
+        <div class="login-password">
+            <input id="password" name="password" type="password" placeholder="Şifrenizi girin" autocomplete="current-password" required @error('password') aria-invalid="true" aria-describedby="password-error" @enderror>
+            <button type="button" id="toggle-password" aria-label="Şifreyi göster" aria-pressed="false" aria-controls="password" hidden><svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z"/><circle cx="12" cy="12" r="3"/></svg></button>
+        </div>
+        @error('password')<p class="login-error" id="password-error" role="alert">{{ $message }}</p>@enderror
+    </div>
+    <div class="login-options">
+        <label class="login-remember" for="remember"><input id="remember" name="remember" type="checkbox" value="1" @checked(old('remember'))> Beni hatırla</label>
+        @if(Route::has('password.request'))<a href="{{ route('password.request') }}">Şifremi unuttum</a>@endif
+    </div>
+    @if($settings['google_recaptcha'] == 'on')
+        <div class="login-captcha">{!! NoCaptcha::display() !!}</div>
+        @error('g-recaptcha-response')<p class="login-error" role="alert">{{ $message }}</p>@enderror
+    @endif
+    <button type="submit" class="login-submit">Giriş yap <span aria-hidden="true">↗</span></button>
+    @if(getSettingsValByName('register_page') == 'on')
+        <p class="login-register">Henüz hesabınız yok mu? <a href="{{ route('register') }}">Hesap oluşturun</a></p>
+    @endif
+</form>
+<div class="login-customer"><span>Aracınız için servis mi arıyorsunuz?</span><a href="{{ route('directory.index') }}">Randevu alın <span aria-hidden="true">→</span></a></div>
 @endsection

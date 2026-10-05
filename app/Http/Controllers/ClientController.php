@@ -28,7 +28,7 @@ class ClientController extends Controller
     public function index()
     {
         if (\Auth::user()->can('manage client')) {
-            $clients = User::where('parent_id', '=', parentId())->where('type', 'client')->orderBy('id', 'desc')->get();
+            $clients = User::where('parent_id', '=', parentId())->where('type', 'client')->whereNull('client_archived_at')->orderBy('id', 'desc')->get();
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
         }
@@ -509,7 +509,7 @@ class ClientController extends Controller
 
     public function vehicleNumber()
     {
-        $latest = Vehicle::where('parent_id', parentId())->latest()->first();
+        $latest = Vehicle::withTrashed()->where('parent_id', parentId())->latest()->first();
         if (!$latest) {
             return 1;
         }

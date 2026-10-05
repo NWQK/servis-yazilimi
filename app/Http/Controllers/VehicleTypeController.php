@@ -15,7 +15,8 @@ class VehicleTypeController extends Controller
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
         }
-        return view('vehicle_type.index', compact('types'));
+        $catalogImports = \App\Models\VehicleCatalogImport::where('parent_id', parentId())->where('active', true)->orderByDesc('id')->get();
+        return view('vehicle_type.index', compact('types', 'catalogImports'));
     }
 
 

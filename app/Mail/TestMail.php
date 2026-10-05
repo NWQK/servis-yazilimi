@@ -25,10 +25,10 @@ class TestMail extends Mailable
         $settings = $datass['settings'];
         $subject = $datass['subject'];
         $data = [
-            'company_logo' => $settings['company_logo'],
+            'company_logo' => ($settings['company_logo'] ?? ''),
             'message' => $datass['message'],
         ];
 
-        return $this->from($settings['FROM_EMAIL'], $settings['FROM_NAME'])->markdown('email.test_email_notification')->subject($subject)->with('data', $data);
+        return $this->from($settings['FROM_EMAIL'], $settings['FROM_NAME'])->view('email.test_email_notification')->subject($subject)->with(['subject'=>$subject, 'company_name'=>$settings['company_name'] ?? 'SanayiRandevu'])->with('data', $data);
     }
 }

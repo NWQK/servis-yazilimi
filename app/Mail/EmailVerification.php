@@ -28,6 +28,6 @@ class EmailVerification extends Mailable
         $settings = $data['settings'];
         $subject = $data['subject'];
 
-        return $this->from($settings['FROM_EMAIL'], $settings['FROM_NAME'])->markdown('email.email_verification')->subject($subject)->with('data', $data);
+        return $this->from($settings['FROM_EMAIL'], $settings['FROM_NAME'])->view('email.email_verification')->subject($subject)->with(['subject'=>$subject, 'company_name'=>$settings['company_name'] ?? 'SanayiRandevu'])->with('data', $data);
     }
 }

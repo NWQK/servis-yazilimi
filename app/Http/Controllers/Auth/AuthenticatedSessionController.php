@@ -38,7 +38,13 @@ class AuthenticatedSessionController extends Controller
         $request->authenticate();
         $request->session()->regenerate();
         $loginUser = Auth::user();
-        if($loginUser->is_active == 0)
+        if ($loginUser->hasSuspendedSubscription()) {
+            auth()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+            return redirect()->route('login')->with('error','İşletmenizin aboneliği askıya alındı. Yöneticiyle iletişime geçin.');
+        }
+        if($loginUser->is_active == 0 || $loginUser->client_archived_at !== null)
         {
             auth()->logout();
             return redirect()->route('login')->with('error', __('Your account is temporarily inactive. Please contact your administrator to reactivate your account.'));
@@ -50,7 +56,7 @@ class AuthenticatedSessionController extends Controller
         if( $loginUser->type=='owner'){
 
             if($loginUser->subscription_expire_date!=null && date('Y-m-d') > $loginUser->subscription_expire_date){
-                assignSubscription(1);
+                assignSubscription(\App\Models\Subscription::where('vehicle_limit', 50)->value('id') ?? 1);
                  return redirect()->intended(RouteServiceProvider::HOME)->with('error', __('Your subscription has ended, and access to premium features is now restricted. To continue using our services without interruption, please renew your plan or upgrade to a higher-tier package.'));
             }
         }

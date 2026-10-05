@@ -1,5 +1,9 @@
 {{ Form::model($notification, ['route' => ['notification.update', $notification->id], 'method' => 'PUT']) }}
 <div class="modal-body">
+    @if($definition)
+    <div class="alert alert-light"><label><input type="checkbox" name="use_default_template" value="1"> Hazır Türkçe şablonu kullan</label><small class="d-block">Kaydettiğinizde mevcut konu ve mesaj bu şablonla değiştirilir. E-posta gönderimi bildirim anahtarıyla ayrıca açılır.</small></div>
+    <details class="mb-3"><summary>Hazır şablonu ön izle</summary><div class="border rounded p-3 mt-2"><strong>{{ $definition['subject'] }}</strong>{!! $definition['templete'] !!}</div></details>
+    @endif
     <div class="row">
         <div class="form-group col-md-6">
             {{ Form::label('name', __('Module'), ['class' => 'form-label']) }}

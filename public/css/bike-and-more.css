@@ -939,18 +939,13 @@ background: #b00512;
     border: 1px solid #b00512;
 }
 
-/* Named swatch stays legible in every theme. */
-.preset-color > a.bike-more-option {
-    display: inline-flex; align-items: center; gap: 8px;
-    width: auto; height: auto; min-height: 40px; padding: 6px 12px;
-    margin-top: 12px; border: 2px solid #737373; border-radius: 6px;
-    background: #111; color: #fff; font-size: 13px;
+/* Match the size, circle and selection indicator of the standard presets. */
+.theme-color.preset-color > a.bike-more-option {
+    background: linear-gradient(135deg, #ed001b 50%, #111 50%);
 }
-.preset-color > a.bike-more-option.active,
-.preset-color > a.bike-more-option:focus-visible { outline: 3px solid #da0014; outline-offset: 3px; }
-.bike-more-option .bike-more-swatch {
-    display: inline-block; width: 28px; height: 22px; border: 1px solid #fff;
-    background: linear-gradient(115deg, #111 33%, #fff 33%, #fff 48%, #ed001b 48%);
+.theme-color.preset-color > a.bike-more-option:focus-visible {
+    outline: 2px solid #ed001b;
+    outline-offset: 3px;
 }
 [data-pc-preset=bike-and-more] .pc-sidebar {
     background: #111; color: #fff;
@@ -973,5 +968,11 @@ background: #b00512;
 [data-pc-preset=bike-and-more] .pc-sidebar .pc-item:is(.active, :hover, :focus-within) > .pc-link .pc-micon,
 [data-pc-preset=bike-and-more] .pc-sidebar .pc-item:is(.active, :hover, :focus-within) > .pc-link .pc-micon i,
 [data-pc-preset=bike-and-more] .pc-sidebar .pc-item:is(.active, :hover, :focus-within) > .pc-link .pc-micon svg { color: #fff; }
+[data-pc-preset=bike-and-more] .sanayi-navigation .pc-navbar > .pc-item .pc-submenu .pc-item:is(.active, :hover, :focus-within) > .pc-link {
+    color: #fff;
+}
+[data-pc-preset=bike-and-more] .sanayi-navigation .pc-navbar > .pc-item .pc-submenu .pc-item.active > .pc-link:after {
+    background: #fff;
+}
 [data-pc-preset=bike-and-more][data-pc-theme=light] .pc-header { background: #fff; border-bottom: 1px solid #e5e5e5; }
 [data-pc-preset=bike-and-more] .auth-main { border-top: 4px solid #ed001b; }

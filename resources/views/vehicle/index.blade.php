@@ -25,6 +25,9 @@
                         <div class="col">
                             <h5>{{ __('Vehicle List') }}</h5>
                         </div>
+                        @if(auth()->user()->type !== 'client' && Gate::check('delete vehicle') && Gate::check('delete client'))
+                            <div class="col-auto"><a class="btn btn-outline-danger" href="{{ route('vehicle-cleanup.index') }}"><i class="ti ti-trash align-text-bottom"></i> Temizleme işlemi</a></div>
+                        @endif
                         @if (Gate::check('create vehicle'))
                             @if (auth()->user()->type !== 'client')
                                 <div class="col-auto"><a class="btn btn-outline-secondary" href="{{ route('vehicle-qr.index') }}">QR Etiketleri</a></div>
@@ -84,12 +87,12 @@
                                                             data-url="{{ route('vehicle.edit', $vehicle->id) }}"
                                                             data-title="{{ __('Edit') }}"> <i data-feather="edit"></i></a>
                                                     @endcan
-                                                    @can('delete vehicle')
+                                                    @if(auth()->user()->type !== 'client' && Gate::check('delete vehicle') && Gate::check('delete client'))
                                                         <a class=" avtar avtar-xs btn-link-danger text-danger confirm_dialog"
                                                             data-bs-toggle="tooltip"
                                                             data-bs-original-title="{{ __('Detete') }}" href="#"> <i
                                                                 data-feather="trash-2"></i></a>
-                                                    @endcan
+                                                    @endif
                                                     {!! Form::close() !!}
                                                 </div>
 

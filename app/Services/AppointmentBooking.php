@@ -61,7 +61,7 @@ class AppointmentBooking
     {
         $this->expirePending($profile->id);
         $day = CarbonImmutable::createFromFormat('!Y-m-d', $date, 'Europe/Istanbul');
-        if (!$profile->is_active || $day->lt(today()) || $day->gt(today()->addDays(self::BOOKING_WINDOW_DAYS))) return [];
+        if (!$profile->is_active || $profile->owner?->hasSuspendedSubscription() || $day->lt(today()) || $day->gt(today()->addDays(self::BOOKING_WINDOW_DAYS))) return [];
         $reserved = $profile->appointments()->whereNotNull('occupied_at')->whereDate('occupied_at', $date)
             ->get()->map(fn ($appointment) => (int) $appointment->starts_at->format('G'))->all();
         return array_values(array_filter($profile->weekly_hours[$day->isoWeekday()] ?? [],

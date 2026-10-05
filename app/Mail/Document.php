@@ -25,8 +25,8 @@ class   Document extends Mailable
     public function build()
     {
         return  $this->from($this->data['from'], $this->data['from_name'])
-            ->markdown('email.document')
-            ->subject($this->data['subject'])
+            ->view('email.document')
+            ->subject($this->data['subject'])->with('subject', $this->data['subject'])
             ->with('content', $this->data['message']);
     }
 }

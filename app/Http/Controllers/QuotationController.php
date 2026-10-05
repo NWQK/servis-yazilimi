@@ -38,7 +38,7 @@ class QuotationController extends Controller
 
     public function create()
     {
-        $clients = User::where('parent_id', parentId())->where('type', 'client')->get()->pluck('name', 'id');
+        $clients = User::where('parent_id', parentId())->where('type', 'client')->whereNull('client_archived_at')->get()->pluck('name', 'id');
         $clients->prepend(__('Select Client'), '');
 
         $status = Quotation::statues();

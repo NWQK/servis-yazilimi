@@ -211,86 +211,43 @@ class SettingController extends Controller
 
     public function smtpData(Request $request)
     {
-        if (\Auth::Check()) {
-            $validator = \Validator::make(
-                $request->all(),
-                [
-                    'sender_name' => 'required',
-                    'sender_email' => 'required',
-                    'server_driver' => 'required',
-                    'server_host' => 'required',
-                    'server_port' => 'required',
-                    'server_username' => 'required',
-                    'server_password' => 'required',
-                    'server_encryption' => 'required',
-                ]
-            );
-            if ($validator->fails()) {
-                $messages = $validator->getMessageBag();
-
-                return redirect()->back()->with('error', $messages->first());
-            }
-
-            $smtpArray = [
-                'FROM_NAME' => $request->sender_name,
-                'FROM_EMAIL' => $request->sender_email,
-                'SERVER_DRIVER' => $request->server_driver,
-                'SERVER_HOST' => $request->server_host,
-                'SERVER_PORT' => $request->server_port,
-                'SERVER_USERNAME' => $request->server_username,
-                'SERVER_PASSWORD' => $request->server_password,
-                'SERVER_ENCRYPTION' => $request->server_encryption,
-            ];
-            foreach ($smtpArray as $key => $val) {
-                if (!empty($val)) {
-
-                    \DB::insert(
-                        'insert into settings (`value`, `name`, `type`,`parent_id`) values (?, ?, ?,?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`) ',
-                        [
-                            $val,
-                            $key,
-                            'smtp',
-                            parentId(),
-                        ]
-                    );
-                }
-            }
-
-            return redirect()->back()->with('success', __('SMTP settings successfully saved.'))->with('tab', 'email_SMTP_settings');
-        } else {
-            return redirect()->back()->with('error', __('Invalid user.'))->with('tab', 'email_SMTP_settings');
+        abort_unless(auth()->user()?->can('manage email settings'), 403);
+        $data = $request->validate([
+            'sender_name'=>'required|string|max:150', 'sender_email'=>'required|email|max:255',
+            'server_driver'=>'required|in:smtp', 'server_host'=>'required|string|max:255|regex:/^[a-zA-Z0-9.-]+$/',
+            'server_port'=>'required|integer|between:1,65535', 'server_username'=>'required|string|max:255',
+            'server_password'=>'nullable|string|max:1000', 'server_encryption'=>'required|in:tls,ssl',
+        ]);
+        $oldPassword = \DB::table('settings')->where('type','smtp')->where('parent_id',parentId())->where('name','SERVER_PASSWORD')->value('value');
+        if (empty($data['server_password']) && empty($oldPassword)) {
+            return back()->withErrors(['server_password'=>'İlk kurulumda SMTP şifresini girin.'])->with('tab','email_SMTP_settings');
         }
+        $smtpArray = [
+            'FROM_NAME'=>$data['sender_name'], 'FROM_EMAIL'=>$data['sender_email'], 'SERVER_DRIVER'=>'smtp',
+            'SERVER_HOST'=>$data['server_host'], 'SERVER_PORT'=>$data['server_port'], 'SERVER_USERNAME'=>$data['server_username'],
+            'SERVER_PASSWORD'=>($data['server_password'] ?? '') ?: $oldPassword, 'SERVER_ENCRYPTION'=>$data['server_encryption'],
+        ];
+        \DB::transaction(function () use ($smtpArray) {
+            foreach ($smtpArray as $key=>$value) {
+                \DB::table('settings')->updateOrInsert(['parent_id'=>parentId(),'type'=>'smtp','name'=>$key], ['value'=>$value]);
+            }
+        });
+        if (app('mail.manager') instanceof \Illuminate\Mail\MailManager) { app('mail.manager')->purge('smtp'); }
+        return back()->with('success','SMTP ayarları kaydedildi. Gönderimi doğrulamak için test e-postası gönderebilirsiniz.')->with('tab','email_SMTP_settings');
     }
 
     public function smtpTest(Request $request)
     {
+        abort_unless(auth()->user()?->can('manage email settings'), 403);
         return view('settings.testmail');
     }
 
     public function smtpTestMailSend(Request $request)
     {
-        if (\Auth::check()) {
-            $to = $request->email;
-            $errorMessage = '';
-            // Data for email
-            $data = [
-                'module' => 'test_mail',
-                'subject' => 'Test Mail',
-                'message' => __('This is a test mail.'),
-            ];
-
-            // Send email
-            $response = sendEmail($to, $data);
-            if ($response['status'] == 'error') {
-                $errorMessage = $response['message'];
-                return redirect()->back()->with('error', $errorMessage)->with('tab', 'email_SMTP_settings');
-                ;
-            } else {
-                $errorMessage = $response['message'];
-                return redirect()->back()->with('success', $errorMessage)->with('tab', 'email_SMTP_settings');
-                ;
-            }
-        }
+        abort_unless(auth()->user()?->can('manage email settings'), 403);
+        $data = $request->validate(['email'=>'required|email|max:255']);
+        $response = sendEmail($data['email'], ['module'=>'test_mail', 'subject'=>'SanayiRandevu — SMTP test e-postası', 'message'=>'E-posta gönderim ayarlarınızın test mesajıdır.']);
+        return back()->with($response['status']=='error' ? 'error' : 'success', $response['message'])->with('tab','email_SMTP_settings');
     }
 
     //    ---------------------- Payment --------------------------------------------------------

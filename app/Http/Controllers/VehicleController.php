@@ -38,7 +38,7 @@ class VehicleController extends Controller
         $qrCodes = VehicleQrCode::where('parent_id', parentId())->available()->whereNotNull('printed_at')->orderBy('id')->get();
         $types = VehicleType::where('parent_id', parentId())->get()->pluck('type', 'id');
         $types->prepend(__('Select Brand'), '');
-        $clients = User::where('parent_id', parentId())->where('type', 'client')->get()->pluck('name', 'id');
+        $clients = User::where('parent_id', parentId())->where('type', 'client')->whereNull('client_archived_at')->get()->pluck('name', 'id');
         return view('vehicle.create', compact('types', 'clients', 'qrCodes'));
     }
 
@@ -50,7 +50,7 @@ class VehicleController extends Controller
             $validator = \Validator::make(
                 $request->all(),
                 [
-                    'client' => ['required', Rule::exists('users', 'id')->where('parent_id', parentId())->where('type', 'client')],
+                    'client' => ['required', Rule::exists('users', 'id')->where('parent_id', parentId())->where('type', 'client')->whereNull('client_archived_at')],
                     'type' => ['required', Rule::exists('vehicle_types', 'id')->where('parent_id', parentId())],
                     'brand' => ['required', Rule::exists('vehicle_brands', 'id')->where('parent_id', parentId())->where('type', $request->type)],
                     'qr_code_id' => 'nullable|integer|min:1',
@@ -143,7 +143,7 @@ class VehicleController extends Controller
         abort_unless(auth()->user()->can('edit vehicle') && (int) $vehicle->parent_id === (int) parentId() && auth()->user()->type !== 'client', 403);
         $types = VehicleType::where('parent_id', parentId())->get()->pluck('type', 'id');
         $types->prepend(__('Select Brand'), '');
-        $clients = User::where('parent_id', parentId())->where('type', 'client')->get()->pluck('name', 'id');
+        $clients = User::where('parent_id', parentId())->where('type', 'client')->whereNull('client_archived_at')->get()->pluck('name', 'id');
         return view('vehicle.edit', compact('types', 'clients', 'vehicle'));
     }
 
@@ -155,7 +155,7 @@ class VehicleController extends Controller
             $validator = \Validator::make(
                 $request->all(),
                 [
-                    'client' => ['required', Rule::exists('users', 'id')->where('parent_id', parentId())->where('type', 'client')],
+                    'client' => ['required', Rule::exists('users', 'id')->where('parent_id', parentId())->where('type', 'client')->whereNull('client_archived_at')],
                     'type' => ['required', Rule::exists('vehicle_types', 'id')->where('parent_id', parentId())],
                     'brand' => ['required', Rule::exists('vehicle_brands', 'id')->where('parent_id', parentId())->where('type', $request->type)],
                     'color' => 'nullable|string|max:255',
@@ -203,9 +203,10 @@ class VehicleController extends Controller
     public function destroy(Vehicle $vehicle)
     {
         abort_unless((int) $vehicle->parent_id === (int) parentId() && auth()->user()->type !== 'client', 403);
+        abort_unless(auth()->user()->can('delete client'), 403);
         if (\Auth::user()->can('delete vehicle')) {
-            $vehicle->delete();
-            return redirect()->route('vehicle.index')->with('success', __('Vehicle successfully deleted.'));
+            $result = app(\App\Services\VehicleCleanup::class)->remove((int) parentId(), [$vehicle->id]);
+            return redirect()->route('vehicle.index')->with('success', 'Araç silinenlere taşındı. Başka aktif aracı yoksa müşteri kaydı da silinenlere taşındı. Faturalar ve ödemeler korundu.');
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
         }
@@ -213,7 +214,7 @@ class VehicleController extends Controller
 
     public function vehicleNumber()
     {
-        $latest = Vehicle::where('parent_id', parentId())->latest()->first();
+        $latest = Vehicle::withTrashed()->where('parent_id', parentId())->latest()->first();
         if (!$latest) {
             return 1;
         }

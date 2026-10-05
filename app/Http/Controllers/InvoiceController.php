@@ -38,7 +38,7 @@ class InvoiceController extends Controller
     public function create()
     {
 
-        $clients = User::where('type', 'client')->where('parent_id', parentId())->get()->pluck('name', 'id');
+        $clients = User::where('type', 'client')->whereNull('client_archived_at')->where('parent_id', parentId())->get()->pluck('name', 'id');
         $clients->prepend(__('Select Client'), '');
 
         $items = Item::where('parent_id', parentId())->get()->pluck('title', 'id');
@@ -451,7 +451,7 @@ class InvoiceController extends Controller
             triggerN8n('new_payment', $n8nData);
             $module = 'payment_create';
             $notification = Notification::where('parent_id', parentId())->where('module', $module)->first();
-            $notification->status = $status;
+            if ($notification) { $notification->status = $status; }
             $errorMessage = '';
 
             if (!empty($notification)) {

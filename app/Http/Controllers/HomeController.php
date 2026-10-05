@@ -80,7 +80,7 @@ class HomeController extends Controller
                     return view('dashboard.employee', compact('result', 'user'));
                 }
                 $result['totalUser'] = User::where('parent_id', parentId())->count();
-                $result['totalClient'] = User::where('type', 'client')->where('parent_id', parentId())->count();
+                $result['totalClient'] = User::where('type', 'client')->whereNull('client_archived_at')->where('parent_id', parentId())->count();
                 $result['todayService'] = Service::where('parent_id', parentId())->where('service_date', date('Y-m-d'))->count();
                 $result['incomeExpenseByMonth'] = $this->incomeExpenseByMonth();
                 $result['settings'] = settings();

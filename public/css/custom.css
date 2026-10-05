@@ -272,3 +272,7 @@ form label{
     right: 10px;
     line-height: 0;
 }
+.sanayi-navigation .pc-caption,
+.sanayi-navigation .pc-mtext {
+    text-transform: none;
+}

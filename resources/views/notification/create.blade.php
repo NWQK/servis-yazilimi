@@ -16,7 +16,7 @@
 
         <div class="form-group col-md-12">
             {{ Form::label('message', __('User Message'), ['class' => 'form-label']) }}
-            {{ Form::textarea('message', null, ['class' => 'form-control', 'rows' => 5, 'id' => 'classic-editor']) }}
+            {{ Form::textarea('message', null, ['class' => 'form-control', 'rows' => 5, 'id' => 'message']) }}
         </div>
 
         <div class="form-group col-md-12">
@@ -24,7 +24,7 @@
             <input class="form-check-input" type="hidden" name="enabled_email" value="0">
             <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckChecked"
-                    name="enabled_email" value="1" checked>
+                    name="enabled_email" value="1">
                 <label class="form-check-label" for="flexSwitchCheckChecked"></label>
             </div>
         </div>

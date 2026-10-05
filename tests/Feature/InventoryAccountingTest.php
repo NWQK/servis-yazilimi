@@ -100,7 +100,7 @@ class InventoryAccountingTest extends TestCase
     {
         $this->owner->update(['lang' => 'english']);
         $this->get('/item', ['Accept-Language' => 'en-US'])->assertOk()
-            ->assertSee('Ürün adı')->assertSee('Alış fiyatı')->assertSee('Ürün Kategorileri')
+            ->assertSee('Ürün adı')->assertSee('Alış fiyatı')->assertSee('Ürün kategorileri')
             ->assertSee('lang="tr"', false)->assertDontSee('ti-language', false)->assertDontSee('/language/', false);
         $this->assertSame('tr', app()->getLocale());
         $this->get('/language/english')->assertNotFound();

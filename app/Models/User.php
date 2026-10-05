@@ -42,6 +42,13 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
     ];
 
+    public function hasSuspendedSubscription(): bool
+    {
+        if ($this->type === 'super admin') { return false; }
+        $owner = $this->type === 'owner' ? static::find($this->id) : static::where('type','owner')->find($this->parent_id);
+        return $owner && $owner->subscription_suspended_at !== null;
+    }
+
     public function canImpersonate()
     {
         // Example: Only admins can impersonate others
@@ -84,7 +91,7 @@ class User extends Authenticatable
 
     public function totalClient()
     {
-        return User::where('type', 'client')->where('parent_id', '=', $this->id)->count();
+        return User::where('type', 'client')->whereNull('client_archived_at')->where('parent_id', '=', $this->id)->count();
     }
     public function totalEmployee()
     {
