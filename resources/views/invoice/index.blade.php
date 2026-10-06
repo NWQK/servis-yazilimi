@@ -44,7 +44,7 @@
                                     <th> {{ __('Invoice Date') }}</th>
                                     <th> {{ __('Total Amount') }}</th>
                                     <th> {{ __('Status') }}</th>
-                                    @if (Gate::check('edit invoice') || Gate::check('delete invoice') || Gate::check('show invoice'))
+                                    @if (Gate::check('edit invoice') || Gate::check('delete invoice') || Gate::check('show invoice') || Gate::check('create invoice payment'))
                                         <th class="text-right"> {{ __('Action') }}</th>
                                     @endif
                                 </tr>
@@ -71,7 +71,7 @@
                                                     class="badge bg-light-success ml-3">{{ __(\App\Models\Invoice::statues()[$invoice->status]) }}</span>
                                             @endif
                                         </td>
-                                        @if (Gate::check('edit invoice') || Gate::check('delete invoice') || Gate::check('show invoice'))
+                                        @if (Gate::check('edit invoice') || Gate::check('delete invoice') || Gate::check('show invoice') || Gate::check('create invoice payment'))
                                             <td>
                                                 <div class="cart-action">
                                                     {!! Form::open(['method' => 'DELETE', 'route' => ['invoice.destroy', $invoice->id]]) !!}
@@ -80,6 +80,14 @@
                                                             data-bs-original-title="{{ __('Detail') }}"
                                                             href="{{ route('invoice.show', \Illuminate\Support\Facades\Crypt::encrypt($invoice->id)) }}">
                                                             <i data-feather="eye"></i></a>
+                                                    @endcan
+                                                    @can('show invoice')
+                                                        <a class="avtar avtar-xs btn-link-secondary text-secondary" href="{{ route('invoice.show', encrypt($invoice->id)) }}?print=1" target="_blank" rel="noopener" data-bs-toggle="tooltip" data-bs-original-title="Yazdır" aria-label="Faturayı yazdır"><i data-feather="printer"></i></a>
+                                                    @endcan
+                                                    @can('create invoice payment')
+                                                        @if(auth()->user()->type !== 'client' && $invoice->getInvoiceTotalDueAmount() > 0)
+                                                            <a href="#" class="avtar avtar-xs btn-link-success text-success customModal" data-url="{{ route('invoice.payment', $invoice->id) }}" data-size="md" data-title="Ödeme ekle" data-bs-toggle="tooltip" data-bs-original-title="Ödeme ekle" aria-label="Ödeme ekle"><i data-feather="credit-card"></i></a>
+                                                        @endif
                                                     @endcan
                                                     @can('edit invoice')
                                                         <a class="avtar avtar-xs btn-link-secondary text-secondary"

@@ -8,9 +8,6 @@
 
     $theme_mode = getSettingsValByName('theme_mode');
     $light_logo = getSettingsValByName('light_logo');
-    if (auth()->user()->type != 'super admin') {
-        $light_logo = getSettingsValByName('company_light_logo');
-    }
 @endphp
 <nav class="pc-sidebar sanayi-navigation" aria-label="Ana menü">
     <div class="navbar-wrapper">

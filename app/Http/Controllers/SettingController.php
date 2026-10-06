@@ -124,85 +124,39 @@ class SettingController extends Controller
 
     public function generalData(Request $request)
     {
+        abort_unless(auth()->user()->can('manage general settings'), 403);
+        $isAdmin = auth()->user()->type === 'super admin';
+        $ownerId = parentId();
+        $fileFields = $isAdmin ? ['logo', 'favicon', 'light_logo', 'landing_logo', 'invoice_logo'] : ['logo', 'favicon', 'light_logo', 'invoice_logo'];
+        $rules = $isAdmin ? ['application_name'=>'required|string|max:150', 'copyright'=>'nullable|string|max:500'] : [];
+        foreach ($fileFields as $field) { $rules[$field] = $field === 'invoice_logo' ? 'nullable|image|mimes:png,jpg,jpeg,webp|max:2048|dimensions:max_width=6000,max_height=6000' : 'nullable|file|mimes:png|max:2048'; }
+        $data = $request->validate($rules);
+        $values = $isAdmin
+            ? ['app_name'=>$data['application_name'], 'copyright'=>$data['copyright'] ?? '']
+            : ['app_name'=>'sanayirandevu.com', 'copyright'=>'© sanayirandevu.com. Tüm hakları saklıdır.'];
 
-        $user = \Auth::user();
-        $userType = $user->type;
-        $parentId = parentId(); // Assume 1 for super admin
-
-        $validator = \Validator::make($request->all(), [
-            'application_name' => 'required',
-        ]);
-
-        $fileFields = ['logo', 'favicon', 'light_logo', 'landing_logo'];
-
-
-        // Add file validation for each file field
         foreach ($fileFields as $field) {
-            if ($request->hasFile($field)) {
-                $validator->addRules([$field => 'mimes:png']);
+            if (!$request->hasFile($field)) { continue; }
+            $extension = $field === 'invoice_logo' ? $request->file($field)->extension() : 'png';
+            $filename = $field === 'invoice_logo' ? $ownerId.'_invoice_'.\Illuminate\Support\Str::uuid().'.'.$extension : ($isAdmin ? $field.'.png' : $ownerId.'_'.$field.'.png');
+            if (!$request->file($field)->storeAs('upload/logo/', $filename)) {
+                throw ValidationException::withMessages([$field=>'Logo kaydedilemedi. Yükleme klasörünün yazma izinlerini kontrol edin.']);
+            }
+            // Keep legacy names compatible with existing uploaded logos.
+            $values[$field === 'invoice_logo' ? 'invoice_logo' : ($isAdmin ? $field : 'company_'.$field)] = $filename;
+        }
+        if ($isAdmin) {
+            foreach (['landing_page','register_page','owner_email_verification','pricing_feature'] as $key) {
+                $values[$key] = $request->input($key) === 'on' ? 'on' : 'off';
             }
         }
-
-        if ($validator->fails()) {
-            return redirect()->back()->with('error', $validator->getMessageBag()->first());
-        }
-
-        // Save App Name
-        if (!empty($request->application_name)) {
-            Custom::setCommon(['APP_NAME' => $request->application_name]);
-
-            \DB::insert(
-                'INSERT INTO settings (`value`, `name`, `parent_id`) VALUES (?, ?, ?)
-             ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)',
-                [$request->application_name, 'app_name', $parentId]
-            );
-        }
-
-        // Save Copyright
-        if (!empty($request->copyright)) {
-            \DB::insert(
-                'INSERT INTO settings (`value`, `name`, `parent_id`) VALUES (?, ?, ?)
-             ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)',
-                [$request->copyright, 'copyright', $parentId]
-            );
-        }
-
-        // Upload and store logo file names in DB
-        foreach ($fileFields as $key => $field) {
-            if ($request->hasFile($field)) {
-                $filename = ($userType === 'super admin') ? $field . '.png' : $parentId . '_' . $field . '.png';
-                $settingKey = ($userType === 'super admin') ? $field : 'company_' . $field;
-                $request->file($field)->storeAs('upload/logo/', $filename);
-
-                \DB::insert(
-                    'INSERT INTO settings (`value`, `name`, `parent_id`) VALUES (?, ?, ?)
-                 ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)',
-                    [$filename, $settingKey, $parentId]
-                );
+        \DB::transaction(function () use ($values, $ownerId) {
+            foreach ($values as $name=>$value) {
+                \DB::table('settings')->updateOrInsert(['parent_id'=>$ownerId,'name'=>$name], ['value'=>$value]);
             }
-        }
-
-        // Extra toggles for super admin
-        if ($userType === 'super admin') {
-            $toggles = [
-                'landing_page' => $request->landing_page ?? 'off',
-                'register_page' => $request->register_page ?? 'off',
-                'owner_email_verification' => $request->owner_email_verification ?? 'off',
-                'pricing_feature' => $request->pricing_feature,
-            ];
-
-            foreach ($toggles as $key => $val) {
-                \DB::insert(
-                    'INSERT INTO settings (`value`, `name`, `type`, `parent_id`) VALUES (?, ?, ?, ?)
-                 ON DUPLICATE KEY UPDATE `value` = VALUES(`value`)',
-                    [$val, $key, 'common', $parentId]
-                );
-            }
-        }
-
-        return redirect()->back()
-            ->with('success', __('General setting successfully saved.'))
-            ->with('tab', 'general_settings');
+        });
+        // Branding belongs in tenant settings; saving a logo must never write the shared .env file.
+        return back()->with('success','Genel ayarlar kaydedildi.')->with('tab',$isAdmin ? 'general_settings' : 'user_profile_settings');
     }
 
     //    ---------------------- SMTP --------------------------------------------------------

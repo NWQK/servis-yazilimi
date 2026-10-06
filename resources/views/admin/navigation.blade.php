@@ -91,6 +91,7 @@
                     'manage seo settings', 'manage google recaptcha settings',
                 ])),
                 $entry('E-posta bildirimleri', 'notification.index', 'manage notification'),
+                $entry('İşletme giriş geçmişi', 'owner-logins.index', null, ['owner-logins.*'], $isSuperAdmin),
                 $entry('SMS sistemi', 'appointments.sms-settings', null, ['appointments.sms-settings*', 'appointments.sms.retry'], $isSuperAdmin),
             ]),
         ]],

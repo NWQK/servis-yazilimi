@@ -33,11 +33,12 @@
                                 <i class="ti ti-user-plus"></i>{{ __('Create Employee') }}
                             </a>
 
-                            <a href="{{ route('client.create') }}" class="dropdown-item" data-url="#"
-                                data-title="{{ __('Create Client') }}" data-size="lg">
-                                <i class="ti ti-user"></i>
-                                {{ __('Create Client') }}
-                            </a>
+                            @can('create client')
+                                @can('create vehicle')
+                                <a href="{{ route('client.create') }}" class="dropdown-item"><i class="ti ti-user"></i> Servisle müşteri ekle</a>
+                                @endcan
+                                <a href="{{ route('client.simple.create') }}" class="dropdown-item"><i class="ti ti-user-plus"></i> Müşteri ekle</a>
+                            @endcan
 
                             <a href="#" class="dropdown-item customModal" data-url="{{ route('item.create') }}"
                                 data-title="{{ __('Create Item') }}" data-size="lg">

@@ -21,6 +21,222 @@ class EmailInfrastructureTest extends TestCase
         $this->actingAs($this->owner)->withoutMiddleware(\App\Http\Middleware\XSS::class);
     }
 
+    public function test_legacy_logos_resolve_for_each_business_and_only_uploads_are_exposed()
+    {
+        foreach (['company_logo'=>'shop-logo.png','company_light_logo'=>'shop-dark.png','company_favicon'=>'shop-icon.png','company_landing_logo'=>'shop-landing.png'] as $key=>$value) {
+            DB::table('settings')->updateOrInsert(['parent_id'=>$this->owner->id,'name'=>$key],['value'=>$value]);
+        }
+        $this->assertSame('shop-dark.png',getSettingsValByName('light_logo'));
+        $this->assertSame('shop-landing.png',settingsById($this->owner->id)['landing_logo']);
+        $this->assertSame('shop-logo.png',getSettingsValByName('company_logo'));
+        DB::table('settings')->insert(['parent_id'=>99,'name'=>'logo','value'=>'admin-new.png']);
+        DB::table('settings')->insert(['parent_id'=>99,'name'=>'favicon','value'=>'admin-new-icon.png']);
+        $this->assertSame('admin-new.png',settingsById(99)['company_logo']);
+        $this->assertSame('admin-new-icon.png',settingsById(99)['company_favicon']);
+        $this->assertSame('shop-logo.png',getSettingsValByName('company_logo'));
+        $this->assertSame(storage_path('upload'),config('filesystems.links')[public_path('storage/upload')]);
+        $this->assertSame(storage_path('app/public'),config('filesystems.links')[public_path('storage')]);
+        $this->assertNotContains(storage_path(),array_values(config('filesystems.links')));
+    }
+
+    public function test_business_general_settings_save_without_brand_fields_and_cannot_change_platform_brand()
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $envBefore = hash_file('sha256', app()->environmentFilePath());
+        $this->post(route('setting.general'),[
+            'logo'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('logo.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==')),
+            'light_logo'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('dark.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==')),
+            'favicon'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('favicon.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==')),
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+        \Illuminate\Support\Facades\Storage::disk('local')->assertExists('upload/logo/'.$this->owner->id.'_logo.png');
+        $this->assertSame('sanayirandevu.com',getSettingsValByName('app_name'));
+        $this->assertSame('© sanayirandevu.com. Tüm hakları saklıdır.',getSettingsValByName('copyright'));
+        $this->post(route('setting.general'),[
+            'application_name'=>'Hatalı ad','copyright'=>'Değiştirilemez','landing_page'=>'off',
+            'logo'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('new.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==')),
+        ])->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertSame('sanayirandevu.com',getSettingsValByName('app_name'));
+        $this->assertSame($envBefore,hash_file('sha256',app()->environmentFilePath()));
+        $this->assertSame(1,DB::table('settings')->where('parent_id',$this->owner->id)->where('name','company_logo')->count());
+        $this->assertSame(0,DB::table('settings')->where('parent_id',$this->owner->id)->where('name','landing_page')->count());
+        $this->get(route('setting.index'))->assertOk()->assertDontSee('name="application_name"',false)->assertDontSee('name="copyright"',false);
+        DB::table('settings')->where('parent_id',$this->owner->id)->where('name','app_name')->update(['value'=>'Eski ad']);
+        $this->assertSame('sanayirandevu.com',settingsById($this->owner->id)['app_name']);
+        $client=User::create(['name'=>'Client','email'=>'general-client@example.test','password'=>'x','type'=>'client','parent_id'=>$this->owner->id]);
+        $this->actingAs($client)->post(route('setting.general'),[])->assertForbidden();
+    }
+
+    public function test_super_admin_can_save_branding_without_writing_env()
+    {
+        $admin=User::create(['name'=>'Admin','email'=>'general-admin@example.test','password'=>'x','type'=>'super admin']);
+        Gate::before(fn($user)=>$user->type==='super admin' ? true : null);
+        $this->actingAs($admin);
+        $before=hash_file('sha256',app()->environmentFilePath());
+        $this->post(route('setting.general'),['application_name'=>'sanayirandevu.com','copyright'=>'Platform'])->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertSame('Platform',settingsById($admin->id)['copyright']);
+        $this->assertSame($before,hash_file('sha256',app()->environmentFilePath()));
+        $this->get(route('setting.index'))->assertOk()->assertSee('name="application_name"',false);
+    }
+
+    public function test_invoice_logo_upload_is_separate_bounded_and_uses_invoice_owner_in_public_views()
+    {
+        \Illuminate\Support\Facades\Storage::fake('local');
+        $this->assertStringContainsString('/upload/logo/logo.png',invoiceLogoUrl($this->owner->id));
+        $png=base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==');
+        $this->post(route('setting.general'),['invoice_logo'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('invoice.png',$png)])->assertSessionHasNoErrors()->assertSessionHas('success')->assertSessionHas('tab','user_profile_settings');
+        $filename=DB::table('settings')->where('parent_id',$this->owner->id)->where('name','invoice_logo')->value('value');
+        $this->assertNotEmpty($filename);
+        \Illuminate\Support\Facades\Storage::disk('local')->assertExists('upload/logo/'.$filename);
+        $this->assertSame(0,DB::table('settings')->where('parent_id',$this->owner->id)->where('name','company_logo')->count());
+        $this->post(route('setting.general'),[])->assertSessionHasNoErrors();
+        $this->assertSame($filename,settingsById($this->owner->id)['invoice_logo']);
+        $this->get(route('setting.index'))->assertOk()->assertSee('name="invoice_logo"',false)->assertSee('600 × 240')->assertDontSee('href="#general_settings"',false);
+        $this->post(route('setting.general'),['invoice_logo'=>\Illuminate\Http\UploadedFile::fake()->create('bad.pdf',10,'application/pdf')])->assertSessionHasErrors('invoice_logo');
+        $large=substr_replace($png,pack('N',7000),16,4);
+        $this->post(route('setting.general'),['invoice_logo'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('large.png',$large)])->assertSessionHasErrors('invoice_logo');
+        $client=User::create(['name'=>'Logo client','email'=>'invoice-logo-client@example.test','password'=>'x','type'=>'client','parent_id'=>$this->owner->id]);
+        $vehicle=Vehicle::create(['client'=>$client->id,'parent_id'=>$this->owner->id]);
+        $service=Service::create(['client'=>$client->id,'vehicle'=>$vehicle->id,'parent_id'=>$this->owner->id]);
+        $invoice=Invoice::create(['client'=>$client->id,'service'=>$service->id,'parent_id'=>$this->owner->id,'invoice_date'=>'2026-10-06','external_labor_amount'=>100]);
+        $this->get(route('invoice.show',encrypt($invoice->id)))->assertOk()->assertSee($filename)->assertSee('object-fit:contain',false)->assertSee('height:80px',false);
+        $code=VehicleQrCode::create(['parent_id'=>$this->owner->id,'vehicle_id'=>$vehicle->id,'assigned_at'=>now(),'token'=>str_repeat('f',64)]);
+        $other=User::create(['name'=>'Other','email'=>'invoice-logo-other@example.test','password'=>'x','type'=>'owner']);
+        DB::table('settings')->insert(['parent_id'=>$other->id,'name'=>'invoice_logo','value'=>'other-shop.png']);
+        $this->actingAs($other)->get(route('vehicle-portal.invoice',[$code->token,$invoice->id]))->assertOk()->assertSee($filename)->assertDontSee('other-shop.png')->assertSee('object-fit:contain',false);
+    }
+
+    public function test_invoice_notice_and_list_shortcuts_respect_balance_and_permissions()
+    {
+        $client=User::create(['name'=>'Invoice client','email'=>'invoice-actions-client@example.test','password'=>'x','type'=>'client','parent_id'=>$this->owner->id]);
+        $vehicle=Vehicle::create(['client'=>$client->id,'parent_id'=>$this->owner->id]);
+        $service=Service::create(['client'=>$client->id,'vehicle'=>$vehicle->id,'parent_id'=>$this->owner->id]);
+        $invoice=Invoice::create(['client'=>$client->id,'service'=>$service->id,'parent_id'=>$this->owner->id,'invoice_date'=>'2026-10-06','external_labor_amount'=>100]);
+        $this->get(route('invoice.index'))->assertOk()->assertSee('aria-label="Ödeme ekle"',false)->assertSee('aria-label="Faturayı yazdır"',false);
+        $this->get(route('invoice.payment',$invoice->id))->assertOk();
+        $this->get(route('invoice.show',encrypt($invoice->id)).'?print=1')->assertOk()->assertSee('Temsili faturadır. Resmî fatura yerine geçmez.')->assertSee("window.addEventListener('load', printInvoice",false);
+        $code=VehicleQrCode::create(['parent_id'=>$this->owner->id,'vehicle_id'=>$vehicle->id,'assigned_at'=>now(),'token'=>str_repeat('a',64)]);
+        $this->get(route('vehicle-portal.invoice',[$code->token,$invoice->id]))->assertOk()->assertSee('Temsili faturadır. Resmî fatura yerine geçmez.');
+        DB::table('invoice_payments')->insert(['invoice_id'=>$invoice->id,'parent_id'=>$this->owner->id,'amount'=>100,'payment_date'=>'2026-10-06']);
+        $this->get(route('invoice.index'))->assertOk()->assertDontSee('aria-label="Ödeme ekle"',false)->assertSee('aria-label="Faturayı yazdır"',false);
+        $staff=User::create(['name'=>'Read only','email'=>'invoice-actions-staff@example.test','password'=>'x','type'=>'employee','parent_id'=>$this->owner->id]);
+        Gate::before(fn($user,$ability)=>$user->id===$staff->id ? in_array($ability,['manage invoice','show invoice']) : null);
+        $this->actingAs($staff)->get(route('invoice.index'))->assertOk()->assertDontSee('aria-label="Ödeme ekle"',false)->assertSee('aria-label="Faturayı yazdır"',false);
+        $other=User::create(['name'=>'Other','email'=>'invoice-actions-owner@example.test','password'=>'x','type'=>'owner']);
+        $this->actingAs($other)->get(route('invoice.show',encrypt($invoice->id)).'?print=1')->assertNotFound();
+    }
+
+    public function test_platform_invoice_email_uses_admin_smtp_brand_and_vehicle_link_once()
+    {
+        $admin=User::create(['name'=>'Admin','email'=>'platform-admin@example.test','password'=>'x','type'=>'super admin']);
+        $this->smtp($admin->id,'central.example.test');
+        $this->smtp($this->owner->id,'shop.example.test');
+        Mail::fake();
+        $client=User::create(['name'=>'Ali <script>','email'=>'platform-client@example.test','password'=>'x','type'=>'client','parent_id'=>$this->owner->id]);
+        $vehicle=Vehicle::create(['client'=>$client->id,'parent_id'=>$this->owner->id]);
+        $qr=VehicleQrCode::create(['vehicle_id'=>$vehicle->id,'parent_id'=>$this->owner->id,'token'=>str_repeat('d',64)]);
+        $service=Service::create(['client'=>$client->id,'vehicle'=>$vehicle->id,'parent_id'=>$this->owner->id,'external_labor_amount'=>1000]);
+        DB::table('settings')->insert(['parent_id'=>$this->owner->id,'name'=>'company_name','value'=>'Örnek Motor']);
+        defaultTemplate($this->owner->id);
+        Notification::where('parent_id',$this->owner->id)->where('module','invoice_create')->update(['enabled_email'=>1]);
+        $this->post('/invoice',['client'=>$client->id,'service'=>$service->id,'invoice_date'=>'2026-10-06','types'=>[]])->assertRedirect()->assertSessionMissing('error');
+        $invoice=Invoice::firstOrFail();
+        $this->assertNotNull($invoice->customer_email_sent_at);
+        $this->assertSame('central.example.test',config('mail.mailers.smtp.host'));
+        Mail::assertSent(Common::class,function($mail) use($client,$qr) {
+            return $mail->hasTo($client->email) && str_contains($mail->data['subject'],'numaralı fatura')
+                && str_contains($mail->data['message'],'Örnek Motor') && str_contains($mail->data['message'],$qr->publicUrl())
+                && !str_contains($mail->data['message'],'<script>')
+                && $mail->data['settings']['FROM_NAME']==='sanayirandevu.com'
+                && str_contains(view($mail->build()->view, $mail->buildViewData())->render(),'sanayirandevu-email-logo.png');
+        });
+        app(\App\Services\InvoiceCustomerEmail::class)->send($invoice);
+        Mail::assertSent(Common::class,1);
+        $this->put('/invoice/'.encrypt($invoice->id),['client'=>$client->id,'service'=>$service->id,'invoice_date'=>'2026-10-06','types'=>[]])->assertRedirect();
+        Mail::assertSent(Common::class,1);
+        $template=\App\Services\InvoiceCustomerEmail::template($admin);
+        $this->get(route('notification.edit',$template))->assertForbidden();
+        Gate::before(fn($user)=>$user->type==='super admin' ? true : null);
+        $this->actingAs($admin)->get(route('notification.index'))->assertOk()->assertSee('Müşteriye fatura bildirimi');
+        $this->get(route('notification.edit',$template))->assertOk()->assertSee('{vehicle_link}');
+        $this->put(route('notification.update',$template),['subject'=>'Yeni fatura {invoice_number}','message'=>'{company_name}: {vehicle_link}','enabled_email'=>1])->assertRedirect();
+        $this->actingAs($this->owner)->post('/invoice',['client'=>$client->id,'service'=>$service->id,'invoice_date'=>'2026-10-06','types'=>[]])->assertRedirect();
+        Mail::assertSent(Common::class,2);
+        Mail::assertSent(Common::class,fn($mail)=>str_starts_with($mail->data['subject'],'Yeni fatura'));
+        $this->actingAs($admin)->put(route('notification.update',$template),['subject'=>'x','message'=>'x','use_default_template'=>1,'enabled_email'=>0])->assertRedirect();
+        $this->assertSame(\App\Services\InvoiceCustomerEmail::definition()['subject'],$template->fresh()->subject);
+        $this->actingAs($this->owner);
+        $this->post('/invoice',['client'=>$client->id,'service'=>$service->id,'invoice_date'=>'2026-10-06','types'=>[]])->assertRedirect();
+        Mail::assertSent(Common::class,2);
+    }
+
+    public function test_platform_invoice_email_skips_missing_email_and_foreign_link_and_preserves_invoice_on_smtp_failure()
+    {
+        $admin=User::create(['name'=>'Admin','email'=>'platform-fail-admin@example.test','password'=>'x','type'=>'super admin']);
+        Mail::fake();
+        $client=User::create(['name'=>'Client','password'=>'x','type'=>'client','parent_id'=>$this->owner->id]);
+        $vehicle=Vehicle::create(['client'=>$client->id,'parent_id'=>$this->owner->id]);
+        $service=Service::create(['client'=>$client->id,'vehicle'=>$vehicle->id,'parent_id'=>$this->owner->id]);
+        $invoice=Invoice::create(['client'=>$client->id,'service'=>$service->id,'parent_id'=>$this->owner->id]);
+        $sender=app(\App\Services\InvoiceCustomerEmail::class);
+        $sender->send($invoice);
+        $client->email='no-smtp@example.test'; $client->save();
+        VehicleQrCode::create(['parent_id'=>999,'vehicle_id'=>$vehicle->id,'token'=>str_repeat('e',64)]);
+        $sender->send($invoice);
+        Mail::assertNothingSent();
+        VehicleQrCode::where('parent_id',999)->delete();
+        VehicleQrCode::create(['parent_id'=>$this->owner->id,'vehicle_id'=>$vehicle->id,'token'=>str_repeat('a',64)]);
+        $sender->send($invoice);
+        $this->assertNotNull($invoice->fresh());
+        $this->assertNull($invoice->fresh()->customer_email_sent_at);
+        Mail::assertNothingSent();
+        $this->smtp($admin->id);
+        DB::beginTransaction();
+        $sender->send($invoice);
+        Mail::assertNothingSent();
+        DB::rollBack();
+        Mail::assertNothingSent();
+        $sender->send($invoice);
+        Mail::assertSent(Common::class,1);
+        $this->assertNotNull($invoice->fresh()->customer_email_sent_at);
+    }
+
+    public function test_platform_invoice_email_accepts_optional_invoice_customer_email()
+    {
+        $admin=User::create(['name'=>'Admin','email'=>'billing-mail-admin@example.test','password'=>'x','type'=>'super admin']);
+        $this->smtp($admin->id); Mail::fake();
+        $client=User::create(['name'=>'Client','password'=>'x','type'=>'client','parent_id'=>$this->owner->id]);
+        $vehicle=Vehicle::create(['client'=>$client->id,'parent_id'=>$this->owner->id]);
+        VehicleQrCode::create(['vehicle_id'=>$vehicle->id,'parent_id'=>$this->owner->id,'token'=>str_repeat('c',64)]);
+        $service=Service::create(['client'=>$client->id,'vehicle'=>$vehicle->id,'parent_id'=>$this->owner->id]);
+        $this->post('/invoice',['client'=>$client->id,'service'=>$service->id,'invoice_date'=>'2026-10-06','types'=>[],
+            'billing'=>['email'=>'optional-billing@example.test']])->assertRedirect()->assertSessionMissing('error');
+        Mail::assertSent(Common::class,fn($mail)=>$mail->hasTo('optional-billing@example.test'));
+        $this->assertNull($client->fresh()->email);
+    }
+
+    public function test_platform_invoice_email_covers_service_and_customer_wizard_creation()
+    {
+        \Illuminate\Support\Facades\Schema::table('service_items',fn($table)=>$table->string('tax')->nullable());
+        DB::table('settings')->insert(['parent_id'=>$this->owner->id,'name'=>'pricing_feature','value'=>'off']);
+        $admin=User::create(['name'=>'Admin','email'=>'platform-hook-admin@example.test','password'=>'x','type'=>'super admin']);
+        $this->smtp($admin->id);
+        Mail::fake();
+        $client=User::create(['name'=>'Client','email'=>'hook-client@example.test','password'=>'x','type'=>'client','parent_id'=>$this->owner->id]);
+        $vehicle=Vehicle::create(['client'=>$client->id,'parent_id'=>$this->owner->id]);
+        VehicleQrCode::create(['vehicle_id'=>$vehicle->id,'parent_id'=>$this->owner->id,'token'=>str_repeat('b',64)]);
+        $this->post('/service',['client'=>$client->id,'vehicle'=>$vehicle->id,'assign'=>$this->owner->id,'status'=>'scheduled','types'=>[]])->assertRedirect();
+        Mail::assertSent(Common::class,1);
+        \Spatie\Permission\Models\Role::create(['name'=>'client','parent_id'=>$this->owner->id,'guard_name'=>'web']);
+        $brand=DB::table('vehicle_types')->insertGetId(['parent_id'=>$this->owner->id,'type'=>'Ford']);
+        $model=DB::table('vehicle_brands')->insertGetId(['parent_id'=>$this->owner->id,'type'=>$brand,'name'=>'Focus']);
+        $type=DB::table('service_types')->insertGetId(['parent_id'=>$this->owner->id,'type'=>'Bakım']);
+        $this->post('/client',['name'=>'Wizard Client','email'=>'wizard-email@example.test','phone_number'=>'5551234567',
+            'type'=>$brand,'brand'=>$model,'license_plate'=>'34 MAIL 01','assign'=>$this->owner->id,'status'=>'scheduled',
+            'types'=>[['service_type'=>$type,'rate'=>1000]]])->assertRedirect()->assertSessionHasNoErrors();
+        Mail::assertSent(Common::class,2);
+        $this->assertSame(2,Invoice::whereNotNull('customer_email_sent_at')->count());
+    }
+
     private function smtp(int $id, string $host='smtp.example.test'): array
     {
         $values=['FROM_EMAIL'=>'sender@example.test','FROM_NAME'=>'Test Servis','SERVER_DRIVER'=>'smtp','SERVER_HOST'=>$host,'SERVER_PORT'=>587,'SERVER_ENCRYPTION'=>'tls','SERVER_USERNAME'=>'sender@example.test','SERVER_PASSWORD'=>'smtp-secret'];

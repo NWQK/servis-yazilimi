@@ -9,10 +9,13 @@ class Service extends Model
 {
     use HasFactory;
 
-    protected $casts = ['external_labor_amount' => 'decimal:2'];
+    protected $casts = ['external_labor_tax_rate' => 'decimal:4', 'external_labor_amount' => 'decimal:2'];
 
     protected $fillable = [
         'external_labor_amount',
+        'external_labor_tax_id',
+        'external_labor_tax_rate',
+        'external_labor_tax_title',
         'service_id',
         'vehicle',
         'client',
@@ -25,6 +28,11 @@ class Service extends Model
         'assign',
         'parent_id',
     ];
+
+    public function getExternalLaborTaxAmount(): float
+    {
+        return round((float) $this->external_labor_amount * (float) $this->external_labor_tax_rate / 100, 2);
+    }
 
     public static function status()
     {
@@ -59,7 +67,7 @@ class Service extends Model
 
     public function getServiceTotalTaxAmount()
     {
-        $serviceTotalTax = 0;
+        $serviceTotalTax = $this->getExternalLaborTaxAmount();
         foreach ($this->types as $serviceItem) {
             if (empty($serviceItem->tax))
                 continue;

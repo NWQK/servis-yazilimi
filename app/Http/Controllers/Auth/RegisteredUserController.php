@@ -74,6 +74,8 @@ class RegisteredUserController extends Controller
         defaultClientCreate($owner->id);
         defaultEmployeeCreate($owner->id);
 
+        app(\App\Services\DefaultInventoryCatalog::class)->seed($owner->id);
+
         defultTemplate($owner->id);
         if ($owner_email_verification == 'on') {
             $token = sha1($owner->email);

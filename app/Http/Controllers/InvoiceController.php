@@ -80,7 +80,9 @@ class InvoiceController extends Controller
             if ($request->exists('discount_amount')) $invoice->discount_amount = $request->discount_amount ?? 0;
             $invoice->client = $request->client;
             $invoice->service = $request->service;
-            $invoice->external_labor_amount = Service::where('parent_id', parentId())->findOrFail($request->service)->external_labor_amount;
+            $laborService = Service::where('parent_id', parentId())->findOrFail($request->service);
+            $invoice->external_labor_amount = $laborService->external_labor_amount;
+            \App\Services\ExternalLabor::copyTax($laborService, $invoice);
             $invoice->status = 0;
             $invoice->parent_id = parentId();
             $invoice->save();
@@ -122,29 +124,8 @@ class InvoiceController extends Controller
                 'company_phone' => $setting['company_phone'],
             ]);
 
-            $module = 'invoice_create';
-            $notification = Notification::where('parent_id', parentId())->where('module', $module)->first();
+            app(\App\Services\InvoiceCustomerEmail::class)->send($invoice);
             $errorMessage = '';
-
-            if (!empty($notification)) {
-                $notificationResponse = MessageReplace($notification, $invoice->id);
-                $data['subject'] = $notificationResponse['subject'];
-                $data['message'] = $notificationResponse['message'];
-                $data['module'] = $module;
-                $data['logo'] = $setting['company_logo'];
-                $to = $invoice->clients->email;
-
-                if ($notification->enabled_email == 1 && !empty($to)) {
-                    $response = commonEmailSend($to, $data);
-                    if ($response['status'] == 'error') {
-                        $errorMessage = $response['message'];
-                    }
-                }
-                if ($notification->enabled_sms == 1) {
-
-                }
-
-            }
 
             return redirect()->route('invoice.show', \Crypt::encrypt($invoice->id))
                 ->with('success', __('Invoice successfully created.') . '</br>' . $errorMessage);
@@ -156,8 +137,11 @@ class InvoiceController extends Controller
 
     public function show($ids)
     {
+        abort_unless(auth()->user()->can('show invoice'), 403);
         $id = Crypt::decrypt($ids);
-        $invoice = Invoice::where('parent_id', parentId())->findOrFail($id);
+        $invoice = Invoice::where('parent_id', parentId())
+            ->when(auth()->user()->type === 'client', fn($query)=>$query->where('client',auth()->id()))
+            ->findOrFail($id);
         $settings = settings();
         $status = Invoice::statues();
         $invoicePaymentSettings = invoicePaymentSettings(auth()->user()->parent_id);
@@ -201,6 +185,7 @@ class InvoiceController extends Controller
         foreach ($services as $service) {
             $serv['id'] = $service->id;
             $serv['external_labor_amount'] = $service->external_labor_amount;
+            $serv['external_labor_tax_rate'] = (float) $service->external_labor_tax_rate;
             $serv['name'] = servicePrefix() . $service->service_id . ' | ' . $service->vehicles->license_plate;
             $serviceData[] = $serv;
         }
@@ -243,7 +228,9 @@ class InvoiceController extends Controller
                 $previousTotal = $invoice->getInvoiceAllTotalAmount();
                 $invoice->client = $request->client;
                 $invoice->service = $request->service;
-                $invoice->external_labor_amount = Service::where('parent_id', parentId())->findOrFail($request->service)->external_labor_amount;
+                $laborService = Service::where('parent_id', parentId())->findOrFail($request->service);
+            $invoice->external_labor_amount = $laborService->external_labor_amount;
+            \App\Services\ExternalLabor::copyTax($laborService, $invoice);
                 $invoice->invoice_date = $request->invoice_date;
             if ($request->exists('discount_amount')) $invoice->discount_amount = $request->discount_amount ?? 0;
                 $invoice->save();

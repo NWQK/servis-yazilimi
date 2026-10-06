@@ -13,9 +13,21 @@ class NotificationController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+    private function definitions(): array
+    {
+        $definitions = defaultTemplateList();
+        if (auth()->user()->type === 'super admin') {
+            $definitions += \App\Services\SecurityEmail::definitions();
+            $definitions[\App\Services\InvoiceCustomerEmail::MODULE] = \App\Services\InvoiceCustomerEmail::definition();
+        }
+        return $definitions;
+    }
+
     public function index()
     {
         if (\Auth::user()->can('manage notification')) {
+            if (auth()->user()->type === 'super admin') \App\Services\InvoiceCustomerEmail::template(auth()->user());
+            if (auth()->user()->type === 'super admin') foreach (array_keys(\App\Services\SecurityEmail::definitions()) as $module) \App\Services\SecurityEmail::template(auth()->user(),$module);
             $notifications = Notification::where('parent_id', parentId())->orderBy('id', 'desc')->get();
             return view('notification.index', compact('notifications'));
         } else {
@@ -31,7 +43,7 @@ class NotificationController extends Controller
     public function create()
     {
         abort_unless(auth()->user()->can('create notification'), 403);
-        $Notifications = defaultTemplateList();
+        $Notifications = $this->definitions();
         $notification_option = [];
         foreach ($Notifications as $key => $value) {
             $notification_option[$key] = $value['name'];
@@ -51,7 +63,7 @@ class NotificationController extends Controller
             $validator = \Validator::make(
                 $request->all(),
                 [
-                    'module' => 'required|in:' . implode(',', array_keys(defaultTemplateList())),
+                    'module' => 'required|in:' . implode(',', array_keys($this->definitions())),
                     'subject' => 'required',
                     'message' => 'required',
                 ]
@@ -62,15 +74,16 @@ class NotificationController extends Controller
             }
 
             $exist = Notification::where('parent_id', parentId())->where('module', $request->module)->first();
+            if ($request->module === \App\Services\SecurityEmail::RESET && !str_contains($request->message, '{reset_link}')) return back()->with('error','Şifre sıfırlama mesajı {reset_link} bağlantısını içermelidir.');
             if (empty($exist)) {
                 $notification = new Notification();
                 $notification->module = $request->module;
-                $definition = defaultTemplateList()[$request->module];
+                $definition = $this->definitions()[$request->module];
                 $notification->name = $definition['name'];
                 $notification->short_code = json_encode($definition['short_code']);
                 $notification->subject = $request->subject;
                 $notification->message = $request->message;
-                $notification->enabled_email = $request->boolean('enabled_email') ? 1 : 0;
+                $notification->enabled_email = $notification->module === \App\Services\SecurityEmail::RESET || $request->boolean('enabled_email') ? 1 : 0;
                 $notification->enabled_sms = 0;
                 $notification->sms_message = '';
                 $notification->parent_id = parentId();
@@ -105,7 +118,7 @@ class NotificationController extends Controller
     public function edit(Notification $notification)
     {
         abort_unless(auth()->user()->can('edit notification') && (int) $notification->parent_id === (int) parentId(), 403);
-        $definition = defaultTemplateList()[$notification->module] ?? null;
+        $definition = $this->definitions()[$notification->module] ?? null;
         $notification->short_code = json_decode($notification->short_code);
 
 
@@ -135,11 +148,14 @@ class NotificationController extends Controller
                 return redirect()->back()->with('error', $messages->first());
             }
 
-            $definition = defaultTemplateList()[$notification->module] ?? null;
+            $definition = $this->definitions()[$notification->module] ?? null;
             $useDefault = $request->boolean('use_default_template') && $definition;
             $notification->subject = $useDefault ? $definition['subject'] : $request->subject;
+            if ($notification->module === \App\Services\SecurityEmail::RESET && !$useDefault && !str_contains($request->message, '{reset_link}')) {
+                return back()->with('error','Şifre sıfırlama mesajı {reset_link} bağlantısını içermelidir.');
+            }
             $notification->message = $useDefault ? $definition['templete'] : $request->message;
-            $notification->enabled_email = $request->boolean('enabled_email') ? 1 : 0;
+            $notification->enabled_email = $notification->module === \App\Services\SecurityEmail::RESET || $request->boolean('enabled_email') ? 1 : 0;
             $notification->enabled_sms = 0;
             $notification->enabled_whatsapp = 0;
             $notification->save();

@@ -92,6 +92,7 @@ use GuzzleHttp\Psr7\Query;
 
 require __DIR__ . '/auth.php';
 Route::middleware(['auth', 'XSS'])->group(function () {
+    Route::get('admin/owner-logins', [\App\Http\Controllers\OwnerLoginHistoryController::class,'index'])->name('owner-logins.index');
     Route::get('admin/subscriptions', [\App\Http\Controllers\SubscriptionAdminController::class,'index'])->name('subscription-admin.index');
     Route::get('admin/subscriptions/{id}/edit', [\App\Http\Controllers\SubscriptionAdminController::class,'edit'])->whereNumber('id')->name('subscription-admin.edit');
     Route::put('admin/subscriptions/{id}', [\App\Http\Controllers\SubscriptionAdminController::class,'update'])->whereNumber('id')->name('subscription-admin.update');
@@ -300,6 +301,9 @@ Route::group(
     ],
     function () {
 
+        Route::get('client/simple/create', [\App\Http\Controllers\ClientOnlyController::class,'create'])->name('client.simple.create');
+        Route::post('client/simple', [\App\Http\Controllers\ClientOnlyController::class,'store'])->name('client.simple.store');
+        Route::put('client/simple/{id}', [\App\Http\Controllers\ClientOnlyController::class,'update'])->whereNumber('id')->name('client.simple.update');
         Route::resource('client', ClientController::class);
         Route::get('client/{id}/vehicle', [ClientController::class, 'getVehicle'])->name('client.vehicle');
         Route::get('client/{id}/service', [ClientController::class, 'getService'])->name('client.service');

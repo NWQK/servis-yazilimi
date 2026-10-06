@@ -191,6 +191,9 @@
                                                         <td colspan="2">{{ priceFormat($subtotal) }}</td>
                                                     </tr>
 
+                                                    @if ($service->getExternalLaborTaxAmount() > 0)
+                                                        <tr><th>Harici işçilik vergisi — {{ $service->external_labor_tax_title }} (%{{ (float) $service->external_labor_tax_rate }}) :</th><td>{{ priceFormat($service->getExternalLaborTaxAmount()) }}</td></tr>
+                                                    @endif
                                                     @if ($service->external_labor_amount > 0)
                                                         <tr><th>Harici işçilik :</th><td colspan="2">{{ priceFormat($service->external_labor_amount) }}</td></tr>
                                                     @endif

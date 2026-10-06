@@ -37,6 +37,7 @@ class AuthenticatedSessionController extends Controller
 
         $request->authenticate();
         $request->session()->regenerate();
+        $request->session()->forget(['owner_login_recorded','2fa_checked']);
         $loginUser = Auth::user();
         if ($loginUser->hasSuspendedSubscription()) {
             auth()->logout();
@@ -53,6 +54,7 @@ class AuthenticatedSessionController extends Controller
             auth()->logout();
             return redirect()->route('login')->with('error', __('Verification required: Please check your email to verify your account before continuing.'));
         }
+        if ($loginUser->type === 'owner' && is_null($loginUser->twofa_secret)) app(\App\Services\OwnerLoginSecurity::class)->record($request);
         if( $loginUser->type=='owner'){
 
             if($loginUser->subscription_expire_date!=null && date('Y-m-d') > $loginUser->subscription_expire_date){
@@ -60,7 +62,7 @@ class AuthenticatedSessionController extends Controller
                  return redirect()->intended(RouteServiceProvider::HOME)->with('error', __('Your subscription has ended, and access to premium features is now restricted. To continue using our services without interruption, please renew your plan or upgrade to a higher-tier package.'));
             }
         }
-        userLoggedHistory();
+        if ($loginUser->type !== 'owner') userLoggedHistory();
 
         return redirect()->intended(RouteServiceProvider::HOME);
     }

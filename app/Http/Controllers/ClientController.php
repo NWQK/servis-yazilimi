@@ -64,7 +64,7 @@ class ClientController extends Controller
 
     public function store(Request $request)
     {
-        $request->validate(['external_labor_amount' => \App\Services\ExternalLabor::RULE]);
+        $request->validate(['external_labor_amount' => \App\Services\ExternalLabor::RULE, 'external_labor_tax_id' => \App\Services\ExternalLabor::taxRules()]);
         abort_unless(auth()->user()->type !== 'client' && auth()->user()->can('create vehicle'), 403);
         if (!\Auth::user()->can('create client')) {
             return redirect()->back()->with('error', __('Permission Denied.'));
@@ -176,6 +176,7 @@ class ClientController extends Controller
                 $service->notes        = $request->service_notes;
                 $service->external_labor_amount = $request->external_labor_amount ?? 0;
                 $service->parent_id    = parentId();
+                \App\Services\ExternalLabor::selectTax($service, $request->external_labor_tax_id);
                 $service->save();
                 foreach ($request->types as $type) {
                     $serviceItem           = new ServiceItem();
@@ -193,6 +194,7 @@ class ClientController extends Controller
                 $invoice->client       = $user->id;
                 $invoice->service      = $service->id;
                 $invoice->external_labor_amount = $service->external_labor_amount;
+                \App\Services\ExternalLabor::copyTax($service, $invoice);
                 $invoice->status       = 0;
                 $invoice->parent_id    = parentId();
                 $invoice->save();
@@ -208,6 +210,7 @@ class ClientController extends Controller
                 }
                 return $vehicle;
         });
+        app(\App\Services\InvoiceCustomerEmail::class)->send($invoice);
         $setting      = settings();
         $errorMessage = '';
         triggerN8n('create_client', [
@@ -337,10 +340,12 @@ class ClientController extends Controller
     public function edit($id)
     {
         $id = decrypt($id);
-        $user = User::findOrFail($id);
+        abort_unless(auth()->user()->can('edit client'),403);
+        $user = User::where('parent_id',parentId())->where('type','client')->findOrFail($id);
         $client = $user->clients;
         $vehicle = Vehicle::where('client', $user->id)->first();
         $service = Service::where('client', $user->id)->with('types')->first();
+        if (!$vehicle || !$service) return view('client.simple',['customer'=>$user,'profile'=>$client]);
         $gender = User::genderList();
         $types = VehicleType::where('parent_id', parentId())->pluck('type', 'id');
         $types->prepend(__('Select Brand'), '');
@@ -357,7 +362,7 @@ class ClientController extends Controller
 
     public function update(Request $request, $id)
     {
-        $request->validate(['external_labor_amount' => \App\Services\ExternalLabor::RULE]);
+        $request->validate(['external_labor_amount' => \App\Services\ExternalLabor::RULE, 'external_labor_tax_id' => \App\Services\ExternalLabor::taxRules()]);
         if (\Auth::user()->can('edit client')) {
             $validator = \Validator::make($request->all(), [
                 'name'          => 'required',
@@ -428,7 +433,7 @@ class ClientController extends Controller
             $service = Service::where('client', $id)->first();
             if ($service) {
                 abort_unless((int) $service->parent_id === (int) parentId(), 403);
-                if ($request->exists('external_labor_amount')) app(\App\Services\ExternalLabor::class)->update($service, $request->external_labor_amount);
+                if ($request->exists('external_labor_amount') || $request->exists('external_labor_tax_id')) app(\App\Services\ExternalLabor::class)->update($service, $request->exists('external_labor_amount') ? $request->external_labor_amount : $service->external_labor_amount, $request->external_labor_tax_id, $request->exists('external_labor_tax_id'));
                 $service->update([
                     'assign'       => $request->assign,
                     'service_date' => $request->service_date,
@@ -501,6 +506,7 @@ class ClientController extends Controller
         foreach ($services as $service) {
             $serv['id'] = $service->id;
             $serv['external_labor_amount'] = $service->external_labor_amount;
+            $serv['external_labor_tax_rate'] = (float) $service->external_labor_tax_rate;
             $serv['name'] = servicePrefix() . $service->service_id . ' | ' . $service->vehicles->license_plate;
             $serviceData[] = $serv;
         }

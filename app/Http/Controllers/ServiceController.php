@@ -65,6 +65,7 @@ class ServiceController extends Controller
                     'assign' => 'required',
                     'status' => 'required',
                     'external_labor_amount' => \App\Services\ExternalLabor::RULE,
+                    'external_labor_tax_id' => \App\Services\ExternalLabor::taxRules(),
 
                 ]
             );
@@ -86,6 +87,7 @@ class ServiceController extends Controller
             $service->notes = $request->notes;
             $service->external_labor_amount = $request->external_labor_amount ?? 0;
             $service->parent_id = parentId();
+            \App\Services\ExternalLabor::selectTax($service, $request->external_labor_tax_id);
             $service->save();
             $serviceTypes = $request->types;
 
@@ -108,6 +110,7 @@ class ServiceController extends Controller
             $invoice->client = $request->client;
             $invoice->service = $service->id;
             $invoice->external_labor_amount = $service->external_labor_amount;
+            \App\Services\ExternalLabor::copyTax($service, $invoice);
             $invoice->status = 0;
             $invoice->parent_id = parentId();
             $invoice->save();
@@ -125,6 +128,8 @@ class ServiceController extends Controller
             }
 
             $setting = settings();
+
+            app(\App\Services\InvoiceCustomerEmail::class)->send($invoice);
 
             triggerN8n('new_service', [
                 'service_id' => $service->id,
@@ -277,7 +282,7 @@ class ServiceController extends Controller
                     'due_time' => 'nullable|date_format:H:i,H:i:s',
                     'assign' => 'required',
                     'status' => 'required',
-                    'external_labor_amount' => \App\Services\ExternalLabor::RULE,
+                    'external_labor_amount' => \App\Services\ExternalLabor::RULE, 'external_labor_tax_id' => \App\Services\ExternalLabor::taxRules(),
                 ]
             );
             if ($validator->fails()) {
@@ -294,7 +299,7 @@ class ServiceController extends Controller
             $service->status = $request->status;
             $service->notes = $request->notes;
             $service->save();
-            if ($request->exists('external_labor_amount')) app(\App\Services\ExternalLabor::class)->update($service, $request->external_labor_amount);
+            if ($request->exists('external_labor_amount') || $request->exists('external_labor_tax_id')) app(\App\Services\ExternalLabor::class)->update($service, $request->exists('external_labor_amount') ? $request->external_labor_amount : $service->external_labor_amount, $request->external_labor_tax_id, $request->exists('external_labor_tax_id'));
             $serviceTypes = $request->types;
             for ($i = 0; $i < count($serviceTypes); $i++) {
                 $serviceItem = ServiceItem::find($serviceTypes[$i]['id']);

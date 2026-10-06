@@ -1,5 +1,11 @@
 {{ Form::model($notification, ['route' => ['notification.update', $notification->id], 'method' => 'PUT']) }}
 <div class="modal-body">
+    @if(in_array($notification->module,array_keys(\App\Services\SecurityEmail::definitions())))
+        <div class="alert alert-info">Sanayi Randevu logosuyla, süper adminin SMTP hesabından gönderilir. Şifre sıfırlama e-postaları hesap erişimi için her zaman etkindir; mesajda {reset_link} bağlantısı bulunmalıdır.</div>
+    @endif
+    @if($notification->module === \App\Services\InvoiceCustomerEmail::MODULE)
+        <div class="alert alert-info">Tüm işletmelerin yeni faturaları için kullanılır. Müşterinin e-postası kayıtlıysa Sanayi Randevu adına, süper adminin SMTP ayarlarıyla gönderilir. Bağlantı, müşterinin aracına ait görüntüleme bağlantısıdır.</div>
+    @endif
     @if($definition)
     <div class="alert alert-light"><label><input type="checkbox" name="use_default_template" value="1"> Hazır Türkçe şablonu kullan</label><small class="d-block">Kaydettiğinizde mevcut konu ve mesaj bu şablonla değiştirilir. E-posta gönderimi bildirim anahtarıyla ayrıca açılır.</small></div>
     <details class="mb-3"><summary>Hazır şablonu ön izle</summary><div class="border rounded p-3 mt-2"><strong>{{ $definition['subject'] }}</strong>{!! $definition['templete'] !!}</div></details>
@@ -24,7 +30,7 @@
             <input class="form-check-input" type="hidden" name="enabled_email" value="0">
             <div class="form-check form-switch">
                 <input class="form-check-input" type="checkbox" role="switch" id="flexSwitchCheckChecked"
-                    name="enabled_email" value="1" {{ $notification->enabled_email == 1 ? 'checked' : '' }}>
+                    name="enabled_email" value="1" {{ $notification->enabled_email == 1 ? 'checked' : '' }} @disabled($notification->module === \App\Services\SecurityEmail::RESET)>
                 <label class="form-check-label" for="flexSwitchCheckChecked"></label>
             </div>
         </div>

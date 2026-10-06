@@ -41,7 +41,7 @@
                                     <option value="">{{ __('Select Service') }}</option>
 
                                     @foreach ($serviceData as $service)
-                                        <option data-labor="{{ $service['external_labor_amount'] }}" value="{{ $service['id'] }}"
+                                        <option data-labor="{{ $service['external_labor_amount'] }}" data-labor-tax-rate="{{ $service['external_labor_tax_rate'] }}" value="{{ $service['id'] }}"
                                             {{ $selectedService == $service['id'] ? 'selected' : '' }}>
                                             {{ $service['name'] }}
                                         </option>
@@ -57,8 +57,9 @@
         <div class="col-sm-12"><div class="card"><div class="card-body">
             @include('invoice.billing_section')
             @include('invoice.discount_field')
-            <label for="invoice_external_labor" class="form-label">Harici işçilik tutarı ({{ settings()['CURRENCY_SYMBOL'] }})</label>
+            <label for="invoice_external_labor" class="form-label">Harici işçilik tutarı, vergi hariç ({{ settings()['CURRENCY_SYMBOL'] }})</label>
             <input id="invoice_external_labor" class="form-control" value="{{ number_format($invoice->external_labor_amount, 2, ',', '.') }}" readonly>
+            <div class="mt-2">İşçilik vergisi: <span id="invoice_external_labor_tax">{{ priceFormat($invoice->getExternalLaborTaxAmount()) }} (%{{ (float) $invoice->external_labor_tax_rate }})</span></div>
             <small class="text-muted">Seçilen servisten alınır ve fatura toplamına eklenir. Değiştirmek için servisi düzenleyin.</small>
         </div></div></div>
         <div class="card repeater">
@@ -331,6 +332,7 @@
             "use strict";
             var client_id = $(this).val();
             $('#invoice_external_labor').val('0,00');
+                $('#invoice_external_labor_tax').text('0,00');
             if (client_id) {
                 var url = '{{ route('client.service', ':id') }}';
                 url = url.replace(':id', client_id);
@@ -349,7 +351,7 @@
                         $('.service').empty().append(
                             '<option value="">{{ __('Select Service') }}</option>');
                         $.each(data, function(key, value) {
-                            $('.service').append('<option data-labor="' + value['external_labor_amount'] + '" value="' + value['id'] + '">' + value[
+                            $('.service').append('<option data-labor="' + value['external_labor_amount'] + '" data-labor-tax-rate="' + value['external_labor_tax_rate'] + '" value="' + value['id'] + '">' + value[
                                 'name'] + '</option>');
                         });
                         // Auto-select the first client's service and trigger change to populate types
@@ -370,6 +372,9 @@
         $(document).on('change', '#service', function() {
 
             var service_id = $(this).val();
+            var laborRate = Number($(this).find('option:selected').attr('data-labor-tax-rate') || 0);
+            var laborTax = Number($(this).find('option:selected').attr('data-labor') || 0) * laborRate / 100;
+            $('#invoice_external_labor_tax').text(laborTax.toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' (%' + laborRate + ')');
             $('#invoice_external_labor').val(Number($(this).find('option:selected').attr('data-labor') || 0).toLocaleString('tr-TR', {minimumFractionDigits: 2, maximumFractionDigits: 2}));
 
             if (service_id) {

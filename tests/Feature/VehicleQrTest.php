@@ -407,8 +407,8 @@ class VehicleQrTest extends TestCase
         @$dom->loadHTML($response->getContent());
         $xpath = new \DOMXPath($dom);
         $links = $xpath->query('//*[@id="quick-access-menu"]/a');
-        $this->assertSame(16, $links->length);
-        $fullPages = ['client.create', 'service.create', 'quotation.create', 'invoice.create'];
+        $this->assertSame(17, $links->length);
+        $fullPages = ['client.create', 'client.simple.create', 'service.create', 'quotation.create', 'invoice.create'];
         $pageUrls = array_map(fn ($name) => route($name), $fullPages);
         foreach ($links as $link) {
             $modal = str_contains($link->getAttribute('class'), 'customModal');
@@ -511,6 +511,7 @@ class VehicleQrTest extends TestCase
         }
         if ($emailCase === 'provided') {
             $data['external_labor_amount'] = '250.75';
+            $data['external_labor_tax_id'] = DB::table('taxes')->insertGetId(['parent_id' => $this->owner->id, 'title' => 'KDV %20', 'rate' => 20]);
             $data['notes'] = 'Customer note';
             $data['vehicle_notes'] = 'Vehicle note';
             $data['service_notes'] = 'Service note';
@@ -540,6 +541,9 @@ class VehicleQrTest extends TestCase
         $this->assertSame(1, Invoice::count());
         $this->assertEquals($data['external_labor_amount'] ?? 0, Service::first()->external_labor_amount);
         $this->assertEquals($data['external_labor_amount'] ?? 0, Invoice::first()->external_labor_amount);
+        $this->assertEquals($emailCase === 'provided' ? 20 : 0, Service::first()->external_labor_tax_rate);
+        $this->assertEquals($emailCase === 'provided' ? 20 : 0, Invoice::first()->external_labor_tax_rate);
+        $this->assertEquals($emailCase === 'provided' ? 1800.90 : 1500, Invoice::first()->getInvoiceAllTotalAmount());
         $this->assertSame(Vehicle::first()->id, $code->fresh()->vehicle_id);
         $this->assertSame(10, VehicleQrCode::available()->count());
         // A stale tab must not leave an orphan customer behind when the QR was taken.

@@ -112,7 +112,7 @@ class InventoryAccountingTest extends TestCase
         auth()->logout();
         $this->owner->delete();
         $this->get('/forgot-password', ['Accept-Language' => 'en-US'])->assertOk()
-            ->assertSee('Şifrenizi mi unuttunuz?')->assertSee('lang="tr"', false);
+            ->assertSee('Sıfırlama bağlantısı gönder')->assertSee('sanayirandevu-logo-light.svg')->assertSee('lang="tr"', false);
         $validator = validator(['email' => 'invalid', 'quantity' => 'abc'], ['email' => 'email', 'quantity' => 'integer', 'purchase_price' => 'required']);
         $this->assertSame('E-posta adresi geçerli bir e-posta adresi olmalıdır.', $validator->errors()->first('email'));
         $this->assertSame('Adet tam sayı olmalıdır.', $validator->errors()->first('quantity'));
@@ -513,6 +513,46 @@ class InventoryAccountingTest extends TestCase
         $this->assertEqualsWithDelta(0, $invoice->payments()->sum('amount'), 0.001);
         $this->assertSame(3, $invoice->payments()->count());
         $this->assertSame(5, (int) $item->fresh()->quantity);
+    }
+
+    public function test_external_labor_tax_is_snapshotted_in_invoice_and_portal_and_reversed_on_paid_reduction()
+    {
+        \Illuminate\Support\Facades\Schema::table('service_items', fn ($table) => $table->string('tax')->nullable());
+        $tax = \App\Models\Tax::forceCreate(['parent_id' => $this->owner->id, 'title' => 'KDV %20', 'rate' => 20]);
+        $foreign = \App\Models\Tax::forceCreate(['parent_id' => 999, 'title' => 'Foreign', 'rate' => 10]);
+        $vehicle = Vehicle::create(['parent_id' => $this->owner->id, 'client' => $this->owner->id, 'license_plate' => '34 TAX 01']);
+        $data = ['client' => $this->owner->id, 'vehicle' => $vehicle->id, 'assign' => $this->owner->id,
+            'status' => 'scheduled', 'types' => [], 'external_labor_amount' => '1000', 'external_labor_tax_id' => $tax->id];
+        $this->post('/service', array_replace($data, ['external_labor_tax_id' => $foreign->id]))->assertSessionHas('error');
+        $this->assertSame(0, Service::count());
+        $this->post('/service', $data)->assertRedirect()->assertSessionMissing('error');
+        $service = Service::firstOrFail(); $invoice = Invoice::firstOrFail();
+        $this->assertEquals(200, $service->getServiceTotalTaxAmount());
+        $this->assertEquals(1200, $invoice->getInvoiceAllTotalAmount());
+        $this->assertEquals(1200, $invoice->getInvoiceTotalDueAmount());
+        $this->assertSame(0, $invoice->payments()->count());
+        $this->get('/service/' . encrypt($service->id) . '/edit')->assertOk()->assertSee('external_labor_tax_id');
+        $this->get('/invoice/' . encrypt($invoice->id))->assertOk()->assertSee('Harici işçilik vergisi')->assertSee('KDV %20');
+        $pool = app(\App\Services\VehicleQrPool::class); $pool->replenish($this->owner->id);
+        $code = \App\Models\VehicleQrCode::available()->first();
+        $pool->markPrinted($this->owner->id, [$code->id]); $pool->assignExisting($this->owner->id, $vehicle->id, $code->id);
+        $tax->rate = 10; $tax->save();
+        $this->get('/q/' . $code->token . '/invoice/' . $invoice->id)->assertOk()->assertViewHas('total', 1200);
+        $this->post('/invoice', ['invoice_date' => now()->toDateString(), 'client' => $this->owner->id, 'service' => $service->id, 'types' => []])->assertRedirect()->assertSessionMissing('error');
+        $this->assertEquals(1200, Invoice::latest('id')->first()->getInvoiceAllTotalAmount());
+        DB::table('invoice_payments')->insert(['invoice_id' => $invoice->id, 'parent_id' => $this->owner->id, 'amount' => 1200, 'payment_date' => now()->toDateString()]);
+        $this->put('/service/' . $service->id, array_replace($data, ['external_labor_tax_id' => $foreign->id]))->assertSessionHas('error');
+        $this->assertEquals(1200, $invoice->fresh()->getInvoiceAllTotalAmount());
+        $tax->delete();
+        $this->get('/q/' . $code->token . '/invoice/' . $invoice->id)->assertOk()->assertViewHas('total', 1200);
+        $this->put('/service/' . $service->id, array_replace($data, ['external_labor_tax_id' => '']))->assertRedirect()->assertSessionMissing('error');
+        $this->assertEquals(1000, $invoice->fresh()->getInvoiceAllTotalAmount());
+        $this->assertEquals(1000, $invoice->payments()->sum('amount'));
+        $this->assertEquals(0, $invoice->fresh()->getInvoiceTotalDueAmount());
+        $report = app(\App\Http\Controllers\ReportController::class)->incomeByMonth(now()->year);
+        $this->assertEquals(1000, $report['income'][now()->month - 1]);
+        $this->put('/service/' . $service->id, array_replace($data, ['external_labor_tax_id' => '']))->assertRedirect();
+        $this->assertEquals(1000, $invoice->payments()->sum('amount'));
     }
 
     public function test_external_labor_flows_from_service_to_invoice_portal_and_paid_reductions()

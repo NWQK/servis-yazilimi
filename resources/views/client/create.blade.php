@@ -1,13 +1,13 @@
 @extends('layouts.app')
 @section('page-title')
-    {{ __('Create') }}
+    Servisle müşteri ekle
 @endsection
 @section('breadcrumb')
     <li class="breadcrumb-item">
         <a href="{{ route('dashboard') }}">{{ __('Dashboard') }}</a>
     </li>
     <li class="breadcrumb-item" aria-current="page">
-        {{ __('Create') }}
+        Servisle müşteri ekle
     </li>
 @endsection
 @push('css-page')

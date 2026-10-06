@@ -41,6 +41,7 @@ class   Common extends Mailable
                 'company_logo' => ($settings['company_logo'] ?? ''),
                 'company_name' => ($settings['company_name'] ?? 'SanayiRandevu'),
                 'message' => $data['message'],
+                'brand_logo' => $settings['brand_logo'] ?? null,
             ];
         } 
         if (!empty($module) && $module == 'send_email') {

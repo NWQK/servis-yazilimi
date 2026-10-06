@@ -28,6 +28,7 @@ class OTPController extends Controller
         $secret = Auth::user()->twofa_secret;
         if ($google2fa->verify($request->input('otp'), $secret)) {
             session(["2fa_checked" => true]);
+            app(\App\Services\OwnerLoginSecurity::class)->record($request);
             return redirect("/");
         }
         return redirect()->back()->with('error', __('Incorrect Code. Please try again...')); 

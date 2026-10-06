@@ -10,6 +10,7 @@
     $admin_logo = getSettingsValByName('company_logo');
     $profile = asset(Storage::url('upload/profile'));
     $activeTab = session('tab', 'user_profile_settings');
+    if (auth()->user()->type !== 'super admin' && $activeTab === 'general_settings') { $activeTab = 'user_profile_settings'; }
     $subscriptionData = currentSubscription();
 @endphp
 @section('content')
@@ -55,7 +56,7 @@
                                         </a>
                                     </li>
                                 @endif
-                                @if (Gate::check('manage general settings'))
+                                @if (auth()->user()->type === 'super admin' && Gate::check('manage general settings'))
                                     <li class="nav-item">
                                         <a class="nav-link {{ empty($activeTab) || $activeTab == 'general_settings' ? ' active ' : '' }}"
                                             id="profile-tab-3" data-bs-toggle="tab" href="#general_settings" role="tab"
@@ -179,7 +180,7 @@
                                 @endif
                                 @if (Auth::user()->type === 'super admin' ||
                                         ($subscriptionData['pricing_feature_settings'] === 'off' ||
-                                            $subscriptionData['subscription']->enabled_openai == 1))
+                                            $subscriptionData['subscription']?->enabled_openai == 1))
                                     @if (Gate::check('manage openai settings'))
                                         <li class="nav-item">
                                             <a class="nav-link {{ empty($activeTab) || $activeTab == 'openai' ? ' active ' : '' }} "
@@ -259,6 +260,9 @@
                                             </div>
                                         </div>
                                         {{ Form::close() }}
+                                        @if(auth()->user()->type !== 'super admin' && auth()->user()->can('manage general settings'))
+                                            @include('settings.logos')
+                                        @endif
                                     </div>
                                 @endif
                                 @if (Gate::check('manage password settings'))
@@ -294,11 +298,12 @@
                                         {{ Form::close() }}
                                     </div>
                                 @endif
-                                @if (Gate::check('manage general settings'))
+                                @if (auth()->user()->type === 'super admin' && Gate::check('manage general settings'))
                                     <div class="tab-pane {{ !empty($activeTab) && $activeTab == 'general_settings' ? ' active show ' : '' }}"
                                         id="general_settings" role="tabpanel" aria-labelledby="general_settings">
                                         {{ Form::model($settings, ['route' => ['setting.general'], 'method' => 'post', 'enctype' => 'multipart/form-data']) }}
                                         <div class="row">
+                                            @if(auth()->user()->type === 'super admin')
                                             <div class="col-md-6">
                                                 <div class="form-group">
                                                     {{ Form::label('application_name', __('Application Name'), ['class' => 'form-label']) }}
@@ -311,6 +316,7 @@
                                                     {{ Form::text('copyright', !empty($settings['copyright']) ? $settings['copyright'] : '', ['class' => 'form-control', 'placeholder' => __('Enter your application name'), 'required' => 'required']) }}
                                                 </div>
                                             </div>
+                                            @endif
                                             <div class="col-md-4">
                                                 <div class="form-group">
                                                     {{ Form::label('logo', __('Logo'), ['class' => 'form-label']) }}
@@ -339,7 +345,7 @@
                                                 <div class="col-md-4">
                                                     <div class="form-group">
                                                         {{ Form::label('landing_logo', __('Landing Page Logo'), ['class' => 'form-label']) }}
-                                                        <a href="{{ asset(Storage::url('upload/logo/landing_logo.png')) }}"
+                                                        <a href="{{ asset(Storage::url('upload/logo/' . $settings['landing_logo'])) }}"
                                                             target="_blank"><i class="ti ti-eye ms-2 f-15"></i></a>
                                                         {{ Form::file('landing_logo', ['class' => 'form-control']) }}
                                                     </div>

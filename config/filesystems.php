@@ -81,6 +81,8 @@ return [
 
     'links' => [
         public_path('storage') => storage_path('app/public'),
+        // Legacy uploads live outside app/public; expose only uploads, never logs or sessions.
+        public_path('storage/upload') => storage_path('upload'),
     ],
 
 ];

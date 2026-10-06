@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Model;
 class Invoice extends Model
 {
     use HasFactory;
-    protected $casts = ['external_labor_amount' => 'decimal:2', 'discount_amount' => 'decimal:2', 'business_details' => 'array', 'customer_details' => 'array'];
+    protected $casts = ['customer_email_sent_at' => 'datetime', 'external_labor_tax_rate' => 'decimal:4', 'external_labor_amount' => 'decimal:2', 'discount_amount' => 'decimal:2', 'business_details' => 'array', 'customer_details' => 'array'];
 
     public const DISCOUNT_RULE = 'nullable|numeric|min:0|max:9999999999.99|regex:/^\d+(\.\d{1,2})?$/';
 
@@ -28,6 +28,9 @@ class Invoice extends Model
 
     protected $fillable = [
         'external_labor_amount',
+        'external_labor_tax_id',
+        'external_labor_tax_rate',
+        'external_labor_tax_title',
         'discount_amount',
         'invoice_id',
         'client',
@@ -36,6 +39,11 @@ class Invoice extends Model
         'status',
         'parent_id',
     ];
+
+    public function getExternalLaborTaxAmount(): float
+    {
+        return round((float) $this->external_labor_amount * (float) $this->external_labor_tax_rate / 100, 2);
+    }
 
     public static function statues()
     {
@@ -110,7 +118,7 @@ class Invoice extends Model
 
     public function getInvoiceServiceTaxAmount()
     {
-        $invoiceServiceTax = 0;
+        $invoiceServiceTax = $this->getExternalLaborTaxAmount();
         foreach ($this->types as $serviceItem) {
             if (empty($serviceItem->tax))
                 continue;

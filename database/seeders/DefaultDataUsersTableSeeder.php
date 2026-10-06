@@ -670,6 +670,8 @@ class DefaultDataUsersTableSeeder extends Seeder
             defultTemplate($systemOwner->id);
             defaultClientCreate($systemOwner->id);
             defaultEmployeeCreate($systemOwner->id);
+
+            app(\App\Services\DefaultInventoryCatalog::class)->seed($systemOwner->id);
             $systemOwner->assignRole($systemOwnerRole);
 
 

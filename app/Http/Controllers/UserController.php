@@ -74,6 +74,7 @@ class UserController extends Controller
 
                 defaultClientCreate($user->id);
                 defaultEmployeeCreate($user->id);
+                app(\App\Services\DefaultInventoryCatalog::class)->seed($user->id);
 
                 defultTemplate($user->id);
 

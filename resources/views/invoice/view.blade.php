@@ -2,9 +2,6 @@
 @section('page-title')
     {{ invoicePrefix() . $invoice?->invoice_id ?? '-' . ' ' . __('Details') }}
 @endsection
-@php
-    $admin_logo = getSettingsValByName('company_logo');
-@endphp
 @section('breadcrumb')
     <ul class="breadcrumb mb-0">
         <li class="breadcrumb-item">
@@ -23,6 +20,13 @@
     </ul>
 @endsection
 @section('content')
+    <style>
+    @media print {
+        body.invoice-printing > :not(#invoicePrint) { display:none !important; }
+        body.invoice-printing #invoicePrint { width:100%; margin:0; color:#111; background:#fff; }
+        body.invoice-printing .del_div, body.invoice-printing .action, body.invoice-printing .d-print-none { display:none !important; }
+    }
+    </style>
     <div class="row" id="invoicePrint">
         <link rel="stylesheet" href="{{ asset('css/invoice-billing.css') }}">
         <div class="col-sm-12">
@@ -59,10 +63,7 @@
                         <div class="col-12">
                             <div class="row align-items-center g-3">
                                 <div class="col-sm-6">
-                                    <div class="d-flex align-items-center mb-2 navbar-brand img-fluid invoice-logo">
-                                        <img src="{{ asset(Storage::url('upload/logo/')) . '/' . (isset($admin_logo) && !empty($admin_logo) ? $admin_logo : 'logo.png') }}"
-                                            class="img-fluid brand-logo" alt="images" />
-                                    </div>
+                                    <x-invoice-logo :owner-id="$invoice->parent_id" />
                                     <p class="mb-0">{{ $invoice ? invoicePrefix() . $invoice->invoice_id : '' }}</p>
                                 </div>
                                 <div class="col-sm-6 text-sm-end">
@@ -308,6 +309,9 @@
                                                             </tr>
                                                         @endforeach
                                                     @endif
+                                                    @if ($invoice->getExternalLaborTaxAmount() > 0)
+                                                        <tr><th>Harici işçilik vergisi — {{ $invoice->external_labor_tax_title }} (%{{ (float) $invoice->external_labor_tax_rate }}) :</th><td>{{ priceFormat($invoice->getExternalLaborTaxAmount()) }}</td></tr>
+                                                    @endif
                                                     @if ($invoice->external_labor_amount > 0)
                                                         <tr><th>Harici işçilik (servis toplamına dahil) :</th><td>{{ priceFormat($invoice->external_labor_amount) }}</td></tr>
                                                     @endif
@@ -425,6 +429,7 @@
                 </div>
             </div>
         </div>
+        <div class="col-12"><x-invoice-notice /></div>
     </div>
 @endsection
 @push('script-page')
@@ -441,15 +446,31 @@
                 },
             });
         });
-        $(document).on('click', '.print', function() {
-            var invoicePrintContents = document.getElementById('invoicePrint').innerHTML;
-            var originalContents = document.body.innerHTML;
-            document.body.innerHTML = invoicePrintContents;
-            $('.del_div').addClass('d-none');
-            window.print();
-            document.body.innerHTML = originalContents;
-            $('.del_div').removeClass('d-none');
-        });
+        let isPrinting = false;
+        const printInvoice = async () => {
+            const invoice = document.getElementById('invoicePrint');
+            if (isPrinting) return;
+            isPrinting = true;
+            await Promise.all([...invoice.querySelectorAll('img')].map(img => img.decode ? img.decode().catch(() => {}) : Promise.resolve()));
+            if (document.fonts?.ready) await document.fonts.ready;
+            const marker = document.createComment('invoice-print-position');
+            invoice.before(marker);
+            document.body.appendChild(invoice);
+            document.body.classList.add('invoice-printing');
+            const restore = () => {
+                marker.replaceWith(invoice);
+                document.body.classList.remove('invoice-printing');
+                isPrinting = false;
+            };
+            window.addEventListener('afterprint', restore, {once:true});
+            try { window.print(); } catch (error) { restore(); }
+        };
+        $(document).on('click', '.print', printInvoice);
+        @if(request()->boolean('print'))
+            if (document.readyState === 'complete') printInvoice();
+            else window.addEventListener('load', printInvoice, {once:true});
+        @endif
+
     </script>
 
     @if (\Auth::user()->type == 'client')

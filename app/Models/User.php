@@ -16,6 +16,11 @@ class User extends Authenticatable
     use Impersonate;
 
 
+    public function sendPasswordResetNotification($token)
+    {
+        app(\App\Services\SecurityEmail::class)->passwordReset($this,$token);
+    }
+
     protected $fillable = [
         'name',
         'email',

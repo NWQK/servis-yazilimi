@@ -88,13 +88,13 @@ class VehiclePortalController extends Controller
         }
         if ($invoice->external_labor_amount > 0) {
             $lines->push(['name' => 'Harici işçilik', 'description' => '', 'quantity' => 1,
-                'price' => (float) $invoice->external_labor_amount, 'tax_ids' => null]);
+                'price' => (float) $invoice->external_labor_amount, 'tax_ids' => null, 'tax_rate_snapshot' => (float) $invoice->external_labor_tax_rate]);
         }
         $lines = $lines->map(function ($line) use ($taxes) {
             $line['subtotal'] = $line['quantity'] * $line['price'];
-            $rate = collect(explode(',', $line['tax_ids'] ?? ''))->unique()->sum(fn ($id) => $taxes->get($id)->rate ?? 0);
+            $rate = $line['tax_rate_snapshot'] ?? collect(explode(',', $line['tax_ids'] ?? ''))->unique()->sum(fn ($id) => $taxes->get($id)->rate ?? 0);
             $line['tax_rate'] = $rate;
-            $line['tax'] = $line['subtotal'] * $rate / 100;
+            $line['tax'] = isset($line['tax_rate_snapshot']) ? round($line['subtotal'] * $rate / 100, 2) : $line['subtotal'] * $rate / 100;
             return $line;
         });
         $gross = round($lines->sum('subtotal') + $lines->sum('tax'), 2);

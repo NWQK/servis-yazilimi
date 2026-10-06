@@ -1,0 +1,1 @@
+<p class="invoice-notice" style="margin:20px 0 0;padding-top:12px;border-top:1px solid #ddd;font-size:12px;line-height:1.5;color:#555;text-align:center;">Temsili faturadır. Resmî fatura yerine geçmez.</p>

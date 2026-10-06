@@ -22,13 +22,12 @@
                         <div class="col">
                             <h5>{{ __('Client List') }}</h5>
                         </div>
-                        @if (Gate::check('create client'))
-                            <div class="col-auto">
-                                <a class="btn btn-secondary" href="{{ route('client.create') }}" data-size="lg"
-                                    data-url="#" data-title="{{ __('Create Client') }}"> <i
-                                        class="ti ti-circle-plus align-text-bottom"></i>
-                                    {{ __('Create Client') }}
-                                </a>
+                        @if (Gate::check('create client') && auth()->user()->type !== 'client')
+                            <div class="col-auto d-flex flex-wrap gap-2">
+                                @can('create vehicle')
+                                <a class="btn btn-secondary" href="{{ route('client.create') }}"><i class="ti ti-circle-plus align-text-bottom"></i> Servisle müşteri ekle</a>
+                                @endcan
+                                <a class="btn btn-outline-secondary" href="{{ route('client.simple.create') }}"><i class="ti ti-user-plus align-text-bottom"></i> Müşteri ekle</a>
                             </div>
                         @endif
                     </div>

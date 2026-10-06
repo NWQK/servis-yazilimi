@@ -34,7 +34,7 @@ if (!function_exists('settingsKeys')) {
     function settingsKeys()
     {
         return $settingsKeys = [
-            "app_name" => "",
+            "app_name" => "sanayirandevu.com",
             "theme_mode" => "light",
             "layout_font" => "Roboto",
             "accent_color" => "preset-6",
@@ -48,6 +48,7 @@ if (!function_exists('settingsKeys')) {
             "landing_page" => "on",
             "register_page" => "on",
             "company_logo" => "logo.png",
+            "invoice_logo" => "",
             "company_favicon" => "favicon.png",
             "landing_logo" => "landing_logo.png",
             "light_logo" => "light_logo.png",
@@ -99,10 +100,32 @@ if (!function_exists('settingsKeys')) {
             "pricing_feature" => "on",
             'openai_secret_key' => '',
             'openai_module' => '',
-            'copyright' => '',
+            'copyright' => '© sanayirandevu.com. Tüm hakları saklıdır.',
             'whatsapp_instance' => '',
             'whatsapp_token' => '',
         ];
+    }
+}
+
+if (!function_exists('normalizeLogoSettings')) {
+    function normalizeLogoSettings(array $values): array
+    {
+        foreach (['logo' => 'company_logo', 'favicon' => 'company_favicon', 'company_light_logo' => 'light_logo', 'company_landing_logo' => 'landing_logo'] as $legacy => $key) {
+            if (!empty($values[$legacy])) { $values[$key] = $values[$legacy]; }
+        }
+        return $values;
+    }
+}
+
+if (!function_exists('invoiceLogoUrl')) {
+    function invoiceLogoUrl(int $ownerId): string
+    {
+        // Resolve by invoice owner, including public QR views and customer sessions.
+        $logos = DB::table('settings')->where('parent_id', $ownerId)->whereIn('name', ['invoice_logo','company_logo','logo'])->pluck('value','name')->all();
+        $filename = $logos['invoice_logo'] ?? '';
+        if (!$filename) { $filename = $logos['company_logo'] ?? $logos['logo'] ?? 'logo.png'; }
+        $filename = basename($filename ?: 'logo.png');
+        return asset(Storage::url('upload/logo/'.$filename));
     }
 }
 
@@ -133,7 +156,11 @@ if (!function_exists('settings')) {
             ]
         );
 
-        return array_replace($details, ['CURRENCY' => 'TRY', 'CURRENCY_SYMBOL' => '₺', 'timezone' => 'Europe/Istanbul', 'company_date_format' => 'd M Y', 'company_time_format' => 'H:i']);
+        if (\Auth::check() && \Auth::user()->type !== 'super admin') {
+            $details['app_name'] = 'sanayirandevu.com';
+            $details['copyright'] = '© sanayirandevu.com. Tüm hakları saklıdır.';
+        }
+        return array_replace(normalizeLogoSettings($details), ['CURRENCY' => 'TRY', 'CURRENCY_SYMBOL' => '₺', 'timezone' => 'Europe/Istanbul', 'company_date_format' => 'd M Y', 'company_time_format' => 'H:i']);
     }
 }
 
@@ -507,7 +534,11 @@ if (!function_exists('settingsById')) {
             ]
         );
 
-        return array_replace($settings, ['CURRENCY' => 'TRY', 'CURRENCY_SYMBOL' => '₺', 'timezone' => 'Europe/Istanbul', 'company_date_format' => 'd M Y', 'company_time_format' => 'H:i']);
+        if (User::whereKey($userId)->where('type', 'super admin')->doesntExist()) {
+            $settings['app_name'] = 'sanayirandevu.com';
+            $settings['copyright'] = '© sanayirandevu.com. Tüm hakları saklıdır.';
+        }
+        return array_replace(normalizeLogoSettings($settings), ['CURRENCY' => 'TRY', 'CURRENCY_SYMBOL' => '₺', 'timezone' => 'Europe/Istanbul', 'company_date_format' => 'd M Y', 'company_time_format' => 'H:i']);
     }
 }
 

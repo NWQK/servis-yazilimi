@@ -15,6 +15,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        $schedule->command('security:purge-owner-logins')->hourly()->withoutOverlapping();
         $schedule->command('appointments:expire')->everyMinute()->withoutOverlapping();
     }
 
