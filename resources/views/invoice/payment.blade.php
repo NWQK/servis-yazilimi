@@ -1,4 +1,4 @@
-{{ Form::open(array('route' => array('invoice.payment', $invoice->id),'method'=>'post')) }}
+{{ Form::open(array('route' => array('invoice.payment.store', $invoice->id),'method'=>'post')) }}
 <div class="modal-body">
     <div class="row">
         <div class="form-group  col-md-12">

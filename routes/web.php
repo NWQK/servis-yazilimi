@@ -394,12 +394,12 @@ Route::group(
         Route::post('invoice/item/destroy', [InvoiceController::class, 'itemDestroy'])->name('invoice.item.destroy');
         Route::get('invoice/{id}/status/change', [InvoiceController::class, 'statusChange'])->name('invoice.status.change');
         Route::get('invoice/{id}/payment', [InvoiceController::class, 'payment'])->name('invoice.payment');
-        Route::post('invoice/{id}/payment', [InvoiceController::class, 'createPayment'])->name('invoice.payment');
+        Route::post('invoice/{id}/payment', [InvoiceController::class, 'createPayment'])->name('invoice.payment.store');
         Route::post('invoice/{id}/payment/{pid}/destroy', [InvoiceController::class, 'paymentDestroy'])->name('invoice.payment.destroy');
 
         Route::get('invoice/{id}/create/item', [InvoiceController::class, 'invoiceItem'])->name('invoice.create.item');
         Route::post('invoice/{id}/item/store', [InvoiceController::class, 'invoiceItemStore'])->name('invoice.item.store');
-        Route::post('invoice/{id}/item/{tid}/store', [InvoiceController::class, 'invoiceItemDestroy'])->name('invoice.item.destroy');
+        Route::post('invoice/{id}/item/{tid}/store', [InvoiceController::class, 'invoiceItemDestroy'])->name('invoice.item.line.destroy');
         Route::resource('invoice', InvoiceController::class);
         Route::get('invoice-customer/{id}/billing', [\App\Http\Controllers\InvoiceBillingController::class, 'customer'])->whereNumber('id')->name('invoice.billing.customer');
         Route::get('invoice/{id}/billing', [\App\Http\Controllers\InvoiceBillingController::class, 'edit'])->whereNumber('id')->name('invoice.billing.edit');

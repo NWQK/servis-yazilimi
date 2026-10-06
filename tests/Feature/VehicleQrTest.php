@@ -400,6 +400,16 @@ class VehicleQrTest extends TestCase
         $this->assertSame(1, Service::count());
     }
 
+    public function test_routes_can_be_cached_and_payment_routes_resolve_separately()
+    {
+        $routes = app('router')->getRoutes();
+        $this->assertGreaterThan(0, count($routes->toSymfonyRouteCollection()));
+        $this->assertSame('payment', $routes->getByName('invoice.payment')->getActionMethod());
+        $this->assertSame('createPayment', $routes->getByName('invoice.payment.store')->getActionMethod());
+        $this->assertSame('itemDestroy', $routes->getByName('invoice.item.destroy')->getActionMethod());
+        $this->assertSame('invoiceItemDestroy', $routes->getByName('invoice.item.line.destroy')->getActionMethod());
+    }
+
     public function test_dashboard_quick_access_links_return_forms_in_the_correct_layout()
     {
         $response = $this->actingAs($this->owner)->get(route('dashboard'))->assertOk();
