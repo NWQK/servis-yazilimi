@@ -2,6 +2,8 @@
     // Each entry keeps its own permission; empty groups are hidden automatically.
     $isSuperAdmin = auth()->user()->type === 'super admin';
     $isOwner = auth()->user()->type === 'owner';
+    $supportUnread = ($isSuperAdmin || $isOwner) && \Illuminate\Support\Facades\Schema::hasTable('support_tickets')
+        ? \App\Models\SupportTicket::when(!$isSuperAdmin, fn($q)=>$q->where('owner_id',auth()->id()))->where($isSuperAdmin ? 'admin_unread' : 'owner_unread',true)->count() : 0;
     $hasHistory = $pricing_feature_settings === 'off' || ($subscription->enabled_logged_history ?? 0) == 1;
     $hasAutomation = !$isSuperAdmin && ($pricing_feature_settings === 'off' || ($subscription->enabled_n8n ?? 0) == 1);
     // Owners can still view their package when public pricing is disabled.
@@ -55,6 +57,7 @@
             ]),
         ]],
         ['label' => $isSuperAdmin ? 'Platform yönetimi' : 'İşletme yönetimi', 'groups' => [
+            $group('Destek', 'ti-lifebuoy', [$entry('Destek biletleri'.($supportUnread ? ' ('.$supportUnread.')' : ''), 'support.index', null, ['support.*'], $isOwner || $isSuperAdmin)]),
             $group('İşletmeler', 'ti-users', [$entry('İşletmeler', 'users.index', 'manage user', ['users.*'], $isSuperAdmin)]),
             $group('Personel ve yetkiler', 'ti-users', [
                 $entry('Personel listesi', 'employee.index', 'manage employee'),
@@ -91,6 +94,7 @@
                     'manage seo settings', 'manage google recaptcha settings',
                 ])),
                 $entry('E-posta bildirimleri', 'notification.index', 'manage notification'),
+                $entry('İki aşamalı doğrulama', 'two-factor-admin.index', null, ['two-factor-admin.*'], $isSuperAdmin),
                 $entry('İşletme giriş geçmişi', 'owner-logins.index', null, ['owner-logins.*'], $isSuperAdmin),
                 $entry('SMS sistemi', 'appointments.sms-settings', null, ['appointments.sms-settings*', 'appointments.sms.retry'], $isSuperAdmin),
             ]),

@@ -37,7 +37,7 @@ class AuthenticatedSessionController extends Controller
 
         $request->authenticate();
         $request->session()->regenerate();
-        $request->session()->forget(['owner_login_recorded','2fa_checked']);
+        $request->session()->forget(['owner_login_recorded','2fa_checked','2fa_verified_key','2fa_secret','2fa_setup_user']);
         $loginUser = Auth::user();
         if ($loginUser->hasSuspendedSubscription()) {
             auth()->logout();
@@ -54,7 +54,7 @@ class AuthenticatedSessionController extends Controller
             auth()->logout();
             return redirect()->route('login')->with('error', __('Verification required: Please check your email to verify your account before continuing.'));
         }
-        if ($loginUser->type === 'owner' && is_null($loginUser->twofa_secret)) app(\App\Services\OwnerLoginSecurity::class)->record($request);
+        if ($loginUser->type === 'owner' && is_null($loginUser->twofa_secret) && !$loginUser->twofa_required) app(\App\Services\OwnerLoginSecurity::class)->record($request);
         if( $loginUser->type=='owner'){
 
             if($loginUser->subscription_expire_date!=null && date('Y-m-d') > $loginUser->subscription_expire_date){

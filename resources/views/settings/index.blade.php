@@ -160,7 +160,7 @@
                                         </a>
                                     </li>
                                 @endif
-                                @if (Gate::check('manage 2FA settings'))
+                                @if ((Gate::check('manage 2FA settings') || (Auth::user()->type === 'owner' && Auth::user()->twofa_required)))
                                     <li class="nav-item">
                                         <a class="nav-link {{ empty($activeTab) || $activeTab == '2FA' ? ' active ' : '' }} "
                                             id="profile-tab-9" data-bs-toggle="tab" href="#2FA" role="tab"
@@ -680,67 +680,11 @@
 
                                     </div>
                                 @endif
-                                @if (Gate::check('manage 2FA settings'))
+                                @if ((Gate::check('manage 2FA settings') || (Auth::user()->type === 'owner' && Auth::user()->twofa_required)))
                                     <div class="tab-pane {{ !empty($activeTab) && $activeTab == '2FA' ? ' active show ' : '' }}"
                                         id="2FA" role="tabpanel" aria-labelledby="2FA">
 
-                                        {{ Form::model($settings, ['route' => ['setting.twofa.enable'], 'method' => 'post']) }}
-                                        <div class="row mt-2">
-                                            <div class="col-12">
-                                                @if (empty(\Auth::user()->twofa_secret))
-                                                    <label class="form-label">
-                                                        {{ __('2-factors authentication is currently') }}
-                                                        <span class='badge bg-warning'>{{ __('disabled') }}</span>.
-                                                        {{ __('To enable') }}:
-                                                    </label>
-                                                @else
-                                                    <h5>
-                                                        {{ __('2-factors authentication is currently enable.') }}
-                                                        <a href="{{ route('2fa.disable') }}" class="ms-2">
-                                                            <span
-                                                                class='btn btn-danger btn-rounded'>{{ __('click to disabled') }}</span>
-                                                        </a>
-                                                    </h5>
-                                                @endif
-                                            </div>
-                                            @if (empty(\Auth::user()->twofa_secret))
-                                                <div class="col-12">
-                                                    <ol class="list-left-align mt-10">
-                                                        <li>
-                                                            {!! __('Open your OTP app and <b>scan the following QR-code') !!}</b>
-                                                            <p class="text-center">
-                                                                <img src="{!! QrCode2FA() !!}" alt="2FA">
-                                                            </p>
-                                                        </li>
-
-                                                        <li>
-                                                            {{ __('Generate a One Time Password (OTP) and enter the value below.') }}
-                                                            <div class="col-md-12">
-                                                                <div class="form-group">
-                                                                    <input name="otp"
-                                                                        class="form-control mr-1{{ $errors->has('otp') ? ' is-invalid' : '' }}"
-                                                                        type="number" min="0" max="999999"
-                                                                        step="1" required autocomplete="off">
-                                                                    @if ($errors->has('otp'))
-                                                                        <span class="invalid-feedback text-left">
-                                                                            <strong>{{ $errors->first('otp') }}</strong>
-                                                                        </span>
-                                                                    @endif
-                                                                </div>
-                                                            </div>
-                                                        </li>
-                                                    </ol>
-                                                </div>
-                                            @endif
-                                        </div>
-                                        @if (empty(\Auth::user()->twofa_secret))
-                                            <div class="row mt-3">
-                                                <div class="col-12 text-end">
-                                                    {{ Form::submit(__('Verify'), ['class' => 'btn btn-secondary btn-rounded']) }}
-                                                </div>
-                                            </div>
-                                        @endif
-                                        {{ Form::close() }}
+                                        @include('settings.two-factor')
 
                                     </div>
                                 @endif

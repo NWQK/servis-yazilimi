@@ -1161,32 +1161,7 @@ if (!function_exists('DefaultBankTransferPayment')) {
 if (!function_exists('QrCode2FA')) {
     function QrCode2FA()
     {
-        $user = Auth::user();
-
-        $google2fa = new Google2FA();
-
-        // generate a secret
-        $secret = $google2fa->generateSecretKey();
-
-        // generate the QR code, indicating the address
-        // of the web application and the user name
-        // or email in this case
-        $company = env('APP_NAME');
-        if ($user->type != 'super admin') {
-            $company = isset(settings()['company_name']) && !empty(settings()['company_name']) ? settings()['company_name'] : $company;
-        }
-
-        $qr_code = $google2fa->getQRCodeInline(
-            $company,
-            $user->email,
-            $secret
-        );
-
-        // store the current secret in the session
-        // will be used when we enable 2FA (see below)
-        session(["2fa_secret" => $secret]);
-
-        return $qr_code;
+        return app(\App\Services\TwoFactorAuthentication::class)->qr(Auth::user());
     }
 }
 

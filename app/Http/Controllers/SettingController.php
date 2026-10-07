@@ -441,24 +441,35 @@ class SettingController extends Controller
     // ---------------------- 2FA Setting --------------------------------
     public function twofaEnable(Request $request)
     {
-        $google2fa = new Google2FA();
-
-        // retrieve secret from the session
-        $secret = session("2fa_secret");
+        abort_unless(Auth::user()->can('manage 2FA settings') || (Auth::user()->type === 'owner' && Auth::user()->twofa_required), 403);
+        $request->session()->flash('tab','2FA');
+        $request->validate(['otp'=>['required','string','regex:/^\d{6}$/D']]);
         $user = Auth::user();
-        if ($google2fa->verify($request->input('otp'), $secret)) {
-            // store the secret in the user profile
-            // this will enable 2FA for this user
-            $user->twofa_secret = $secret;
-            $user->save();
-
-            // avoid double OTP check
-            session(["2fa_checked" => true]);
-
-            return redirect()->back()->with('success', __('2 FA successfully enabled.'));
+        if ($user->twofa_secret || session('2fa_setup_user') !== $user->id || !session('2fa_secret')) {
+            throw ValidationException::withMessages(['otp'=>'Kurulum süresi doldu. Sayfayı yenileyip yeniden deneyin.']);
         }
-
-        throw ValidationException::withMessages(['otp' => 'Incorrect value. Please try again...']);
+        $secret = session('2fa_secret');
+        $step = (new Google2FA())->verifyKeyNewer($secret, $request->otp, 0, 1);
+        if ($step === false) {
+            throw ValidationException::withMessages(['otp'=>'Doğrulama kodu hatalı veya süresi dolmuş.']);
+        }
+        $codes = app(\App\Services\TwoFactorAuthentication::class)->recoveryCodes();
+        \DB::transaction(function () use ($user, $secret, $step, $codes) {
+            $locked = User::whereKey($user->id)->lockForUpdate()->firstOrFail();
+            if ($locked->twofa_secret) {
+                throw ValidationException::withMessages(['otp'=>'İki aşamalı doğrulama zaten etkin.']);
+            }
+            $locked->twofa_secret = $secret;
+            $locked->twofa_last_used_at = $step;
+            $locked->twofa_recovery_codes = array_map(fn($code)=>Hash::make($code), $codes);
+            $locked->save();
+        });
+        $user->refresh();
+        $request->session()->forget(['2fa_secret','2fa_setup_user']);
+        session(['2fa_checked'=>true,'2fa_verified_key'=>hash('sha256',$secret)]);
+        app(\App\Services\OwnerLoginSecurity::class)->record($request);
+        return redirect()->route('setting.index')->with('tab','2FA')->with('twofa_recovery_codes',$codes)
+            ->with('success','İki aşamalı doğrulama etkinleştirildi. Kurtarma kodlarını güvenli bir yere kaydedin.');
     }
 
     public function openai(Request $request)

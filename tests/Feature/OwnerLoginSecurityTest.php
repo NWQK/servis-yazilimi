@@ -59,7 +59,7 @@ class OwnerLoginSecurityTest extends TestCase
         $this->assertSame(0,LoggedHistory::count());
         $this->post(route('otp.check'),['otp'=>$google->getCurrentOtp($secret)])->assertRedirect();
         $this->assertSame(1,LoggedHistory::count()); Mail::assertSent(Common::class,1);
-        $this->post(route('otp.check'),['otp'=>$google->getCurrentOtp($secret)])->assertRedirect();
+        $this->post(route('otp.check'),['otp'=>$google->getCurrentOtp($secret)])->assertRedirect()->assertSessionHas('error');
         $this->assertSame(1,LoggedHistory::count()); Mail::assertSent(Common::class,1);
     }
 

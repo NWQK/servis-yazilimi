@@ -92,6 +92,15 @@ use GuzzleHttp\Psr7\Query;
 
 require __DIR__ . '/auth.php';
 Route::middleware(['auth', 'XSS'])->group(function () {
+    Route::get('support', [\App\Http\Controllers\SupportTicketController::class,'index'])->name('support.index');
+    Route::get('support/create', [\App\Http\Controllers\SupportTicketController::class,'create'])->name('support.create');
+    Route::post('support', [\App\Http\Controllers\SupportTicketController::class,'store'])->middleware('throttle:5,1')->name('support.store');
+    Route::get('support/{id}', [\App\Http\Controllers\SupportTicketController::class,'show'])->whereNumber('id')->name('support.show');
+    Route::post('support/{id}/reply', [\App\Http\Controllers\SupportTicketController::class,'reply'])->whereNumber('id')->middleware('throttle:15,1')->name('support.reply');
+    Route::post('support/{id}/status', [\App\Http\Controllers\SupportTicketController::class,'status'])->whereNumber('id')->middleware('throttle:15,1')->name('support.status');
+
+    Route::get('admin/two-factor', [\App\Http\Controllers\TwoFactorAdminController::class,'index'])->name('two-factor-admin.index');
+    Route::post('admin/two-factor/{id}', [\App\Http\Controllers\TwoFactorAdminController::class,'update'])->name('two-factor-admin.update')->middleware('throttle:6,1');
     Route::get('admin/owner-logins', [\App\Http\Controllers\OwnerLoginHistoryController::class,'index'])->name('owner-logins.index');
     Route::get('admin/subscriptions', [\App\Http\Controllers\SubscriptionAdminController::class,'index'])->name('subscription-admin.index');
     Route::get('admin/subscriptions/{id}/edit', [\App\Http\Controllers\SubscriptionAdminController::class,'edit'])->whereNumber('id')->name('subscription-admin.edit');
@@ -145,7 +154,7 @@ Route::post('login/otp', [OTPController::class, 'check'])->name('otp.check')->mi
         'XSS',
     ]
 );
-Route::get('login/2fa/disable', [OTPController::class, 'disable'])->name('2fa.disable')->middleware(['XSS',]);
+Route::post('login/2fa/disable', [OTPController::class, 'disable'])->name('2fa.disable')->middleware(['XSS',]);
 
 //-------------------------------Subscription-------------------------------------------
 
@@ -203,7 +212,7 @@ Route::group(
         Route::post('settings/google-recaptcha', [SettingController::class, 'googleRecaptchaData'])->name('setting.google.recaptcha');
         Route::post('settings/company', [SettingController::class, 'companyData'])->name('setting.company');
         Route::post('settings/invoice-business', [\App\Http\Controllers\InvoiceBillingController::class, 'business'])->name('setting.invoice-business');
-        Route::post('settings/2fa', [SettingController::class, 'twofaEnable'])->name('setting.twofa.enable');
+        Route::post('settings/2fa', [SettingController::class, 'twofaEnable'])->name('setting.twofa.enable')->middleware('throttle:6,1');
 
         Route::get('footer-setting', [SettingController::class, 'footerSetting'])->name('footerSetting');
         Route::post('settings/footer', [SettingController::class, 'footerData'])->name('setting.footer');

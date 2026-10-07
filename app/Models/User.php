@@ -40,12 +40,28 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'remember_token',
+        'twofa_secret',
+        'twofa_recovery_codes',
     ];
 
 
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'twofa_recovery_codes' => 'array',
+        'twofa_last_used_at' => 'integer',
+        'twofa_required' => 'boolean',
     ];
+
+    public function getTwofaSecretAttribute($value)
+    {
+        if ($value === null || $value === '') return null;
+        return preg_match('/^[A-Z2-7]+$/D', $value) ? $value : \Illuminate\Support\Facades\Crypt::decryptString($value);
+    }
+
+    public function setTwofaSecretAttribute($value): void
+    {
+        $this->attributes['twofa_secret'] = empty($value) ? null : \Illuminate\Support\Facades\Crypt::encryptString($value);
+    }
 
     public function hasSuspendedSubscription(): bool
     {
