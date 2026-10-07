@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\{Appointment, AppointmentProfile};
+use App\Models\{Appointment, AppointmentProfile, SupportTicket};
 use App\Services\AppointmentBooking;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -26,19 +26,41 @@ class AppointmentController extends Controller
 
     public function notifications(AppointmentBooking $booking)
     {
-        abort_unless(auth()->user()->type === 'owner', 403);
-        $profile = AppointmentProfile::where('owner_id', auth()->id())->first();
-        if ($profile) $booking->expirePending($profile->id);
-        $query = Appointment::whereHas('profile', fn ($query) => $query->where('owner_id', auth()->id()))
-            ->where(fn ($query) => $query->where('status', 'pending')->orWhere(fn ($cancelled) => $cancelled
-                ->where('status', 'cancelled')->where('cancelled_by_customer', true)->whereNull('cancellation_read_at')));
-        $count = (clone $query)->count();
-        $items = $query->orderByDesc('updated_at')->orderByDesc('id')->limit(10)->get()->map(fn ($appointment) => [
-            'id' => $appointment->id,
-            'title' => $appointment->customer_name.($appointment->cancelled_by_customer ? ' randevusunu iptal etti' : ' randevu talep etti'),
-            'date' => dateFormat($appointment->starts_at).' · '.timeFormat($appointment->starts_at),
-            'url' => route('appointments.index', ['status' => $appointment->status, 'date' => $appointment->starts_at->toDateString()]),
-        ]);
+        abort_unless(in_array(auth()->user()->type, ['owner', 'super admin'], true), 403);
+        $isAdmin = auth()->user()->type === 'super admin';
+        $count = 0;
+        $items = collect();
+        if (!$isAdmin) {
+            $profile = AppointmentProfile::where('owner_id', auth()->id())->first();
+            if ($profile) $booking->expirePending($profile->id);
+            $query = Appointment::whereHas('profile', fn ($query) => $query->where('owner_id', auth()->id()))
+                ->where(fn ($query) => $query->where('status', 'pending')->orWhere(fn ($cancelled) => $cancelled
+                    ->where('status', 'cancelled')->where('cancelled_by_customer', true)->whereNull('cancellation_read_at')));
+            $count = (clone $query)->count();
+            $items = $query->orderByDesc('updated_at')->orderByDesc('id')->limit(10)->get()->map(fn ($appointment) => [
+                'id' => $appointment->id,
+                'title' => $appointment->customer_name.($appointment->cancelled_by_customer ? ' randevusunu iptal etti' : ' randevu talep etti'),
+                'date' => dateFormat($appointment->starts_at).' · '.timeFormat($appointment->starts_at),
+                'url' => route('appointments.index', ['status' => $appointment->status, 'date' => $appointment->starts_at->toDateString()]),
+                'type' => 'appointment',
+                'sort_at' => $appointment->updated_at->getTimestamp(),
+            ]);
+        }
+        if (\Illuminate\Support\Facades\Schema::hasTable('support_tickets')) {
+            $tickets = SupportTicket::query()
+                ->when(!$isAdmin, fn ($query) => $query->where('owner_id', auth()->id()))
+                ->where($isAdmin ? 'admin_unread' : 'owner_unread', true);
+            $count += (clone $tickets)->count();
+            $items = $items->concat($tickets->with('owner')->orderByDesc('last_message_at')->orderByDesc('id')->limit(10)->get()->map(fn ($ticket) => [
+                'id' => $ticket->id,
+                'type' => 'support',
+                'title' => 'Destek #'.$ticket->id.' · '.$ticket->subject,
+                'date' => ($isAdmin ? ($ticket->owner?->name ?? 'İşletme').' · ' : '').dateFormat($ticket->last_message_at).' · '.timeFormat($ticket->last_message_at),
+                'url' => route('support.show', $ticket->id),
+                'sort_at' => $ticket->last_message_at?->getTimestamp() ?? 0,
+            ]));
+        }
+        $items = $items->sortByDesc('sort_at')->take(10)->map(fn ($item) => array_diff_key($item, ['sort_at' => true]))->values();
         return response()->json(['count' => $count, 'items' => $items])->header('Cache-Control', 'private, no-store');
     }
 

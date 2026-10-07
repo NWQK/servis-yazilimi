@@ -36,6 +36,29 @@ class SupportTicketTest extends TestCase {
         $this->post(route('support.reply',$t->id),['body'=>'Teşekkürler.','is_admin'=>true])->assertRedirect();
         $this->assertSame('waiting_support',$t->fresh()->status);$this->assertTrue($t->fresh()->admin_unread);$this->assertFalse($t->messages()->latest('id')->first()->is_admin);
     }
+    public function test_bell_notifications_follow_ticket_replies_and_reading_without_leaking_to_other_owners() {
+        $t=$this->ticket();
+        $this->getJson(route('appointments.notifications'))->assertOk()->assertJsonPath('count',0);
+        $other=User::create(['name'=>'Other','email'=>'bell-other@example.test','password'=>'x','type'=>'owner']);
+        $this->actingAs($other)->getJson(route('appointments.notifications'))->assertOk()->assertJsonCount(0,'items');
+        $this->actingAs($this->admin)->get(route('support.index'))->assertOk()->assertSee('id="appointment-notifications-toggle"',false);
+        $this->getJson(route('appointments.notifications'))->assertOk()->assertJsonPath('count',1)
+            ->assertJsonPath('items.0.type','support')->assertJsonPath('items.0.url',route('support.show',$t->id));
+        $this->assertTrue($t->fresh()->admin_unread);
+        $this->get(route('support.show',$t->id))->assertOk();
+        $this->getJson(route('appointments.notifications'))->assertJsonPath('count',0);
+        $this->post(route('support.reply',$t->id),['body'=>'Destekten yanıt'])->assertRedirect();
+        $this->actingAs($this->owner)->getJson(route('appointments.notifications'))->assertOk()->assertJsonPath('count',1)
+            ->assertJsonPath('items.0.type','support')->assertJsonPath('items.0.url',route('support.show',$t->id));
+        $this->assertTrue($t->fresh()->owner_unread);
+        $this->actingAs($other)->getJson(route('appointments.notifications'))->assertJsonPath('count',0);
+        $this->actingAs($this->owner)->get(route('support.show',$t->id))->assertOk();
+        $this->getJson(route('appointments.notifications'))->assertJsonPath('count',0);
+        $this->post(route('support.reply',$t->id),['body'=>'Esnaf yanıtı'])->assertRedirect();
+        $this->actingAs($this->admin)->getJson(route('appointments.notifications'))->assertJsonPath('count',1);
+        $client=User::create(['name'=>'Client','email'=>'bell-client@example.test','password'=>'x','type'=>'client']);
+        $this->actingAs($client)->getJson(route('appointments.notifications'))->assertForbidden();
+    }
     public function test_other_owner_cannot_list_read_reply_or_change_ticket() {
         $t=$this->ticket();$other=User::create(['name'=>'Other','email'=>'support-other@example.test','password'=>'x','type'=>'owner']);$this->actingAs($other);
         $this->get(route('support.index'))->assertOk()->assertDontSee('Logo görünmüyor');

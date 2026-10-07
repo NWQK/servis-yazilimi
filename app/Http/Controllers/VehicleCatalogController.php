@@ -13,8 +13,9 @@ class VehicleCatalogController extends Controller
         $categories=VehicleCatalog::CATEGORIES;
         $loaded=VehicleCatalogImport::where('parent_id',parentId())->where('active',true)->pluck('category')->all();
         $counts=[];
+        $selectedCategory = array_key_exists((string) request()->query('category'), $categories) ? request()->query('category') : null;
         foreach ($categories as $key=>$label) { $data=$catalog->dataset($key); $counts[$key]=['brands'=>count($data),'models'=>array_sum(array_map('count',$data))]; }
-        return view('vehicle_type.catalog',compact('categories','loaded','counts'));
+        return view('vehicle_type.catalog',compact('categories','loaded','counts','selectedCategory'));
     }
 
     public function store(Request $request, VehicleCatalog $catalog)

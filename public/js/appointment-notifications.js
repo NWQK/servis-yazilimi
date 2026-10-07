@@ -21,11 +21,11 @@
             const data = await response.json();
             badge.hidden = data.count === 0;
             badge.textContent = data.count > 99 ? '99+' : String(data.count);
-            toggle.setAttribute('aria-label', 'Randevu bildirimleri, ' + data.count + ' talep onay bekliyor');
+            toggle.setAttribute('aria-label', 'Bildirimler, ' + data.count + ' yeni bildirim');
             const current = JSON.stringify(data.items);
             if (current === previous) return;
             previous = current;
-            if (!data.items.length) { message('Onay bekleyen yeni randevu talebi yok.'); return; }
+            if (!data.items.length) { message('Yeni bildirim yok.'); return; }
             const links = data.items.map(item => {
                 const link = document.createElement('a');
                 link.className = 'dropdown-item py-3 border-bottom';
@@ -38,7 +38,10 @@
                 const date = document.createElement('small');
                 date.className = 'text-muted';
                 date.textContent = item.date;
-                link.append(title, date);
+                const category = document.createElement('small');
+                category.className = 'd-block text-muted';
+                category.textContent = item.type === 'support' ? 'Destek bileti' : 'Randevu';
+                link.append(category, title, date);
                 return link;
             });
             list.replaceChildren(...links);

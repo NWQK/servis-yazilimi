@@ -13,6 +13,23 @@
         {{ __('Client') }}
     </li>
 @endsection
+@push('css-page')
+    <style>
+        .client-list-table .client-phone { white-space: nowrap; width: 1%; }
+        .client-list-table .client-address { display: block; max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .client-list-table .client-actions-cell { width: 1%; white-space: nowrap; }
+        .client-list-table .client-actions,
+        .client-list-table .client-actions form { display: inline-flex; align-items: center; flex-wrap: nowrap; gap: 4px; vertical-align: middle; margin: 0; }
+        .client-list-table .client-actions .avtar { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; flex: 0 0 36px; margin: 0; }
+        .client-list-table .client-actions .ti { font-size: 22px; line-height: 1; }
+        .client-list-table .client-actions svg { width: 22px; height: 22px; }
+        @media (max-width: 767.98px) {
+            .client-list-table th, .client-list-table td { padding-left: 10px; padding-right: 10px; }
+            .client-list-table .client-address { max-width: 140px; }
+            .client-list-table .client-actions .avtar { width: 40px; height: 40px; flex-basis: 40px; }
+        }
+    </style>
+@endpush
 @section('content')
     <div class="row">
         <div class="col-sm-12">
@@ -34,16 +51,16 @@
                 </div>
                 <div class="card-body pt-0">
                     <div class="dt-responsive table-responsive">
-                        <table class="table table-hover advance-datatable">
+                        <table class="table table-hover advance-datatable client-list-table">
                             <thead>
                                 <tr>
                                     <th>{{ __('ID') }}</th>
                                     <th>{{ __('Client') }}</th>
                                     <th>{{ __('Email') }}</th>
-                                    <th>{{ __('Phone Number') }}</th>
+                                    <th class="client-phone">{{ __('Phone Number') }}</th>
                                     <th>{{ __('Address') }}</th>
                                     @if (Gate::check('show client') || Gate::check('edit client') || Gate::check('delete client'))
-                                        <th class="text-right">{{ __('Action') }}</th>
+                                        <th class="text-right client-actions-cell">{{ __('Action') }}</th>
                                     @endif
                                 </tr>
                             </thead>
@@ -59,11 +76,11 @@
                                                 class="text-body font-weight-semibold">{{ $client->name }}</a>
                                         </td>
                                         <td>{{ $client->email }} </td>
-                                        <td>{{ !empty($client->phone_number) ? $client->phone_number : '-' }} </td>
-                                        <td>{{ !empty($client->clients) ? $client->clients->address : '-' }} </td>
+                                        <td class="client-phone">{{ !empty($client->phone_number) ? $client->phone_number : '-' }} </td>
+                                        <td><span class="client-address" title="{{ !empty($client->clients) ? $client->clients->address : '-' }}">{{ !empty($client->clients) ? $client->clients->address : '-' }}</span></td>
                                         @if (Gate::check('show client') || Gate::check('edit client') || Gate::check('delete client'))
-                                            <td>
-                                                <div class="cart-action">
+                                            <td class="client-actions-cell">
+                                                <div class="cart-action client-actions">
                                                     @php($whatsappPhone = \App\Support\TurkishPhone::mobile($client->phone_number))
                                                     @if ($whatsappPhone)
                                                         <a class="avtar avtar-xs btn-link-success text-success"

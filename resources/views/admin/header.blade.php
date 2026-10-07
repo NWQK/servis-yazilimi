@@ -127,8 +127,16 @@
                         </a>
                     </li>
                 @endif
-                @if (\Auth::user()->type == 'owner')
+                @if (in_array(\Auth::user()->type, ['owner', 'super admin'], true))
                     @include('appointments.notifications')
+                @endif
+                @if (\Auth::user()->type === 'owner')
+                    @include('admin.setup-warnings')
+                    <li class="pc-h-item">
+                        <a href="{{ route('education.index') }}" class="pc-head-link head-link-secondary me-0" title="Eğitim rehberi" aria-label="Eğitim rehberi">
+                            <i class="ti ti-info-circle" aria-hidden="true"></i>
+                        </a>
+                    </li>
                 @endif
                 <li class="dropdown pc-h-item header-user-profile">
                     <a class="pc-head-link head-link-primary dropdown-toggle arrow-none me-0"

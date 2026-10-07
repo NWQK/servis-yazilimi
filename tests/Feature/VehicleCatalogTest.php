@@ -40,6 +40,82 @@ class VehicleCatalogTest extends TestCase
         $this->assertSame(0,VehicleType::where('parent_id',$this->owner->id)->count());
     }
 
+    public function test_setup_warnings_are_scoped_and_disappear_when_completed()
+    {
+        $warnings=app(\App\Services\OwnerSetupWarnings::class);
+        $this->assertEqualsCanonicalizing(['business','invoice_logo','catalog','appointments','products','services'],array_column($warnings->forUser($this->owner),'key'));
+        $this->get(route('vehicle-type.index'))->assertOk()->assertSee('id="owner-setup-warnings-toggle"',false)->assertSee('Fatura logonuzu yükleyin');
+        $other=User::create(['name'=>'Other','email'=>'setup-other@example.test','password'=>'x','type'=>'owner']);
+        DB::table('invoice_business_profiles')->insert(['parent_id'=>$other->id,'details'=>json_encode(['name'=>'Other','address'=>'Adres','phone'=>'5551234567'])]);
+        $this->catalog->import($other->id,'otomobil');
+        DB::table('settings')->insert(['parent_id'=>$other->id,'name'=>'invoice_logo','value'=>'other.png']);
+        $this->assertCount(6,$warnings->forUser($this->owner));
+        DB::table('invoice_business_profiles')->insert(['parent_id'=>$this->owner->id,'details'=>json_encode(['name'=>'Servis','address'=>'Adres','phone'=>'5551234567'])]);
+        DB::table('settings')->insert(['parent_id'=>$this->owner->id,'name'=>'invoice_logo','value'=>'invoice.png']);
+        $this->catalog->import($this->owner->id,'motosiklet');
+        $profile=app(\App\Services\AppointmentBooking::class)->profileForOwner($this->owner->id);
+        $profile->update(['display_name'=>'Servis','is_active'=>true,'weekly_hours'=>[1=>[9,10]]]);
+        \App\Models\Item::create(['parent_id'=>$this->owner->id,'title'=>'Yağ','item_code'=>'Y1','quantity'=>1,'units'=>1,'purchase_price'=>100,'sales_price'=>120,'purchase_date'=>'2026-10-07']);
+        \App\Models\Service::create(['parent_id'=>$this->owner->id,'service_id'=>1,'client'=>1,'vehicle'=>1,'assign'=>1,'status'=>'scheduled']);
+        $this->assertSame([],$warnings->forUser($this->owner));
+        $profile->update(['weekly_hours'=>[]]);
+        $this->assertSame(['appointments'],array_column($warnings->forUser($this->owner),'key'));
+        $profile->update(['is_active'=>false,'weekly_hours'=>[1=>[9]]]);
+        $this->assertSame(['appointments'],array_column($warnings->forUser($this->owner),'key'));
+        $this->owner->type='super admin';
+        $this->assertSame([],$warnings->forUser($this->owner));
+    }
+
+    public function test_warning_links_open_business_settings_and_preselect_catalogue_without_importing()
+    {
+        $this->get(route('setting.index',['tab'=>'invoice_business']))->assertOk()->assertSee('tab-pane active show" id="invoice_business"',false);
+        $this->get(route('setting.index',['tab'=>'user_profile_settings']))->assertOk()->assertSee('id="business-invoice-logo"',false);
+        foreach (array_keys(VehicleCatalog::CATEGORIES) as $category) {
+            $response=$this->get(route('vehicle-catalog.create',['category'=>$category]))->assertOk();
+            $this->assertMatchesRegularExpression('/value="'.preg_quote($category,'/').'"[^>]*checked/',$response->getContent());
+        }
+        $this->assertSame(0,VehicleType::where('parent_id',$this->owner->id)->count());
+        $this->assertSame(0,VehicleCatalogImport::where('parent_id',$this->owner->id)->count());
+        $this->get(route('vehicle-catalog.create',['category'=>'invalid']))->assertOk();
+    }
+
+    public function test_guides_show_real_steps_and_ready_defaults_are_confirmed_scoped_and_idempotent()
+    {
+        $this->get(route('inventory.setup'))->assertOk()->assertSee('kategori oluşturmak zorunlu değildir');
+        $this->get(route('service.setup'))->assertOk()->assertSee('Servis kaydedildiğinde')->assertSee('isteğe bağlıdır');
+        $this->post(route('inventory.setup.defaults'),[])->assertSessionHasErrors('confirm');
+        $this->post(route('inventory.setup.defaults'),['confirm'=>1,'owner_id'=>999])->assertRedirect(route('inventory.setup'));
+        $taxCount=\App\Models\Tax::where('parent_id',$this->owner->id)->count();
+        $unitCount=\App\Models\Unit::where('parent_id',$this->owner->id)->count();
+        $this->assertSame(3,$taxCount);$this->assertSame(12,$unitCount);
+        $this->post(route('inventory.setup.defaults'),['confirm'=>1])->assertRedirect();
+        $this->assertSame($taxCount,\App\Models\Tax::count());$this->assertSame($unitCount,\App\Models\Unit::count());
+        $client=User::create(['name'=>'Client','email'=>'guides-client@example.test','password'=>'x','type'=>'client']);
+        $this->actingAs($client)->get(route('inventory.setup'))->assertForbidden();
+        $this->get(route('service.setup'))->assertForbidden();
+        $this->post(route('inventory.setup.defaults'),['confirm'=>1])->assertForbidden();
+    }
+
+    public function test_education_guide_renders_all_topics_and_only_links_available_to_the_account()
+    {
+        $topics=config('education.topics');
+        $this->assertSame(count($topics),count(array_unique(array_column($topics,'id'))));
+        $response=$this->get(route('education.index'))->assertOk()->assertSee('İlk kayıttan')->assertSee('id="learn-search"',false)->assertSee('sanayirandevu-logo.svg');
+        foreach($topics as $topic) {
+            $this->assertArrayHasKey($topic['group'],config('education.groups'));
+            $this->assertNotEmpty($topic['steps']);$this->assertNotEmpty($topic['notes']);
+            $response->assertSee($topic['title'])->assertSee('id="'.$topic['id'].'"',false);
+        }
+        $this->get(route('vehicle-type.index'))->assertSee('aria-label="Eğitim rehberi"',false);
+        $admin=User::create(['name'=>'Admin','email'=>'education-admin@example.test','password'=>'x','type'=>'super admin']);
+        $this->actingAs($admin)->get(route('education.index'))->assertOk()->assertDontSee('href="'.route('appointments.settings').'"',false);
+        foreach(['client','employee'] as $type) {
+            $user=User::create(['name'=>$type,'email'=>$type.'-education@example.test','password'=>'x','type'=>$type]);
+            $this->actingAs($user)->get(route('education.index'))->assertForbidden();
+        }
+        auth()->logout();$this->get(route('education.index'))->assertRedirect(route('login'));
+    }
+
     public function test_import_reuses_manual_records_is_idempotent_and_undo_preserves_manual_records()
     {
         $ford=VehicleType::create(['parent_id'=>$this->owner->id,'type'=>' ford ']);

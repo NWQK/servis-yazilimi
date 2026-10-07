@@ -323,6 +323,10 @@ Route::group(
 //-------------------------------Item-------------------------------------------
 Route::resource('item-category', \App\Http\Controllers\ItemCategoryController::class)->except('show')->middleware(['auth', 'XSS']);
 
+Route::get('inventory/setup', [\App\Http\Controllers\InventorySetupController::class, 'index'])->middleware(['auth','XSS'])->name('inventory.setup');
+Route::get('service-guide', [\App\Http\Controllers\ServiceSetupController::class, 'index'])->middleware(['auth','XSS'])->name('service.setup');
+Route::get('egitim', [\App\Http\Controllers\EducationController::class, 'index'])->middleware(['auth','XSS'])->name('education.index');
+Route::post('inventory/setup/defaults', [\App\Http\Controllers\InventorySetupController::class, 'defaults'])->middleware(['auth','XSS','throttle:5,1'])->name('inventory.setup.defaults');
 Route::resource('item', ItemController::class)->middleware(
     [
         'auth',

@@ -9,7 +9,7 @@
                 @foreach($categories as $key=>$label)
                     <div class="col-12 col-md-4">
                         <label class="border rounded p-3 d-block h-100" style="cursor:pointer">
-                            <input class="form-check-input me-2" type="radio" name="category" value="{{ $key }}" required {{ in_array($key,$loaded) ? 'disabled' : '' }}>
+                            <input class="form-check-input me-2" type="radio" name="category" value="{{ $key }}" required @checked($selectedCategory === $key && !in_array($key,$loaded)) {{ in_array($key,$loaded) ? 'disabled' : '' }}>
                             <strong>{{ $label }}</strong>
                             <span class="d-block small text-muted mt-2">{{ $counts[$key]['brands'] }} marka · {{ $counts[$key]['models'] }} model</span>
                             @if(in_array($key,$loaded))<span class="badge bg-light-success mt-2">Yüklendi</span>@endif

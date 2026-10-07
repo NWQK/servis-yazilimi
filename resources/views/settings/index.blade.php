@@ -9,7 +9,8 @@
 @php
     $admin_logo = getSettingsValByName('company_logo');
     $profile = asset(Storage::url('upload/profile'));
-    $activeTab = session('tab', 'user_profile_settings');
+    $requestedTab = request()->query('tab');
+    $activeTab = in_array($requestedTab, ['invoice_business', 'user_profile_settings'], true) ? $requestedTab : session('tab', 'user_profile_settings');
     if (auth()->user()->type !== 'super admin' && $activeTab === 'general_settings') { $activeTab = 'user_profile_settings'; }
     $subscriptionData = currentSubscription();
 @endphp
