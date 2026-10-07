@@ -850,7 +850,14 @@ if (!function_exists('sendEmail')) {
         $datas['settings'] = settings();
         try {
             $datas['settings'] = array_merge($datas['settings'], emailSettings(parentId()));
-            Mail::to($to)->send(new TestMail($datas));
+            $sentMessage = Mail::to($to)->send(new TestMail($datas));
+            Log::info('SMTP test e-postası gönderim için kabul edildi; son teslimat doğrulanmadı.', [
+                'parent_id' => parentId(),
+                'smtp_host' => config('mail.mailers.smtp.host'),
+                'smtp_port' => config('mail.mailers.smtp.port'),
+                'ehlo_domain' => config('mail.mailers.smtp.local_domain'),
+                'message_id' => $sentMessage?->getMessageId(),
+            ]);
             return [
                 'status' => 'success',
                 'message' => 'E-posta SMTP sunucusu tarafından gönderim için kabul edildi.',

@@ -15,6 +15,9 @@ return [
 
     'default' => env('MAIL_MAILER', 'smtp'),
 
+    // Shared SMTP identity; tenant settings must not erase it when changing credentials.
+    'ehlo_domain' => env('MAIL_EHLO_DOMAIN'),
+
     /*
     |--------------------------------------------------------------------------
     | Mailer Configurations

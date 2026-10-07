@@ -280,6 +280,42 @@ class EmailInfrastructureTest extends TestCase
         catch (\RuntimeException $e) { $this->assertSame('',config('mail.mailers.smtp.password')); }
     }
 
+    public function test_smtp_identity_uses_app_domain_and_preserves_explicit_override_between_shops()
+    {
+        $this->smtp($this->owner->id);
+        $this->smtp(99, 'other-smtp.example.test');
+        config(['app.url'=>'https://sanayirandevu.com/some/path', 'mail.ehlo_domain'=>null]);
+        emailSettings($this->owner->id);
+        $this->assertSame('sanayirandevu.com', Mail::mailer('smtp')->getSymfonyTransport()->getLocalDomain());
+        config(['mail.ehlo_domain'=>'MAIL.SANAYIRANDEVU.COM']);
+        emailSettings(99);
+        $this->assertSame('mail.sanayirandevu.com', Mail::mailer('smtp')->getSymfonyTransport()->getLocalDomain());
+        emailSettings($this->owner->id);
+        $this->assertSame('mail.sanayirandevu.com', Mail::mailer('smtp')->getSymfonyTransport()->getLocalDomain());
+        config(['mail.ehlo_domain'=>"bad\r\nMAIL FROM:inject@example.test"]);
+        $this->expectException(\RuntimeException::class);
+        emailSettings($this->owner->id);
+    }
+
+    public function test_smtp_test_logs_message_id_without_credentials_or_message_body()
+    {
+        $this->smtp($this->owner->id);
+        config(['app.url'=>'https://sanayirandevu.com', 'mail.ehlo_domain'=>null]);
+        $message = (new \Symfony\Component\Mime\Email())->from('sender@example.test')->to('recipient@example.test')->text('Private body');
+        $message->getHeaders()->addIdHeader('Message-ID', 'smtp-test@sanayirandevu.com');
+        $sent = new \Illuminate\Mail\SentMessage(new \Symfony\Component\Mailer\SentMessage($message, \Symfony\Component\Mailer\Envelope::create($message)));
+        $pending = \Mockery::mock(\Illuminate\Mail\PendingMail::class);
+        $pending->shouldReceive('send')->once()->with(\Mockery::type(TestMail::class))->andReturn($sent);
+        Mail::shouldReceive('to')->once()->with('recipient@example.test')->andReturn($pending);
+        Mail::shouldReceive('purge')->once()->with('smtp');
+        \Illuminate\Support\Facades\Log::shouldReceive('info')->once()->with(
+            'SMTP test e-postası gönderim için kabul edildi; son teslimat doğrulanmadı.',
+            \Mockery::on(fn($context)=>$context === ['parent_id'=>$this->owner->id, 'smtp_host'=>'smtp.example.test',
+                'smtp_port'=>587, 'ehlo_domain'=>'sanayirandevu.com', 'message_id'=>'smtp-test@sanayirandevu.com'])
+        );
+        $this->assertSame('success', sendEmail('recipient@example.test',['subject'=>'Test','message'=>'Private body'])['status']);
+    }
+
     public function test_smtp_password_can_be_retained_and_invalid_configuration_is_rejected()
     {
         $this->smtp($this->owner->id);

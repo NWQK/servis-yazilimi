@@ -9,12 +9,16 @@ class TenantMailSettings
     {
         $values = DB::table('settings')->where('type', 'smtp')->where('parent_id', $ownerId)->pluck('value', 'name')->all();
         $values = array_merge(array_fill_keys(['FROM_EMAIL','FROM_NAME','SERVER_HOST','SERVER_PORT','SERVER_USERNAME','SERVER_PASSWORD','SERVER_ENCRYPTION'], ''), ['SERVER_DRIVER'=>'smtp'], $values);
+        $localDomain = config('mail.ehlo_domain') ?: parse_url(config('app.url'), PHP_URL_HOST);
+        if (!is_string($localDomain) || !filter_var($localDomain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
+            throw new \RuntimeException('SMTP tanıtım adı için geçerli bir APP_URL veya MAIL_EHLO_DOMAIN gerekli.');
+        }
         // Clear every field, including URL overrides, so another shop's credentials cannot be reused.
         config(['mail.default'=>'smtp', 'mail.mailers.smtp'=>[
             'transport'=>'smtp', 'scheme'=>$values['SERVER_ENCRYPTION'] === 'ssl' ? 'smtps' : 'smtp',
             'url'=>null, 'host'=>$values['SERVER_HOST'], 'port'=>(int) $values['SERVER_PORT'],
             'encryption'=>$values['SERVER_ENCRYPTION'] ?: null, 'username'=>$values['SERVER_USERNAME'],
-            'password'=>$values['SERVER_PASSWORD'], 'timeout'=>15,
+            'password'=>$values['SERVER_PASSWORD'], 'timeout'=>15, 'local_domain'=>strtolower($localDomain),
         ], 'mail.from.address'=>$values['FROM_EMAIL'], 'mail.from.name'=>$values['FROM_NAME']]);
         if (app('mail.manager') instanceof \Illuminate\Mail\MailManager) { app('mail.manager')->purge('smtp'); }
         if (!filter_var($values['FROM_EMAIL'], FILTER_VALIDATE_EMAIL) || !preg_match('/^[a-zA-Z0-9.-]+$/', $values['SERVER_HOST']) || (int) $values['SERVER_PORT'] < 1 || (int) $values['SERVER_PORT'] > 65535 || !in_array($values['SERVER_ENCRYPTION'], ['tls','ssl'])) {
