@@ -1,10 +1,10 @@
 @extends('layouts.app')
 @section('page-title')
-    {{ __('Email Notification Template') }}
+    E-posta şablonları
 @endsection
 @section('breadcrumb')
     <li class="breadcrumb-item"><a href="{{ route('dashboard') }}">{{ __('Dashboard') }}</a></li>
-    <li class="breadcrumb-item" aria-current="page"> {{ __('Email Notification Template') }}</li>
+    <li class="breadcrumb-item" aria-current="page">E-posta şablonları</li>
 @endsection
 @push('script-page')
     <script src="{{ asset('assets/js/plugins/ckeditor/classic/ckeditor.js') }}"></script>
@@ -26,7 +26,8 @@
                 <div class="card-header">
                     <div class="row align-items-center g-2">
                         <div class="col">
-                            <h5>{{ __('Email Notification Template') }}</h5>
+                            <h5>E-posta şablonları</h5>
+                            <p class="text-muted small mb-0 mt-2">Tüm işletmelerin e-postaları merkezi SMTP hesabından gönderilir. Kalem simgesinden ortak şablonları ve gönderim durumlarını düzenleyebilirsiniz. İşletme bilgileri mesajda ilgili dükkandan alınır. SMTP bağlantısı Ayarlar → E-posta bölümünden yapılandırılır.</p>
                         </div>
 
                     </div>
@@ -39,7 +40,7 @@
                                     <th>{{ __('Module') }}</th>
                                     <th>{{ __('Subject') }}</th>
                                     <th>{{ __('Email Enable') }}</th>
-                                    @if (Gate::check('edit notification') || Gate::check('delete notification'))
+                                    @if (auth()->user()->type === 'super admin' || Gate::check('edit notification') || Gate::check('delete notification'))
                                         <th>{{ __('Action') }}</th>
                                     @endif
                                 </tr>
@@ -56,18 +57,18 @@
                                                 <span class="d-inline badge text-bg-danger">{{ __('Disable') }}</span>
                                             @endif
                                         </td>
-                                        @if (Gate::check('edit notification') || Gate::check('delete notification'))
+                                        @if (auth()->user()->type === 'super admin' || Gate::check('edit notification') || Gate::check('delete notification'))
                                             <td>
                                                 <div class="cart-action">
 
-                                                    @can('edit notification')
+                                                    @if(auth()->user()->type === 'super admin' || Gate::check('edit notification'))
                                                         <a class="avtar avtar-xs btn-link-secondary text-secondary customModal"
                                                             data-bs-toggle="tooltip" data-size="lg"
                                                             data-bs-original-title="{{ __('Edit') }}" href="#"
                                                             data-url="{{ route('notification.edit', $item->id) }}"
                                                             data-title="{{ __('Edit Notification') }}"> <i
                                                                 data-feather="edit"></i></a>
-                                                    @endcan
+                                                    @endif
                                                 </div>
                                             </td>
                                         @endif

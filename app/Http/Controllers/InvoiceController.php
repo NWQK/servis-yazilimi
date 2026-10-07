@@ -437,7 +437,7 @@ class InvoiceController extends Controller
 
             triggerN8n('new_payment', $n8nData);
             $module = 'payment_create';
-            $notification = Notification::where('parent_id', parentId())->where('module', $module)->first();
+            $notification = \App\Services\CentralEmail::template($module);
             if ($notification) { $notification->status = $status; }
             $errorMessage = '';
 

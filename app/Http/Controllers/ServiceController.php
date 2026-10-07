@@ -156,7 +156,7 @@ class ServiceController extends Controller
                 'service_no' => $service->service_id,
                 'assign_id' => $service->assign,
                 'assign_name' => !empty($service->assigns) ? $service->assigns->name : '-',
-                'assign_email' => !empty($service->assigns) ? $service->assigns->email : '-',
+                'assign_email' => !empty($service->assigns) ? $service->assigns?->email : '-',
                 'assign_phone' => !empty($service->assigns) ? $service->assigns->phone_number : '-',
                 'client_name' => $service->clients->name,
                 'vehicle_id' => $service->vehicle,
@@ -171,7 +171,7 @@ class ServiceController extends Controller
                 'company_phone' => $setting['company_phone'],
             ]);
             $module = 'service_create';
-            $notification = Notification::where('parent_id', parentId())->where('module', $module)->first();
+            $notification = \App\Services\CentralEmail::template($module);
             $errorMessage = '';
 
             if (!empty($notification)) {
@@ -196,7 +196,7 @@ class ServiceController extends Controller
 
 
             $module = 'service_assign';
-            $notification = Notification::where('parent_id', parentId())->where('module', $module)->first();
+            $notification = \App\Services\CentralEmail::template($module);
             $setting = settings();
             $errorMessage = '';
 
@@ -207,7 +207,7 @@ class ServiceController extends Controller
                 $data['message'] = $notificationResponse['message'];
                 $data['module'] = $module;
                 $data['logo'] = $setting['company_logo'];
-                $to = $service->assigns->email;
+                $to = $service->assigns?->email;
 
                 if ($notification->enabled_email == 1) {
                     $response = commonEmailSend($to, $data);

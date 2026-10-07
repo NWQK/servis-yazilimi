@@ -123,7 +123,7 @@ class EmployeeController extends Controller
             ]);
 
             $module = 'employee_create';
-            $notification = Notification::where('parent_id', parentId())->where('module', $module)->first();
+            $notification = \App\Services\CentralEmail::template($module);
             $errorMessage = '';
 
             if (!empty($notification)) {

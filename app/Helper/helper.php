@@ -696,6 +696,7 @@ if (!function_exists('defaultTemplateList')) { function defaultTemplateList() { 
 if (!function_exists('defaultTemplate')) {
     function defaultTemplate($id)
     {
+        if (!User::where('id', $id)->where('type', 'super admin')->exists()) return [];
         $templateData = defaultTemplateList();
 
         // Store all created templates if needed
@@ -729,35 +730,9 @@ if (!function_exists('defaultTemplate')) {
 if (!function_exists('defaultSMSTemplate')) {
     function defaultSMSTemplate()
     {
-        $templateData = defaultTemplateList();
-
-        // Store all created templates if needed
-        $createdTemplates = [];
-
-        foreach ($templateData as $key => $value) {
-            $Users = User::where('type', 'owner')->get();
-            foreach ($Users as $User) {
-                $template = Notification::where('module', $value['module'])->where('parent_id', $User->id)->first();
-                if (empty($template)) {
-                    $template = Notification::firstOrNew(['parent_id' => $id, 'module' => $value['module']]);
-            if ($template->exists) { $createdTemplates[] = $template; continue; }
-            $template->module = $value['module'];
-                    $template->name = $value['name'];
-                    $template->subject = $value['subject'];
-                    $template->message = $value['templete'];
-                    $template->short_code = json_encode($value['short_code']);
-                    $template->enabled_email = 0;
-                    $template->enabled_sms = 0;
-                    $template->parent_id = $User->id;
-                    $template->save();
-                }
-            }
-            Notification::where('module', $value['module'])->whereNull('sms_message')->update(['sms_message' => $value['sms_message'], 'enabled_sms' => 0]);
-            $createdTemplates[] = $value;
-        }
-
-        // Return all created templates if needed
-        return $createdTemplates;
+        // Legacy migration entry point: never create communication templates for shops.
+        $admin = \App\Services\CentralEmail::administrator();
+        return $admin ? defaultTemplate($admin->id) : [];
     }
 }
 
@@ -847,12 +822,13 @@ if (!function_exists('MessageReplace')) {
 if (!function_exists('sendEmail')) {
     function sendEmail($to, $datas)
     {
+        if (!\App\Services\CentralEmail::enabled()) return ['status'=>'success', 'skipped'=>true, 'message'=>'Merkezi e-posta sistemi kapalı; gönderim yapılmadı.'];
         $datas['settings'] = settings();
         try {
-            $datas['settings'] = array_merge($datas['settings'], emailSettings(parentId()));
+            $datas['settings'] = array_merge($datas['settings'], emailSettings(0));
             $sentMessage = Mail::to($to)->send(new TestMail($datas));
             Log::info('SMTP test e-postası gönderim için kabul edildi; son teslimat doğrulanmadı.', [
-                'parent_id' => parentId(),
+                'parent_id' => Auth::check() ? parentId() : null,
                 'smtp_host' => config('mail.mailers.smtp.host'),
                 'smtp_port' => config('mail.mailers.smtp.port'),
                 'ehlo_domain' => config('mail.mailers.smtp.local_domain'),
@@ -863,7 +839,7 @@ if (!function_exists('sendEmail')) {
                 'message' => 'E-posta SMTP sunucusu tarafından gönderim için kabul edildi.',
             ];
         } catch (\Exception $e) {
-            Log::warning('E-posta gönderimi başarısız.', ['parent_id' => parentId(), 'exception_type' => get_class($e)]);
+            Log::warning('E-posta gönderimi başarısız.', ['parent_id' => Auth::check() ? parentId() : null, 'exception_type' => get_class($e)]);
             return [
                 'status' => 'error',
                 'message' => 'E-posta gönderilemedi. SMTP sunucusu, port, şifreleme ve kullanıcı bilgilerini kontrol edin. Ayrıntılar için e-posta sağlayıcınıza başvurun.'
@@ -876,24 +852,17 @@ if (!function_exists('sendEmail')) {
 if (!function_exists('commonEmailSend')) {
     function commonEmailSend($to, $datas)
     {
+        if (!\App\Services\CentralEmail::enabled()) return ['status'=>'success', 'skipped'=>true, 'message'=>'Merkezi e-posta sistemi kapalı; gönderim yapılmadı.'];
         $datas['settings'] = settings();
         try {
-            if (Auth::check()) {
-                if ($datas['module'] == 'owner_create') {
-                    $datas['settings'] = array_merge($datas['settings'], emailSettings(1));
-                } else {
-                    $datas['settings'] = array_merge($datas['settings'], emailSettings(parentId()));
-                }
-            } else {
-                $datas['settings'] = array_merge($datas['settings'], emailSettings($datas['parent_id']));
-            }
+            $datas['settings'] = array_merge($datas['settings'], emailSettings(0));
             Mail::to($to)->send(new Common($datas));
             return [
                 'status' => 'success',
                 'message' => 'E-posta SMTP sunucusu tarafından gönderim için kabul edildi.',
             ];
         } catch (\Exception $e) {
-            Log::warning('E-posta gönderimi başarısız.', ['parent_id' => parentId(), 'exception_type' => get_class($e)]);
+            Log::warning('E-posta gönderimi başarısız.', ['parent_id' => Auth::check() ? parentId() : null, 'exception_type' => get_class($e)]);
             return [
                 'status' => 'error',
                 'message' => 'E-posta gönderilemedi. SMTP sunucusu, port, şifreleme ve kullanıcı bilgilerini kontrol edin. Ayrıntılar için e-posta sağlayıcınıza başvurun.'
@@ -908,8 +877,9 @@ if (!function_exists('emailSettings')) { function emailSettings($id) { return ap
 if (!function_exists('sendEmailVerification')) {
     function sendEmailVerification($to, $data)
     {
+        if (!\App\Services\CentralEmail::enabled()) return ['status'=>'success', 'skipped'=>true, 'message'=>'Merkezi e-posta sistemi kapalı; gönderim yapılmadı.'];
         try {
-            $data['settings'] = emailSettings(1);
+            $data['settings'] = emailSettings(0);
             Mail::to($to)->send(new EmailVerification($data));
 
             return [
@@ -957,7 +927,7 @@ if (!function_exists('HomePageSection')) {
                 'title' => 'Banner',
                 'section' => 'Section 1',
                 'content' => '',
-                'content_value' => '{"name":"Banner","section_enabled":"active","title":"Service Hub - Vehicle Repair Center Management","sub_title":"Service Hub Management System is a robust software platform tailored to the needs of automotive repair shops, garages, and workshops. It provides an integrated solution to effectively manage day-to-day operations, enhance productivity, and improve customer satisfaction.","btn_name":"Get Started","btn_link":"#","section_footer_text":"Manage your business efficiently with our all-in-one solution designed for performance, security, and scalability.","section_footer_image":{},"section_main_image":{},"section_footer_image_path":"upload\/homepage\/banner_2.png","section_main_image_path":"upload\/homepage\/banner_1.png","box_image_1_path":"","box_image_2_path":"","box_image_3_path":"","Box1_image_path":"","Box2_image_path":"","Sec4_box1_image_path":"","Sec4_box2_image_path":"","Sec4_box3_image_path":"","Sec4_box4_image_path":"","Sec4_box5_image_path":"","Sec4_box6_image_path":"","Sec7_box1_image_path":"","Sec7_box2_image_path":"","Sec7_box3_image_path":"","Sec7_box4_image_path":"","Sec7_box5_image_path":"","Sec7_box6_image_path":"","Sec7_box7_image_path":"","Sec7_box8_image_path":""}',
+                'content_value' => '{"name":"Banner","section_enabled":"active","title":"sanayirandevu.com - Araç Servis ve Randevu Yönetimi","sub_title":"sanayirandevu.com; araç servislerinin randevu, müşteri, araç, servis, stok ve fatura işlemlerini tek yerden yönetmesini sağlar.","btn_name":"Get Started","btn_link":"#","section_footer_text":"Manage your business efficiently with our all-in-one solution designed for performance, security, and scalability.","section_footer_image":{},"section_main_image":{},"section_footer_image_path":"upload\/homepage\/banner_2.png","section_main_image_path":"upload\/homepage\/banner_1.png","box_image_1_path":"","box_image_2_path":"","box_image_3_path":"","Box1_image_path":"","Box2_image_path":"","Sec4_box1_image_path":"","Sec4_box2_image_path":"","Sec4_box3_image_path":"","Sec4_box4_image_path":"","Sec4_box5_image_path":"","Sec4_box6_image_path":"","Sec7_box1_image_path":"","Sec7_box2_image_path":"","Sec7_box3_image_path":"","Sec7_box4_image_path":"","Sec7_box5_image_path":"","Sec7_box6_image_path":"","Sec7_box7_image_path":"","Sec7_box8_image_path":""}',
 
             ],
             [
@@ -991,7 +961,7 @@ if (!function_exists('HomePageSection')) {
                 'title' => 'Core Features',
                 'section' => 'Section 6',
                 'content' => '',
-                'content_value' => '{"name":"Core Features","section_enabled":"active","Sec6_title":"Core Features","Sec6_info":"Core Modules For Your Business","Sec6_Box_title":["Dashboard","Subscription","Items / Parts","Invoice Details","Expense"],"Sec6_Box_subtitle":["Service Hub Management System is a robust software platform tailored to the needs of automotive repair shops, garages, and workshops.","Service Hub Management System is a robust software platform tailored to the needs of automotive repair shops, garages, and workshops.","Service Hub Management System is a robust software platform tailored to the needs of automotive repair shops, garages, and workshops.","Service Hub Management System is a robust software platform tailored to the needs of automotive repair shops, garages, and workshops.","Service Hub Management System is a robust software platform tailored to the needs of automotive repair shops, garages, and workshops."],"Sec6_box_image":[{},{},{},{},{},{}],"section_footer_image_path":"","section_main_image_path":"","box_image_1_path":"","box_image_2_path":"","box_image_3_path":"","Box1_image_path":"","Box2_image_path":"","Sec4_box1_image_path":"","Sec4_box2_image_path":"","Sec4_box3_image_path":"","Sec4_box4_image_path":"","Sec4_box5_image_path":"","Sec4_box6_image_path":"","Sec6_box0_image_path":"upload\/homepage\/1.png","Sec6_box1_image_path":"upload\/homepage\/2.png","Sec6_box2_image_path":"upload\/homepage\/3.png","Sec6_box3_image_path":"upload\/homepage\/4.png","Sec6_box4_image_path":"upload\/homepage\/5.png","Sec6_box5_image_path":"upload\/homepage\/6.png","Sec6_box6_image_path":"","Sec7_box1_image_path":"","Sec7_box2_image_path":"","Sec7_box3_image_path":"","Sec7_box4_image_path":"","Sec7_box5_image_path":"","Sec7_box6_image_path":"","Sec7_box7_image_path":"","Sec7_box8_image_path":""}',
+                'content_value' => '{"name":"Core Features","section_enabled":"active","Sec6_title":"Core Features","Sec6_info":"Core Modules For Your Business","Sec6_Box_title":["Dashboard","Subscription","Items / Parts","Invoice Details","Expense"],"Sec6_Box_subtitle":["Araç servisleri ve atölyeler için sanayirandevu.com yönetim platformu.","Araç servisleri ve atölyeler için sanayirandevu.com yönetim platformu.","Araç servisleri ve atölyeler için sanayirandevu.com yönetim platformu.","Araç servisleri ve atölyeler için sanayirandevu.com yönetim platformu.","Araç servisleri ve atölyeler için sanayirandevu.com yönetim platformu."],"Sec6_box_image":[{},{},{},{},{},{}],"section_footer_image_path":"","section_main_image_path":"","box_image_1_path":"","box_image_2_path":"","box_image_3_path":"","Box1_image_path":"","Box2_image_path":"","Sec4_box1_image_path":"","Sec4_box2_image_path":"","Sec4_box3_image_path":"","Sec4_box4_image_path":"","Sec4_box5_image_path":"","Sec4_box6_image_path":"","Sec6_box0_image_path":"upload\/homepage\/1.png","Sec6_box1_image_path":"upload\/homepage\/2.png","Sec6_box2_image_path":"upload\/homepage\/3.png","Sec6_box3_image_path":"upload\/homepage\/4.png","Sec6_box4_image_path":"upload\/homepage\/5.png","Sec6_box5_image_path":"upload\/homepage\/6.png","Sec6_box6_image_path":"","Sec7_box1_image_path":"","Sec7_box2_image_path":"","Sec7_box3_image_path":"","Sec7_box4_image_path":"","Sec7_box5_image_path":"","Sec7_box6_image_path":"","Sec7_box7_image_path":"","Sec7_box8_image_path":""}',
 
             ],
             [
@@ -1019,7 +989,7 @@ if (!function_exists('HomePageSection')) {
                 'title' => 'AboutUS - Footer',
                 'section' => 'Section 10',
                 'content' => '',
-                'content_value' => '{"name":"AboutUS - Footer","section_enabled":"active","Sec10_title":"About Service Hub","Sec10_info":"Service Hub Management System is a robust software platform tailored to the needs of automotive repair shops, garages, and workshops. It provides an integrated solution to effectively manage day-to-day operations, enhance productivity, and improve customer satisfaction.","section_footer_image_path":"","section_main_image_path":"","box_image_1_path":"","box_image_2_path":"","box_image_3_path":"","Box1_image_path":"","Box2_image_path":"","Sec4_box1_image_path":"","Sec4_box2_image_path":"","Sec4_box3_image_path":"","Sec4_box4_image_path":"","Sec4_box5_image_path":"","Sec4_box6_image_path":"","Sec7_box1_image_path":"","Sec7_box2_image_path":"","Sec7_box3_image_path":"","Sec7_box4_image_path":"","Sec7_box5_image_path":"","Sec7_box6_image_path":"","Sec7_box7_image_path":"","Sec7_box8_image_path":""}',
+                'content_value' => '{"name":"AboutUS - Footer","section_enabled":"active","Sec10_title":"sanayirandevu.com hakkında","Sec10_info":"sanayirandevu.com; araç servislerinin randevu, müşteri, araç, servis, stok ve fatura işlemlerini tek yerden yönetmesini sağlar.","section_footer_image_path":"","section_main_image_path":"","box_image_1_path":"","box_image_2_path":"","box_image_3_path":"","Box1_image_path":"","Box2_image_path":"","Sec4_box1_image_path":"","Sec4_box2_image_path":"","Sec4_box3_image_path":"","Sec4_box4_image_path":"","Sec4_box5_image_path":"","Sec4_box6_image_path":"","Sec7_box1_image_path":"","Sec7_box2_image_path":"","Sec7_box3_image_path":"","Sec7_box4_image_path":"","Sec7_box5_image_path":"","Sec7_box6_image_path":"","Sec7_box7_image_path":"","Sec7_box8_image_path":""}',
 
             ],
         ];

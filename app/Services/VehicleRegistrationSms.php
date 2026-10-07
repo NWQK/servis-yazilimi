@@ -10,7 +10,7 @@ class VehicleRegistrationSms
     {
         try {
             $settings = AppointmentSmsSetting::central();
-            if (!$settings->vehicle_sms_enabled) return;
+            if (!$settings->enabled || !$settings->vehicle_sms_enabled) return;
             $phone = TurkishPhone::mobile($vehicle->clients?->phone_number);
             $link = $vehicle->qrCode?->publicUrl();
             $company = settingsById($vehicle->parent_id)['company_name'] ?: (\App\Models\User::find($vehicle->parent_id)?->name ?? 'İşletme');

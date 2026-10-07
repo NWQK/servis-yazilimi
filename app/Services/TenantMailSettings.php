@@ -5,10 +5,16 @@ use Illuminate\Support\Facades\DB;
 
 class TenantMailSettings
 {
+    // Keep the legacy argument for callers; shop credentials are never selected.
     public function apply(int $ownerId): array
     {
-        $values = DB::table('settings')->where('type', 'smtp')->where('parent_id', $ownerId)->pluck('value', 'name')->all();
+        if (!CentralEmail::enabled()) throw new \RuntimeException('Merkezi e-posta sistemi kapalı.');
+        $ownerId = CentralEmail::administrator()?->id;
+        $values = $ownerId ? DB::table('settings')->where('type', 'smtp')->where('parent_id', $ownerId)->pluck('value', 'name')->all() : [];
         $values = array_merge(array_fill_keys(['FROM_EMAIL','FROM_NAME','SERVER_HOST','SERVER_PORT','SERVER_USERNAME','SERVER_PASSWORD','SERVER_ENCRYPTION'], ''), ['SERVER_DRIVER'=>'smtp'], $values);
+        $values['FROM_NAME'] = 'sanayirandevu.com';
+        $values['company_name'] = 'sanayirandevu.com';
+        $values['brand_logo'] = rtrim(config('app.url'), '/').'/images/brand/sanayirandevu-email-logo.png';
         $localDomain = config('mail.ehlo_domain') ?: parse_url(config('app.url'), PHP_URL_HOST);
         if (!is_string($localDomain) || !filter_var($localDomain, FILTER_VALIDATE_DOMAIN, FILTER_FLAG_HOSTNAME)) {
             throw new \RuntimeException('SMTP tanıtım adı için geçerli bir APP_URL veya MAIL_EHLO_DOMAIN gerekli.');
@@ -22,7 +28,7 @@ class TenantMailSettings
         ], 'mail.from.address'=>$values['FROM_EMAIL'], 'mail.from.name'=>$values['FROM_NAME']]);
         if (app('mail.manager') instanceof \Illuminate\Mail\MailManager) { app('mail.manager')->purge('smtp'); }
         if (!filter_var($values['FROM_EMAIL'], FILTER_VALIDATE_EMAIL) || !preg_match('/^[a-zA-Z0-9.-]+$/', $values['SERVER_HOST']) || (int) $values['SERVER_PORT'] < 1 || (int) $values['SERVER_PORT'] > 65535 || !in_array($values['SERVER_ENCRYPTION'], ['tls','ssl'])) {
-            throw new \RuntimeException('İşletmenin SMTP ayarları eksik.');
+            throw new \RuntimeException('Merkezi SMTP ayarları eksik.');
         }
         return $values;
     }

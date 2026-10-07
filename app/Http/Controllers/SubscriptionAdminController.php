@@ -17,7 +17,7 @@ class SubscriptionAdminController extends Controller
     private function record(User $owner,string $action,array $before): void
     {
         $after=$this->snapshot($owner);
-        if ($before!==$after) { SubscriptionChange::create(['owner_id'=>$owner->id,'actor_id'=>auth()->id(),'action'=>$action,'before'=>$before,'after'=>$after]); }
+        if ($before!==$after) { SubscriptionChange::create(['owner_id'=>$owner->id,'actor_id'=>auth()->id(),'action'=>$action,'before'=>$before,'after'=>$after]); \App\Services\AdminAudit::record('subscription.'.$action,$owner->id,$before,$after); }
     }
 
     public function index(Request $request)

@@ -1,6 +1,6 @@
 <?php
 
-// Product Name : Service Hub SaaS
+// Product Name : sanayirandevu.com
 // Version      : 1.8
 
 /**

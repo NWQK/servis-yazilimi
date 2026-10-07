@@ -3,7 +3,7 @@
 @section('breadcrumb')<li class="breadcrumb-item">SMS ayarları</li>@endsection
 @section('content')
 <div class="card"><div class="card-body">
-    <h5>Merkezi SMS hesabı — İleti Merkezi</h5><p>Tüm işletmelerin randevu ve araç takip mesajları bu hesaptan gönderilir.</p>
+    <h5>Merkezi SMS hesabı — İleti Merkezi</h5><p>Tüm işletmelerin randevu doğrulama, randevu onayı ve araç bilgilendirme mesajları bu merkezi hesaptan gönderilir. API bilgileri, gönderici başlığı ve mesaj şablonlarını yalnızca süper admin yönetir.</p>
     @if ($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
     <form method="post" action="{{ route('appointments.sms-settings.save') }}">@csrf
         <input name="enabled" type="hidden" value="0"><label class="mb-3"><input name="enabled" type="checkbox" value="1" @checked(old('enabled', $smsSettings->enabled))> Merkezi SMS gönderimini etkinleştir</label>

@@ -32,6 +32,7 @@ class   Common extends Mailable
             $data = [
                 'company_logo' => ($settings['company_logo'] ?? ''),
                 'message' => $this->data,
+                'brand_logo' => $settings['brand_logo'] ?? null,
                 'company_name' => ($settings['company_name'] ?? 'SanayiRandevu'),
                 'company_email' => ($settings['company_email'] ?? ''),
             ];

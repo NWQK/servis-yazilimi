@@ -10,8 +10,8 @@
     $admin_logo = getSettingsValByName('company_logo');
     $profile = asset(Storage::url('upload/profile'));
     $requestedTab = request()->query('tab');
-    $activeTab = in_array($requestedTab, ['invoice_business', 'user_profile_settings'], true) ? $requestedTab : session('tab', 'user_profile_settings');
-    if (auth()->user()->type !== 'super admin' && $activeTab === 'general_settings') { $activeTab = 'user_profile_settings'; }
+    $activeTab = in_array($requestedTab, array_merge(['invoice_business', 'user_profile_settings'], auth()->user()->type === 'super admin' ? ['email_SMTP_settings'] : []), true) ? $requestedTab : session('tab', 'user_profile_settings');
+    if (auth()->user()->type !== 'super admin' && in_array($activeTab, ['general_settings', 'email_SMTP_settings', 'sms_system'], true)) { $activeTab = 'user_profile_settings'; }
     $subscriptionData = currentSubscription();
 @endphp
 @section('content')
@@ -92,7 +92,7 @@
                                         </a>
                                     </li>
                                 @endif
-                                @if (Gate::check('manage email settings'))
+                                @if (auth()->user()->type === 'super admin')
                                     <li class="nav-item">
                                         <a class="nav-link {{ empty($activeTab) || $activeTab == 'email_SMTP_settings' ? ' active ' : '' }} "
                                             id="profile-tab-5" data-bs-toggle="tab" href="#email_SMTP_settings"
@@ -201,17 +201,11 @@
                                     @endif
                                 @endif
 
-                            @if (auth()->user()->type === 'owner')
-                                    <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#sms_system" role="tab"><div class="d-flex align-items-center"><i class="ti ti-message-dots me-2 f-20"></i><div><h5 class="mb-0">SMS Sistemi</h5><small class="text-muted">İşletme SMS ayarları</small></div></div></a></li>
-                                @endif
 </ul>
                         </div>
                         <div class="col-lg-8">
                             <div class="tab-content">
                                 @include('settings.invoice_business')
-                                @if (auth()->user()->type === 'owner')
-                                <div class="tab-pane" id="sms_system" role="tabpanel"><h5>SMS Sistemi</h5><p>İşletmeye özel SMS ayarları yakında kullanıma açılacaktır. Randevu SMS’leri sistem yöneticisi tarafından yönetilir.</p></div>
-                                @endif
 
                                 @if (Gate::check('manage account settings'))
                                     <div class="tab-pane {{ empty($activeTab) || $activeTab == 'user_profile_settings' ? ' active show ' : '' }}"
@@ -473,11 +467,11 @@
                                         {{ Form::close() }}
                                     </div>
                                 @endif
-                                @if (Gate::check('manage email settings'))
+                                @if (auth()->user()->type === 'super admin')
                                     <div class="tab-pane {{ !empty($activeTab) && $activeTab == 'email_SMTP_settings' ? ' active show ' : '' }}"
                                         id="email_SMTP_settings" role="tabpanel" aria-labelledby="email_SMTP_settings">
                                         {{ Form::model($settings, ['route' => ['setting.smtp'], 'method' => 'post']) }}
-                                        <p class="text-muted">İşletmenizin e-posta sağlayıcısından SMTP sunucusu ve kullanıcı bilgilerini alın. Önce kaydedin, ardından kendi adresinize test e-postası gönderin. Fatura bildirimlerini E-posta bildirimleri bölümünden etkinleştirebilirsiniz.</p>
+                                        <p class="text-muted">Tüm işletmelerin işlem ve hesap e-postaları bu merkezi SMTP hesabından gönderilir. Önce ayarları kaydedin, ardından test e-postası gönderin. Ortak içerikleri ve gönderim durumlarını E-posta yönetimi → E-posta şablonları bölümünden düzenleyebilirsiniz.</p>
                                         <div class="row">
                                             <div class="form-group col-md-6">
                                                 {{ Form::label('sender_name', __('Sender Name'), ['class' => 'form-label']) }}

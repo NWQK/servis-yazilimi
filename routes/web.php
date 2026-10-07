@@ -99,8 +99,17 @@ Route::middleware(['auth', 'XSS'])->group(function () {
     Route::post('support/{id}/reply', [\App\Http\Controllers\SupportTicketController::class,'reply'])->whereNumber('id')->middleware('throttle:15,1')->name('support.reply');
     Route::post('support/{id}/status', [\App\Http\Controllers\SupportTicketController::class,'status'])->whereNumber('id')->middleware('throttle:15,1')->name('support.status');
 
+    Route::get('announcements', [\App\Http\Controllers\AnnouncementController::class,'index'])->name('announcements.index');
+    Route::post('announcements', [\App\Http\Controllers\AnnouncementController::class,'store'])->middleware('throttle:10,1')->name('announcements.store');
+    Route::get('announcements/{id}', [\App\Http\Controllers\AnnouncementController::class,'show'])->whereNumber('id')->name('announcements.show');
+    Route::post('announcements/{id}/withdraw', [\App\Http\Controllers\AnnouncementController::class,'withdraw'])->whereNumber('id')->name('announcements.withdraw');
+    Route::get('admin/audit', [\App\Http\Controllers\AdminAuditController::class,'index'])->name('admin-audit.index');
+    Route::get('admin/business-usage', [\App\Http\Controllers\BusinessUsageController::class,'index'])->name('business-usage.index');
     Route::get('admin/two-factor', [\App\Http\Controllers\TwoFactorAdminController::class,'index'])->name('two-factor-admin.index');
     Route::post('admin/two-factor/{id}', [\App\Http\Controllers\TwoFactorAdminController::class,'update'])->name('two-factor-admin.update')->middleware('throttle:6,1');
+    Route::get('admin/communication-settings', [\App\Http\Controllers\CommunicationSettingsController::class,'index'])->name('communication-settings.index');
+    Route::post('admin/communication-settings', [\App\Http\Controllers\CommunicationSettingsController::class,'save'])->name('communication-settings.save');
+    Route::get('admin/businesses/{id}', [\App\Http\Controllers\BusinessDetailController::class,'show'])->whereNumber('id')->name('business-detail.show');
     Route::get('admin/owner-logins', [\App\Http\Controllers\OwnerLoginHistoryController::class,'index'])->name('owner-logins.index');
     Route::get('admin/subscriptions', [\App\Http\Controllers\SubscriptionAdminController::class,'index'])->name('subscription-admin.index');
     Route::get('admin/subscriptions/{id}/edit', [\App\Http\Controllers\SubscriptionAdminController::class,'edit'])->whereNumber('id')->name('subscription-admin.edit');

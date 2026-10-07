@@ -112,12 +112,12 @@
                                                         href="{{ route('impersonate', $user->id) }}"> <i
                                                             data-feather="log-in"></i></a>
                                                 @endif
-                                                @can('show user')
+                                                @if(auth()->user()->type === 'super admin' || Gate::check('show user'))
                                                     <a class="avtar avtar-xs btn-link-warning text-warning"
                                                         data-bs-toggle="tooltip" data-bs-original-title="{{ __('Show') }}"
-                                                        href="{{ route('users.show', $user->id) }}">
+                                                        href="{{ auth()->user()->type === 'super admin' ? route('business-detail.show',$user->id) : route('users.show',$user->id) }}">
                                                        <i data-feather="eye"></i></a>
-                                                @endcan
+                                                @endif
                                                 @can('edit user')
                                                     <a class="avtar avtar-xs btn-link-secondary text-secondary customModal"
                                                         data-bs-toggle="tooltip" data-size="lg"

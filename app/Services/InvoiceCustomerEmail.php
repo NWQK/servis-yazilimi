@@ -29,6 +29,7 @@ class InvoiceCustomerEmail
 
     public function send(Invoice $invoice): void
     {
+        if (!CentralEmail::enabled()) return;
         // Never send a message for a transaction which may still roll back.
         if (DB::transactionLevel() > 0) {
             DB::afterCommit(fn () => $this->send($invoice));

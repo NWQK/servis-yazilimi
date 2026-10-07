@@ -29,6 +29,22 @@ class OwnerLoginSecurityTest extends TestCase
         Mail::fake();
     }
 
+    public function test_super_admin_can_find_and_edit_email_templates_without_legacy_permissions()
+    {
+        Gate::swap(new \Illuminate\Auth\Access\Gate(app(), fn()=>auth()->user()));
+        $this->assertFalse($this->admin->can('manage notification'));
+        $this->assertFalse($this->admin->can('edit notification'));
+        $this->actingAs($this->admin)->get(route('notification.index'))->assertOk()
+            ->assertSee('E-posta şablonları')->assertSee('Müşteriye fatura bildirimi')->assertSee('Şifre sıfırlama');
+        $template=SecurityEmail::template($this->admin,SecurityEmail::LOGIN);
+        $this->get(route('notification.edit',$template))->assertOk();
+        $this->put(route('notification.update',$template),['subject'=>'Giriş bildirimi','message'=>'Merhaba {user_name}','enabled_email'=>1])->assertRedirect(route('notification.index'));
+        $this->assertSame('Giriş bildirimi',$template->fresh()->subject);
+        $this->actingAs($this->owner)->get(route('notification.edit',$template))->assertForbidden();
+        $this->put(route('notification.update',$template),['subject'=>'Unauthorized','message'=>'Test'])->assertForbidden();
+        $this->assertSame('Giriş bildirimi',$template->fresh()->subject);
+    }
+
     public function test_successful_login_records_ip_device_and_sends_platform_email()
     {
         $this->withServerVariables(['REMOTE_ADDR'=>'203.0.113.17'])->post('/login',['email'=>$this->owner->email,'password'=>'wrong'])->assertSessionHasErrors('email');

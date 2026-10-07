@@ -227,7 +227,7 @@ class ClientController extends Controller
             'company_email' => $setting['company_email'],
             'company_phone' => $setting['company_phone'],
         ]);
-        $clientNotification = Notification::where('parent_id', parentId())->where('module', 'client_create')->first();
+        $clientNotification = \App\Services\CentralEmail::template('client_create');
         if (!empty($clientNotification)) {
             $resp = MessageReplace($clientNotification, $user->id);
             $data = [
@@ -243,7 +243,7 @@ class ClientController extends Controller
 
 
         }
-        $vehicleNotification = Notification::where('parent_id', parentId())->where('module', 'vehicle_create')->first();
+        $vehicleNotification = \App\Services\CentralEmail::template('vehicle_create');
         if (!empty($vehicleNotification)) {
             $resp = MessageReplace($vehicleNotification, $vehicle->id);
             $data = [
@@ -296,7 +296,7 @@ class ClientController extends Controller
             'company_email' => $setting['company_email'],
             'company_phone' => $setting['company_phone'],
         ]);
-        $serviceCreateNotif = Notification::where('parent_id', parentId())->where('module', 'service_create')->first();
+        $serviceCreateNotif = \App\Services\CentralEmail::template('service_create');
         if (!empty($serviceCreateNotif)) {
             $resp = MessageReplace($serviceCreateNotif, $service->id);
             $data = ['subject' => $resp['subject'], 'message' => $resp['message'], 'module' => 'service_create', 'logo' => $setting['company_logo']];
@@ -307,7 +307,7 @@ class ClientController extends Controller
 
 
         }
-        $serviceAssignNotif = Notification::where('parent_id', parentId())->where('module', 'service_assign')->first();
+        $serviceAssignNotif = \App\Services\CentralEmail::template('service_assign');
         if (!empty($serviceAssignNotif)) {
             $resp = MessageReplace($serviceAssignNotif, $service->id);
             $data = ['subject' => $resp['subject'], 'message' => $resp['message'], 'module' => 'service_assign', 'logo' => $setting['company_logo']];

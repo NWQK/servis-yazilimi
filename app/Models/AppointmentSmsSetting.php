@@ -23,6 +23,8 @@ class AppointmentSmsSetting extends Model
         return static::findOrFail(1);
     }
 
+    public function requiresVerification(): bool { return $this->enabled && $this->verification_required; }
+
     public function ready(): bool
     {
         return $this->enabled && $this->api_key && $this->api_hash && $this->sender && strtoupper($this->sender) !== 'APITEST';

@@ -7,11 +7,12 @@ use Illuminate\Support\Facades\{DB, Schema};
 
 class OwnerSetupWarnings
 {
-    public function forUser(User $user): array
+    public function forUser(User $user, bool $respectPermissions = true): array
     {
         if ($user->type !== 'owner') return [];
         $warnings = [];
-        if ($user->can('manage service') && $user->can('create service') && !Service::where('parent_id', $user->id)->exists()) {
+        $can = fn($permission) => !$respectPermissions || $user->can($permission);
+        if ($can('manage service') && $can('create service') && !Service::where('parent_id', $user->id)->exists()) {
             $warnings[] = [
                 'key' => 'services', 'title' => 'İlk servis kaydınızı oluşturun',
                 'description' => 'Müşteri ve aracını kaydedin, çalışanınızı ve servis türlerini hazırlayın; ardından yapılacak işlemleri girin. Başlangıç ve bitiş tarihleri isteğe bağlıdır.',
@@ -19,7 +20,7 @@ class OwnerSetupWarnings
                 'actions' => [['label' => 'Servis oluşturma rehberini aç', 'url' => route('service.setup')]],
             ];
         }
-        if ($user->can('manage item') && $user->can('create item') && !Item::where('parent_id', $user->id)->exists()) {
+        if ($can('manage item') && $can('create item') && !Item::where('parent_id', $user->id)->exists()) {
             $warnings[] = [
                 'key' => 'products', 'title' => 'İlk ürününüzü ekleyin',
                 'description' => 'Ürün listeniz boş. Vergi ve birim ayarlarınızı kontrol edin, dilerseniz kategori oluşturun; ardından ürününüzü stok miktarı ve fiyatlarıyla kaydedin. Hazır vergi ve birim ayarlarını kullanabilirsiniz.',
@@ -27,7 +28,7 @@ class OwnerSetupWarnings
                 'actions' => [['label' => 'Ürün ekleme rehberini aç', 'url' => route('inventory.setup')]],
             ];
         }
-        if ($user->can('manage account settings') && $user->can('manage general settings') &&
+        if ($can('manage account settings') && $can('manage general settings') &&
             trim((string) DB::table('settings')->where('parent_id', $user->id)->where('name', 'invoice_logo')->value('value')) === '') {
             $warnings[] = [
                 'key' => 'invoice_logo', 'title' => 'Fatura logonuzu yükleyin',
@@ -35,7 +36,7 @@ class OwnerSetupWarnings
                 'actions' => [['label' => 'Fatura logosunu ayarla', 'url' => route('setting.index', ['tab' => 'user_profile_settings']).'#business-invoice-logo']],
             ];
         }
-        if ($user->can('manage company settings') && Schema::hasTable('invoice_business_profiles')) {
+        if ($can('manage company settings') && Schema::hasTable('invoice_business_profiles')) {
             $details = InvoiceBilling::business($user->id);
             $missing = [];
             foreach (['name' => 'İşletme adı', 'address' => 'Adres', 'phone' => 'Telefon'] as $field => $label) {
@@ -47,7 +48,7 @@ class OwnerSetupWarnings
                 'actions' => [['label' => 'İşletme bilgilerini doldur', 'url' => route('setting.index', ['tab' => 'invoice_business'])]],
             ];
         }
-        if ($user->can('create vehicle type') && $user->can('create vehicle brand') &&
+        if ($can('create vehicle type') && $can('create vehicle brand') &&
             (!VehicleType::where('parent_id', $user->id)->exists() || !VehicleBrand::where('parent_id', $user->id)->exists())) {
             $actions = [];
             foreach (VehicleCatalog::CATEGORIES as $key => $label) $actions[] = [

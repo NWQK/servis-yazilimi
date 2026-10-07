@@ -20,9 +20,9 @@ class VehicleController extends Controller
     {
         if (\Auth::user()->can('manage vehicle')) {
             if (auth()->user()->type == 'client') {
-                $vehicles = Vehicle::where('parent_id', '=', parentId())->where('client', auth()->user()->id)->orderBy('id', 'desc')->get();
+                $vehicles = Vehicle::with(['clients'=>fn($query)=>$query->where('parent_id', parentId()), 'qrCode'=>fn($query)=>$query->where('parent_id', parentId()), 'types', 'brands'])->where('parent_id', '=', parentId())->where('client', auth()->user()->id)->orderBy('id', 'desc')->get();
             } else {
-                $vehicles = Vehicle::where('parent_id', '=', parentId())->orderBy('id', 'desc')->get();
+                $vehicles = Vehicle::with(['clients'=>fn($query)=>$query->where('parent_id', parentId()), 'qrCode'=>fn($query)=>$query->where('parent_id', parentId()), 'types', 'brands'])->where('parent_id', '=', parentId())->orderBy('id', 'desc')->get();
             }
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
@@ -97,7 +97,7 @@ class VehicleController extends Controller
             });
 
             $module = 'vehicle_create';
-            $notification = Notification::where('parent_id', parentId())->where('module', $module)->first();
+            $notification = \App\Services\CentralEmail::template($module);
             $setting = settings();
             $errorMessage = '';
 

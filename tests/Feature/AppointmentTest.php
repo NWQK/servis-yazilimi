@@ -378,7 +378,7 @@ class AppointmentTest extends TestCase
         $this->assertTrue((bool)$appointment->verification_bypassed);
         \Illuminate\Support\Facades\Http::assertNothingSent();
         $this->actingAs($this->owner)->getJson('/appointments/notifications')->assertJsonPath('count',1);
-        $settings->update(['verification_required'=>true]);
+        $settings->update(['verification_required'=>true,'enabled'=>true,'api_key'=>null]);
         $this->post($this->profile->publicUrl(),$this->data(['hour'=>10,'verification_bypassed'=>true,'verification_required'=>false]))->assertSessionHasErrors('sms');
         $this->assertSame(1,Appointment::count());
     }
@@ -481,12 +481,15 @@ class AppointmentTest extends TestCase
         \Illuminate\Support\Facades\Http::assertSentCount(3);
     }
 
-    public function test_sms_disabled_or_failed_never_creates_unverified_appointment()
+    public function test_sms_disabled_allows_booking_and_provider_failure_still_requires_verification()
     {
         $settings = \App\Models\AppointmentSmsSetting::central();
         $settings->update(['enabled' => false]);
-        $this->get($this->profile->publicUrl())->assertOk()->assertDontSee('name="customer_name"', false);
-        $this->post($this->profile->publicUrl(), $this->data())->assertSessionHasErrors('sms');
+        $this->get($this->profile->publicUrl())->assertOk()->assertSee('name="customer_name"', false);
+        $this->post($this->profile->publicUrl(), $this->data())->assertSessionHasNoErrors();
+        $this->assertSame(1, Appointment::count());
+        $this->assertTrue((bool) Appointment::first()->verification_bypassed);
+        Appointment::query()->delete();
         \Illuminate\Support\Facades\Http::assertNothingSent();
         $settings->update(['enabled' => true]);
         \Illuminate\Support\Facades\Http::swap(new \Illuminate\Http\Client\Factory());
@@ -515,6 +518,7 @@ class AppointmentTest extends TestCase
     {
         $this->actingAs($this->owner)->get('/appointments/sms-settings')->assertForbidden();
         $this->post('/appointments/sms-settings', [])->assertForbidden();
+        $this->post('/appointments/sms-messages/999/retry')->assertForbidden();
         $this->owner->update(['type' => 'super admin']);
         // The legacy MySQL-only migration is intentionally skipped by this SQLite suite.
         $this->withoutMiddleware(\App\Http\Middleware\XSS::class);
@@ -634,13 +638,13 @@ class AppointmentTest extends TestCase
         $this->assertSame('₺', DB::table('settings')->where('parent_id',$this->owner->id)->where('name','CURRENCY_SYMBOL')->value('value'));
     }
 
-    public function test_retired_gateway_routes_are_absent_and_sms_placeholder_is_visible()
+    public function test_retired_gateway_routes_and_shop_communication_settings_are_absent()
     {
         foreach (app('router')->getRoutes() as $route) {
             $this->assertDoesNotMatchRegularExpression('/stripe|paypal|flutterwave|razorpay|paystack|twilio/i', $route->uri());
         }
         $this->actingAs($this->owner)->withoutMiddleware(\App\Http\Middleware\XSS::class);
-        $this->get('/settings')->assertOk()->assertSee('SMS Sistemi')->assertSee('yakında')
+        $this->get('/settings')->assertOk()->assertDontSee('İşletme SMS ayarları')->assertDontSee('href="#sms_system"',false)->assertDontSee('name="server_host"',false)
             ->assertDontSee('name="CURRENCY"',false)->assertDontSee('name="CURRENCY_SYMBOL"',false)
             ->assertDontSee('stripe_payment')->assertDontSee('Twilio');
     }

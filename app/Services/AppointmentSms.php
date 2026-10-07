@@ -102,6 +102,7 @@ class AppointmentSms
     public function queueApproval(Appointment $appointment): void
     {
         $settings = AppointmentSmsSetting::central();
+        if (!$settings->enabled) return;
         if (!$appointment->phone_verified_at && !($appointment->verification_bypassed && $settings->ready())) return;
         AppointmentSmsMessage::firstOrCreate(['appointment_id' => $appointment->id], [
             'recipient' => $appointment->phone,
@@ -114,6 +115,7 @@ class AppointmentSms
     {
         $message = AppointmentSmsMessage::where('appointment_id', $appointmentId)->first();
         if (!$message) return null;
+        if (!AppointmentSmsSetting::central()->enabled) return $message;
         $claimed = AppointmentSmsMessage::whereKey($message->id)->where('status', 'pending')->update(['status' => 'sending', 'updated_at' => now()]);
         if (!$claimed) return $message->fresh();
         $appointment = $message->appointment;

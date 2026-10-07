@@ -15,7 +15,47 @@
 
 
 
+@push('css-page')
+<style>
+.vehicle-list-table .vehicle-actions-cell { width:1%; white-space:nowrap; }
+.vehicle-list-table .vehicle-actions, .vehicle-list-table .vehicle-actions form { display:inline-flex; align-items:center; flex-wrap:nowrap; gap:4px; vertical-align:middle; margin:0; }
+.vehicle-list-table .vehicle-actions .avtar { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; flex:0 0 36px; margin:0; padding:0; border:0; }
+.vehicle-list-table .vehicle-actions .ti { font-size:22px; line-height:1; }
+.vehicle-list-table .vehicle-actions svg { width:22px; height:22px; }
+.vehicle-list-table .vehicle-actions button:disabled { opacity:.4; cursor:not-allowed; }
+@media(max-width:767.98px) {
+ .vehicle-list-table th,.vehicle-list-table td { padding-left:10px; padding-right:10px; }
+ .vehicle-list-table .vehicle-actions .avtar { width:40px; height:40px; flex-basis:40px; }
+}
+</style>
+@endpush
+@push('script-page')
+<script>
+document.addEventListener('click', async function(event) {
+ const button=event.target.closest('[data-copy-vehicle-link]');
+ if (!button || button.disabled) return;
+ const url=button.dataset.copyVehicleLink;
+ const status=document.getElementById('vehicle-copy-status');
+ const announce=(text)=>{ status.textContent=text; };
+ const fallback=()=>{
+  const input=document.createElement('textarea');
+  input.value=url; input.readOnly=true; input.style.position='fixed'; input.style.left='-9999px';
+  document.body.appendChild(input); input.select(); input.setSelectionRange(0,input.value.length);
+  let copied=false;
+  try { copied=document.execCommand('copy'); } finally { input.remove(); button.focus(); }
+  if(!copied) throw new Error('copy_failed');
+ };
+ try {
+  if(navigator.clipboard && window.isSecureContext) {
+   try { await navigator.clipboard.writeText(url); } catch(error) { fallback(); }
+  } else { fallback(); }
+  announce('Araç bağlantısı kopyalandı.');
+ } catch(error) { announce('Bağlantı kopyalanamadı. Bağlantıyı seçip kopyalayabilirsiniz.'); window.prompt('Araç bağlantısı',url); }
+});
+</script>
+@endpush
 @section('content')
+    <div id="vehicle-copy-status" class="small text-success mb-2" role="status" aria-live="polite"></div>
     @if ($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
     <div class="row">
         <div class="col-sm-12">
@@ -44,7 +84,7 @@
                 </div>
                 <div class="card-body pt-0">
                     <div class="dt-responsive table-responsive">
-                        <table class="table table-hover advance-datatable">
+                        <table class="table table-hover advance-datatable vehicle-list-table">
                             <thead>
                                 <tr>
                                     <th>{{ __('ID') }}</th>
@@ -55,7 +95,7 @@
                                     <th>{{ __('Color') }}</th>
                                     <th>{{ __('Engine Type') }}</th>
                                     @if (Gate::check('edit vehicle') || Gate::check('delete vehicle') || Gate::check('show vehicle'))
-                                        <th class="text-right">{{ __('Action') }}</th>
+                                        <th class="text-right vehicle-actions-cell">{{ __('Action') }}</th>
                                     @endif
                                 </tr>
                             </thead>
@@ -70,8 +110,15 @@
                                         <td>{{ $vehicle->color }} </td>
                                         <td>{{ $vehicle->engine_type }} </td>
                                         @if(Gate::check('edit vehicle') || Gate::check('delete vehicle') || Gate::check('show vehicle'))
-                                        <td>
-                                                <div class="cart-action">
+                                        <td class="vehicle-actions-cell">
+                                                <div class="cart-action vehicle-actions">
+                                                    @if(auth()->user()->type !== 'client' && Gate::check('show vehicle'))
+                                                        @php($whatsappPhone = \App\Support\TurkishPhone::mobile($vehicle->clients?->phone_number))
+                                                        @if($whatsappPhone)
+                                                            <a class="avtar avtar-xs btn-link-success text-success" href="https://wa.me/{{ ltrim($whatsappPhone, '+') }}" target="_blank" rel="noopener noreferrer" data-bs-toggle="tooltip" data-bs-original-title="Araç sahibine WhatsApp’tan ulaş" aria-label="Araç sahibine WhatsApp’tan ulaş"><i class="ti ti-brand-whatsapp" aria-hidden="true"></i></a>
+                                                        @endif
+                                                        <button type="button" class="avtar avtar-xs btn-link-secondary text-secondary" data-copy-vehicle-link="{{ $vehicle->qrCode?->publicUrl() ?? '' }}" @disabled(!$vehicle->qrCode) title="{{ $vehicle->qrCode ? 'Araç bağlantısını kopyala' : 'Araç bağlantısı henüz oluşturulmamış' }}" aria-label="Araç bağlantısını kopyala"><i data-feather="copy" aria-hidden="true"></i></button>
+                                                    @endif
                                                     {!! Form::open(['method' => 'DELETE', 'route' => ['vehicle.destroy', $vehicle->id]]) !!}
                                                     @can('show vehicle')
                                                         <a class="avtar avtar-xs btn-link-warning text-warning customModal"

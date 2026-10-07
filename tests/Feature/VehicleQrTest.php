@@ -90,6 +90,28 @@ class VehicleQrTest extends TestCase
         $this->assertSame('5551234567',\App\Support\TurkishPhone::national('+90 555 123 45 67'));
     }
 
+    public function test_vehicle_list_shortcuts_use_owner_phone_and_tenant_vehicle_link()
+    {
+        $client=User::create(['name'=>'Ali','email'=>'shortcut-client@example.test','password'=>'x','type'=>'client','parent_id'=>$this->owner->id,'phone_number'=>'05551234567']);
+        $vehicle=$this->vehicle(); $vehicle->update(['client'=>$client->id]);
+        $qr=VehicleQrCode::create(['vehicle_id'=>$vehicle->id,'parent_id'=>$this->owner->id,'token'=>str_repeat('c',64)]);
+        $other=$this->owner('other-shortcut@example.test');
+        $foreign=$this->vehicle($other);
+        $foreignQr=VehicleQrCode::create(['vehicle_id'=>$foreign->id,'parent_id'=>$other->id,'token'=>str_repeat('d',64)]);
+        $this->actingAs($this->owner)->withoutMiddleware(\App\Http\Middleware\XSS::class);
+        $this->get(route('vehicle.index'))->assertOk()->assertSee('https://wa.me/905551234567',false)
+            ->assertSee('data-copy-vehicle-link="'.$qr->publicUrl().'"',false)->assertDontSee($foreignQr->publicUrl(),false)
+            ->assertSee('vehicle-actions')->assertSee('Araç bağlantısını kopyala');
+        $client->update(['phone_number'=>'invalid']);
+        $this->get(route('vehicle.index'))->assertOk()->assertDontSee('href="https://wa.me/',false);
+        // A foreign client or QR relation must not expose another shop's contact/link.
+        $foreignClient=User::create(['name'=>'Foreign','email'=>'foreign-shortcut@example.test','password'=>'x','type'=>'client','parent_id'=>$other->id,'phone_number'=>'5559998877']);
+        $vehicle->update(['client'=>$foreignClient->id]);
+        $qr->update(['parent_id'=>$other->id]);
+        $this->get(route('vehicle.index'))->assertOk()->assertDontSee('https://wa.me/905559998877',false)->assertDontSee($qr->publicUrl(),false)
+            ->assertSee('Araç bağlantısı henüz oluşturulmamış');
+    }
+
     private function owner($email)
     {
         return User::create(['name' => 'Test Servis', 'email' => $email, 'password' => bcrypt('test-password'), 'type' => 'owner', 'lang' => 'tr']);

@@ -29,6 +29,7 @@ class TwoFactorAdminController extends Controller
         }
         DB::transaction(function() use($id,$data,$request) {
             $owner=User::where('type','owner')->whereKey($id)->lockForUpdate()->firstOrFail();
+            $before=['required'=>$owner->twofa_required,'configured'=>(bool)$owner->twofa_secret];
             $owner->twofa_required=$data['action']!=='disable';
             if ($data['action']!=='require') {
                 $owner->twofa_secret=null;
@@ -36,6 +37,7 @@ class TwoFactorAdminController extends Controller
                 $owner->twofa_recovery_codes=null;
             }
             $owner->save();
+            \App\Services\AdminAudit::record('security.'.$data['action'],$owner->id,$before,['required'=>$owner->twofa_required,'configured'=>(bool)$owner->twofa_secret,'reason'=>$data['reason']]);
             DB::table('two_factor_admin_actions')->insert(['owner_id'=>$owner->id,'actor_id'=>$request->user()->id,
                 'action'=>$data['action'],'reason'=>$data['reason'],'created_at'=>now()]);
         });

@@ -31,7 +31,7 @@ class PublicAppointmentController extends Controller
         $hours = $booking->availableHours($profile, $date);
         $requestKey = (string) Str::uuid();
         $smsSettings = AppointmentSmsSetting::central();
-        $verificationRequired = $smsSettings->verification_required;
+        $verificationRequired = $smsSettings->requiresVerification();
         $smsReady = !$verificationRequired || $smsSettings->ready();
         return $this->page('appointments.public', compact('profile', 'date', 'hours', 'requestKey', 'smsReady', 'selection', 'selectedService', 'verificationRequired'));
     }
@@ -51,7 +51,7 @@ class PublicAppointmentController extends Controller
             ['customer_name' => 'Ad soyad', 'phone' => 'Telefon numarası', 'date' => 'Randevu tarihi', 'hour' => 'Randevu saati']);
         $data['phone'] = '+90'.$data['phone'];
         app(\App\Services\BookingDirectory::class)->selection($profile, $data['vehicle'] ?? null, $data['service'] ?? null);
-        if (!AppointmentSmsSetting::central()->verification_required) {
+        if (!AppointmentSmsSetting::central()->requiresVerification()) {
             $data['verification_bypassed'] = true;
             $appointment = $booking->book($profile,$data);
             return redirect($appointment->statusUrl());

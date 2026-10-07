@@ -69,6 +69,7 @@ class UserController extends Controller
                 $user->parent_id = parentId();
                 $user->email_verified_at = now();
                 $user->save();
+                \App\Services\AdminAudit::record('business.created',$user->id,[],$user->only(['name','email','subscription']));
                 $userRole = Role::findByName('owner');
                 $user->assignRole($userRole);
 
@@ -180,8 +181,8 @@ class UserController extends Controller
                     'company_phone' => $setting['company_phone'],
                 ]);
                 $module = 'user_create';
-                $notification = Notification::where('parent_id', parentId())->where('module', $module)->first();
-                $notification->password = $request->password;
+                $notification = \App\Services\CentralEmail::template($module);
+                if ($notification) $notification->password = $request->password;
                 $errorMessage = '';
                 if (!empty($notification)) {
                     $notification_responce = MessageReplace($notification, $user->id);
@@ -253,8 +254,10 @@ class UserController extends Controller
                     return redirect()->back()->with('error', $messages->first());
                 }
 
+                $before=$user->only(['name','email','subscription','subscription_expire_date']);
                 $userData = $request->all();
                 $user->fill($userData)->save();
+                \App\Services\AdminAudit::record('business.updated',$user->id,$before,$user->only(['name','email','subscription','subscription_expire_date']));
 
                 if ($request->profile != '') {
                     $tenantFilenameWithExt = $request->file('profile')->getClientOriginalName();
@@ -324,7 +327,9 @@ class UserController extends Controller
 
         if (\Auth::user()->can('delete user')) {
             $user = User::find($id);
+            $before=$user->only(['name','email','type']);
             $user->delete();
+            \App\Services\AdminAudit::record('business.deleted',$user->id,$before,[]);
 
             return redirect()->route('users.index')->with('success', __('User successfully deleted.'));
         } else {

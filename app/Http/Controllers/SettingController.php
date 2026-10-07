@@ -20,6 +20,10 @@ class SettingController extends Controller
     {
         $loginUser = \Auth::user();
         $settings = settings();
+        if ($loginUser->type === 'super admin') {
+            $central = \App\Services\CentralEmail::administrator();
+            $settings = array_merge($settings, \DB::table('settings')->where('type', 'smtp')->where('parent_id', $central->id)->pluck('value', 'name')->all());
+        }
         return view('settings.index', compact('loginUser', 'settings'));
     }
 
@@ -165,14 +169,14 @@ class SettingController extends Controller
 
     public function smtpData(Request $request)
     {
-        abort_unless(auth()->user()?->can('manage email settings'), 403);
+        abort_unless(auth()->user()?->type === 'super admin', 403);
         $data = $request->validate([
             'sender_name'=>'required|string|max:150', 'sender_email'=>'required|email|max:255',
             'server_driver'=>'required|in:smtp', 'server_host'=>'required|string|max:255|regex:/^[a-zA-Z0-9.-]+$/',
             'server_port'=>'required|integer|between:1,65535', 'server_username'=>'required|string|max:255',
             'server_password'=>'nullable|string|max:1000', 'server_encryption'=>'required|in:tls,ssl',
         ]);
-        $oldPassword = \DB::table('settings')->where('type','smtp')->where('parent_id',parentId())->where('name','SERVER_PASSWORD')->value('value');
+        $oldPassword = \DB::table('settings')->where('type','smtp')->where('parent_id',\App\Services\CentralEmail::administrator()->id)->where('name','SERVER_PASSWORD')->value('value');
         if (empty($data['server_password']) && empty($oldPassword)) {
             return back()->withErrors(['server_password'=>'İlk kurulumda SMTP şifresini girin.'])->with('tab','email_SMTP_settings');
         }
@@ -182,9 +186,11 @@ class SettingController extends Controller
             'SERVER_PASSWORD'=>($data['server_password'] ?? '') ?: $oldPassword, 'SERVER_ENCRYPTION'=>$data['server_encryption'],
         ];
         \DB::transaction(function () use ($smtpArray) {
+            $before=\DB::table('settings')->where('type','smtp')->where('parent_id',\App\Services\CentralEmail::administrator()->id)->pluck('value','name')->all();
             foreach ($smtpArray as $key=>$value) {
-                \DB::table('settings')->updateOrInsert(['parent_id'=>parentId(),'type'=>'smtp','name'=>$key], ['value'=>$value]);
+                \DB::table('settings')->updateOrInsert(['parent_id'=>\App\Services\CentralEmail::administrator()->id,'type'=>'smtp','name'=>$key], ['value'=>$value]);
             }
+            \App\Services\AdminAudit::record('communication.smtp',null,$before,$smtpArray);
         });
         if (app('mail.manager') instanceof \Illuminate\Mail\MailManager) { app('mail.manager')->purge('smtp'); }
         return back()->with('success','SMTP ayarları kaydedildi. Gönderimi doğrulamak için test e-postası gönderebilirsiniz.')->with('tab','email_SMTP_settings');
@@ -192,13 +198,13 @@ class SettingController extends Controller
 
     public function smtpTest(Request $request)
     {
-        abort_unless(auth()->user()?->can('manage email settings'), 403);
+        abort_unless(auth()->user()?->type === 'super admin', 403);
         return view('settings.testmail');
     }
 
     public function smtpTestMailSend(Request $request)
     {
-        abort_unless(auth()->user()?->can('manage email settings'), 403);
+        abort_unless(auth()->user()?->type === 'super admin', 403);
         $data = $request->validate(['email'=>'required|email|max:255']);
         $response = sendEmail($data['email'], ['module'=>'test_mail', 'subject'=>'SanayiRandevu — SMTP test e-postası', 'message'=>'E-posta gönderim ayarlarınızın test mesajıdır.']);
         return back()->with($response['status']=='error' ? 'error' : 'success', $response['message'])->with('tab','email_SMTP_settings');

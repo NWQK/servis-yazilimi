@@ -237,6 +237,106 @@ class EmailInfrastructureTest extends TestCase
         $this->assertSame(2,Invoice::whereNotNull('customer_email_sent_at')->count());
     }
 
+    public function test_shop_cannot_manage_smtp_or_templates_even_with_all_permissions()
+    {
+        $template = Notification::create(['parent_id'=>$this->owner->id,'module'=>'vehicle_create','subject'=>'Old','message'=>'Old']);
+        $this->get(route('setting.index'))->assertOk()->assertDontSee('name="server_host"',false)->assertDontSee('href="#email_SMTP_settings"',false)->assertDontSee('E-posta şablonları');
+        $this->post(route('setting.smtp'),[])->assertForbidden();
+        $this->get(route('setting.smtp.test'))->assertForbidden();
+        $this->post(route('setting.smtp.testing'),[])->assertForbidden();
+        $this->get(route('notification.index'))->assertForbidden();
+        $this->get(route('notification.create'))->assertForbidden();
+        $this->post(route('notification.store'),[])->assertForbidden();
+        $this->get(route('notification.show',$template))->assertForbidden();
+        $this->get(route('notification.edit',$template))->assertForbidden();
+        $this->put(route('notification.update',$template),[])->assertForbidden();
+        $this->delete(route('notification.destroy',$template))->assertForbidden();
+        $this->assertSame('Old',$template->fresh()->message);
+        $this->assertSame([],defaultTemplate($this->owner->id));
+        $admin=User::create(['name'=>'Admin','email'=>'legacy-central@example.test','password'=>'x','type'=>'super admin']);
+        defaultSMSTemplate();
+        $this->assertSame(1,Notification::where('parent_id',$this->owner->id)->count());
+        $this->assertSame(8,Notification::where('parent_id',$admin->id)->count());
+    }
+
+    public function test_shop_and_guest_use_only_central_mail_and_shop_context_in_message()
+    {
+        $admin=User::create(['name'=>'Admin','email'=>'central-regression@example.test','password'=>'x','type'=>'super admin']);
+        $this->smtp($admin->id,'central.example.test');
+        $this->smtp($this->owner->id,'shop.example.test');
+        DB::table('settings')->insert(['parent_id'=>$this->owner->id,'name'=>'company_name','value'=>'Örnek Oto']);
+        Notification::create(['parent_id'=>$this->owner->id,'module'=>'service_create','subject'=>'Old','message'=>'Old','enabled_email'=>1]);
+        $template=\App\Services\CentralEmail::template('service_create');
+        $template->update(['subject'=>'Merkezi servis mesajı','message'=>'{company_name}: {client_name}','enabled_email'=>1]);
+        $client=User::create(['name'=>'Ali','email'=>'central-client@example.test','password'=>'x','type'=>'client','parent_id'=>$this->owner->id]);
+        $vehicle=Vehicle::create(['client'=>$client->id,'parent_id'=>$this->owner->id]);
+        Mail::fake();
+        $this->post('/service',['client'=>$client->id,'vehicle'=>$vehicle->id,'assign'=>$this->owner->id,'status'=>'scheduled','types'=>[]])->assertRedirect()->assertSessionMissing('error');
+        Mail::assertSent(Common::class,1);
+        Mail::assertSent(Common::class,fn($mail)=>$mail->data['subject']==='Merkezi servis mesajı' && $mail->data['message']==='Örnek Oto: Ali' && $mail->data['settings']['FROM_NAME']==='sanayirandevu.com');
+        $this->assertSame('central.example.test',config('mail.mailers.smtp.host'));
+        auth()->logout();
+        $this->assertSame('success',commonEmailSend($client->email,['module'=>'vehicle_create','subject'=>'Test','message'=>'Test','parent_id'=>$this->owner->id])['status']);
+        $this->assertSame('central.example.test',config('mail.mailers.smtp.host'));
+        DB::table('settings')->where('parent_id',$admin->id)->where('type','smtp')->delete();
+        $this->assertSame('error',commonEmailSend($client->email,['module'=>'vehicle_create','subject'=>'Test','message'=>'Test'])['status']);
+        $this->assertSame('',config('mail.mailers.smtp.password'));
+        Mail::assertSent(Common::class,2);
+    }
+
+    public function test_global_communication_switches_preserve_settings_and_stop_every_email_path()
+    {
+        $admin=User::create(['name'=>'Admin','email'=>'switch-admin@example.test','password'=>'x','type'=>'super admin']);
+        $this->smtp($admin->id); Mail::fake();
+        $sms=\App\Models\AppointmentSmsSetting::central();
+        $sms->update(['enabled'=>true,'verification_required'=>true,'api_key'=>'retained-key','api_hash'=>'retained-hash','sender'=>'SANAYI']);
+        $this->get(route('communication-settings.index'))->assertForbidden();
+        $this->post(route('communication-settings.save'),['email_enabled'=>0,'sms_enabled'=>0])->assertForbidden();
+        $this->actingAs($admin)->get(route('communication-settings.index'))->assertOk()->assertSee('E-posta sistemi aktif');
+        $this->post(route('communication-settings.save'),['email_enabled'=>0,'sms_enabled'=>0])->assertSessionHasNoErrors()->assertSessionHas('success');
+        $this->assertFalse(\App\Services\CentralEmail::enabled());
+        $this->assertFalse($sms->fresh()->requiresVerification());
+        $this->assertTrue($sms->fresh()->verification_required);
+        $this->assertSame('retained-key',$sms->fresh()->api_key);
+        $this->assertSame('smtp-secret',DB::table('settings')->where('parent_id',$admin->id)->where('name','SERVER_PASSWORD')->value('value'));
+        $this->assertTrue(commonEmailSend('test@example.test',['module'=>'client_create','subject'=>'Test','message'=>'Test'])['skipped']);
+        $this->assertTrue(sendEmail('test@example.test',['subject'=>'Test','message'=>'Test'])['skipped']);
+        $this->assertTrue(sendEmailVerification('test@example.test',['name'=>'Test','url'=>'https://example.test'])['skipped']);
+        app(\App\Services\SecurityEmail::class)->passwordReset($this->owner,'token');
+        auth()->logout();
+        $this->post(route('password.email'),['email'=>$this->owner->email])->assertSessionHasErrors('email');
+        $this->actingAs($admin);
+        Mail::assertNothingSent();
+        $this->post(route('communication-settings.save'),['email_enabled'=>1,'sms_enabled'=>1])->assertSessionHasNoErrors();
+        $this->assertTrue(\App\Services\CentralEmail::enabled());
+        $this->assertTrue($sms->fresh()->requiresVerification());
+        $this->assertSame('success',commonEmailSend('test@example.test',['module'=>'client_create','subject'=>'Test','message'=>'Test'])['status']);
+        Mail::assertSent(Common::class,1);
+        $this->post(route('communication-settings.save'),['email_enabled'=>'bad','sms_enabled'=>0])->assertSessionHasErrors('email_enabled');
+        $this->assertTrue(\App\Services\CentralEmail::enabled());
+    }
+
+    public function test_business_detail_is_admin_only_and_contains_only_selected_shop_data()
+    {
+        $admin=User::create(['name'=>'Admin','email'=>'detail-admin@example.test','password'=>'x','type'=>'super admin']);
+        $client=User::create(['name'=>'Ali','email'=>'detail-client@example.test','password'=>'x','type'=>'client','parent_id'=>$this->owner->id]);
+        $vehicle=Vehicle::create(['client'=>$client->id,'parent_id'=>$this->owner->id]);
+        $service=Service::create(['client'=>$client->id,'vehicle'=>$vehicle->id,'parent_id'=>$this->owner->id]);
+        Invoice::create(['client'=>$client->id,'service'=>$service->id,'parent_id'=>$this->owner->id]);
+        $ticket=\App\Models\SupportTicket::create(['owner_id'=>$this->owner->id,'subject'=>'Bu işletmenin bileti','last_message_at'=>now()]);
+        $other=User::create(['name'=>'Other','email'=>'detail-other@example.test','password'=>'x','type'=>'owner']);
+        Vehicle::create(['parent_id'=>$other->id]);
+        \App\Models\SupportTicket::create(['owner_id'=>$other->id,'subject'=>'Başka işletmenin gizli bileti','last_message_at'=>now()]);
+        $this->get(route('business-detail.show',$this->owner->id))->assertForbidden();
+        $this->actingAs($client)->get(route('business-detail.show',$this->owner->id))->assertForbidden();
+        $this->actingAs($admin)->get(route('business-detail.show',$this->owner->id))->assertOk()
+            ->assertSee('Bu işletmenin bileti')->assertDontSee('Başka işletmenin gizli bileti')
+            ->assertSee('Paket ve kapasite')->assertSee('Kurulum ve eksik ayarlar')->assertSee('İşletme bilgilerinizi tamamlayın')
+            ->assertViewHas('counts',fn($counts)=>$counts['Araçlar']===1 && $counts['Müşteriler']===1 && $counts['Servisler']===1 && $counts['Faturalar']===1);
+        $this->get(route('business-detail.show',$client->id))->assertNotFound();
+        $this->get(route('business-detail.show',999999))->assertNotFound();
+    }
+
     private function smtp(int $id, string $host='smtp.example.test'): array
     {
         $values=['FROM_EMAIL'=>'sender@example.test','FROM_NAME'=>'Test Servis','SERVER_DRIVER'=>'smtp','SERVER_HOST'=>$host,'SERVER_PORT'=>587,'SERVER_ENCRYPTION'=>'tls','SERVER_USERNAME'=>'sender@example.test','SERVER_PASSWORD'=>'smtp-secret'];
@@ -263,25 +363,31 @@ class EmailInfrastructureTest extends TestCase
 
     public function test_smtp_configuration_switch_clears_cached_transport_and_missing_tenant_credentials()
     {
+        $this->owner = User::create(['name'=>'Central admin','email'=>'smtp-admin@example.test','password'=>'x','type'=>'super admin']);
+        $this->actingAs($this->owner);
         $this->smtp($this->owner->id);
         emailSettings($this->owner->id);
         $old=Mail::mailer('smtp');
-        $this->smtp(99,'different.example.test');
+        $this->smtp($this->owner->id,'different.example.test');
+        $this->smtp(99,'ignored-shop.example.test');
         emailSettings(99);
         $this->assertNotSame($old,Mail::mailer('smtp'));
         $this->assertEquals('different.example.test',config('mail.mailers.smtp.host'));
         $this->assertSame(15,config('mail.mailers.smtp.timeout'));
-        DB::table('settings')->where('parent_id',99)->where('name','SERVER_ENCRYPTION')->update(['value'=>'ssl']);
-        DB::table('settings')->where('parent_id',99)->where('name','SERVER_PORT')->update(['value'=>465]);
+        DB::table('settings')->where('parent_id',$this->owner->id)->where('name','SERVER_ENCRYPTION')->update(['value'=>'ssl']);
+        DB::table('settings')->where('parent_id',$this->owner->id)->where('name','SERVER_PORT')->update(['value'=>465]);
         emailSettings(99);
         $this->assertSame('smtps',config('mail.mailers.smtp.scheme'));
         $this->assertTrue(Mail::mailer('smtp')->getSymfonyTransport()->getStream()->isTLS());
+        DB::table('settings')->where('parent_id',$this->owner->id)->where('type','smtp')->delete();
         try { emailSettings(100); $this->fail('Missing SMTP must not use previous credentials'); }
         catch (\RuntimeException $e) { $this->assertSame('',config('mail.mailers.smtp.password')); }
     }
 
     public function test_smtp_identity_uses_app_domain_and_preserves_explicit_override_between_shops()
     {
+        $this->owner = User::create(['name'=>'Central admin','email'=>'smtp-admin@example.test','password'=>'x','type'=>'super admin']);
+        $this->actingAs($this->owner);
         $this->smtp($this->owner->id);
         $this->smtp(99, 'other-smtp.example.test');
         config(['app.url'=>'https://sanayirandevu.com/some/path', 'mail.ehlo_domain'=>null]);
@@ -299,6 +405,8 @@ class EmailInfrastructureTest extends TestCase
 
     public function test_smtp_test_logs_message_id_without_credentials_or_message_body()
     {
+        $this->owner = User::create(['name'=>'Central admin','email'=>'smtp-admin@example.test','password'=>'x','type'=>'super admin']);
+        $this->actingAs($this->owner);
         $this->smtp($this->owner->id);
         config(['app.url'=>'https://sanayirandevu.com', 'mail.ehlo_domain'=>null]);
         $message = (new \Symfony\Component\Mime\Email())->from('sender@example.test')->to('recipient@example.test')->text('Private body');
@@ -318,6 +426,8 @@ class EmailInfrastructureTest extends TestCase
 
     public function test_smtp_password_can_be_retained_and_invalid_configuration_is_rejected()
     {
+        $this->owner = User::create(['name'=>'Central admin','email'=>'smtp-admin@example.test','password'=>'x','type'=>'super admin']);
+        $this->actingAs($this->owner);
         $this->smtp($this->owner->id);
         $data=['sender_name'=>'Servis','sender_email'=>'sender@example.test','server_driver'=>'smtp','server_host'=>'smtp.example.test','server_port'=>587,'server_username'=>'sender@example.test','server_password'=>'','server_encryption'=>'tls'];
         $this->post(route('setting.smtp'),$data)->assertSessionHasNoErrors();
@@ -326,8 +436,10 @@ class EmailInfrastructureTest extends TestCase
         $this->post(route('setting.smtp.testing'),['email'=>'bad'])->assertSessionHasErrors('email');
     }
 
-    public function test_send_path_uses_tenant_sender_without_sending_real_email()
+    public function test_send_path_uses_central_sender_without_sending_real_email()
     {
+        $this->owner = User::create(['name'=>'Central admin','email'=>'smtp-admin@example.test','password'=>'x','type'=>'super admin']);
+        $this->actingAs($this->owner);
         $this->smtp($this->owner->id);
         Mail::fake();
         $this->assertEquals('success',commonEmailSend('customer@example.test',['module'=>'invoice_create','subject'=>'Fatura','message'=>'Fatura hazır'])['status']);
@@ -341,6 +453,8 @@ class EmailInfrastructureTest extends TestCase
 
     public function test_migration_preserves_custom_templates_and_enabled_flags()
     {
+        $this->owner = User::create(['name'=>'Central admin','email'=>'smtp-admin@example.test','password'=>'x','type'=>'super admin']);
+        $this->actingAs($this->owner);
         defaultTemplate($this->owner->id);
         $this->get(route('notification.create'))->assertOk()->assertSee('Fatura oluşturma');
         $invoice=Notification::where('module','invoice_create')->first();

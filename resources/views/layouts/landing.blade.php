@@ -129,14 +129,14 @@
                             @if (!empty($Section_1_content_value['title']))
                                 {{ $Section_1_content_value['title'] }}
                             @else
-                                {{ __('Service Hub - Vehicle Repair Center Management') }}
+                                {{ __('sanayirandevu.com - Araç Servis ve Randevu Yönetimi') }}
                             @endif
                         </h1>
                         <h4 class="mb-sm-4 text-muted wow fadeInUp" data-wow-delay="0.4s">
                             @if (!empty($Section_1_content_value['sub_title']))
                                 {{ $Section_1_content_value['sub_title'] }}
                             @else
-                                {{ __('Service Hub Management System is a robust software platform tailored to the needs of automotive repair shops, garages, and workshops. It provides an integrated solution to effectively manage day-to-day operations, enhance productivity, and improve customer satisfaction.') }}
+                                {{ __('sanayirandevu.com; araç servislerinin randevu, müşteri, araç, servis, stok ve fatura işlemlerini tek yerden yönetmesini sağlar.') }}
                             @endif
                         </h4>
                         @php
@@ -576,7 +576,7 @@
                                             {{ __('Dashboard') }}
                                             <i class="ti ti-link"></i>
                                         </h3>
-                                        <p>{{ __('Service Hub Management System is a robust software platform tailored to the needs of automotive repair shops, garages, and workshops.') }}
+                                        <p>{{ __('Araç servisleri ve atölyeler için sanayirandevu.com yönetim platformu.') }}
                                         </p>
                                     </div>
                                     <div class="swiper-slide">
@@ -586,7 +586,7 @@
                                             {{ __('Subscription') }}
                                             <i class="ti ti-link"></i>
                                         </h3>
-                                        <p>{{ __('Service Hub Management System is a robust software platform tailored to the needs of automotive repair shops, garages, and workshops.') }}
+                                        <p>{{ __('Araç servisleri ve atölyeler için sanayirandevu.com yönetim platformu.') }}
                                         </p>
                                     </div>
                                     <div class="swiper-slide">
@@ -596,7 +596,7 @@
                                             {{ __('Vehicle List') }}
                                             <i class="ti ti-link"></i>
                                         </h3>
-                                        <p>{{ __('Service Hub Management System is a robust software platform tailored to the needs of automotive repair shops, garages, and workshops.') }}
+                                        <p>{{ __('Araç servisleri ve atölyeler için sanayirandevu.com yönetim platformu.') }}
                                         </p>
                                     </div>
                                     <div class="swiper-slide">
@@ -606,7 +606,7 @@
                                             {{ __('Items / Parts') }}
                                             <i class="ti ti-link"></i>
                                         </h3>
-                                        <p>{{ __('Service Hub Management System is a robust software platform tailored to the needs of automotive repair shops, garages, and workshops.') }}
+                                        <p>{{ __('Araç servisleri ve atölyeler için sanayirandevu.com yönetim platformu.') }}
                                         </p>
                                     </div>
                                     <div class="swiper-slide">
@@ -616,7 +616,7 @@
                                             {{ __('Invoice Details') }}
                                             <i class="ti ti-link"></i>
                                         </h3>
-                                        <p>{{ __('Service Hub Management System is a robust software platform tailored to the needs of automotive repair shops, garages, and workshops.') }}
+                                        <p>{{ __('Araç servisleri ve atölyeler için sanayirandevu.com yönetim platformu.') }}
                                         </p>
                                     </div>
                                     <div class="swiper-slide">
@@ -626,7 +626,7 @@
                                             {{ __('Expense') }}
                                             <i class="ti ti-link"></i>
                                         </h3>
-                                        <p>{{ __('Service Hub Management System is a robust software platform tailored to the needs of automotive repair shops, garages, and workshops.') }}
+                                        <p>{{ __('Araç servisleri ve atölyeler için sanayirandevu.com yönetim platformu.') }}
                                         </p>
                                     </div>
                                 @endif

@@ -60,6 +60,15 @@ class AppointmentController extends Controller
                 'sort_at' => $ticket->last_message_at?->getTimestamp() ?? 0,
             ]));
         }
+        if (!$isAdmin && \Illuminate\Support\Facades\Schema::hasTable('announcement_recipients')) {
+            $announcements=\App\Models\AnnouncementRecipient::where('owner_id',auth()->id())->whereNull('read_at')->whereHas('announcement',fn($q)=>$q->where('published',true));
+            $count+=(clone $announcements)->count();
+            $items=$items->concat($announcements->with('announcement')->orderByDesc('id')->limit(10)->get()->map(fn($r)=>[
+                'id'=>$r->announcement_id,'type'=>'announcement','title'=>$r->announcement->title,
+                'date'=>dateFormat($r->announcement->created_at).' · '.timeFormat($r->announcement->created_at),
+                'url'=>route('announcements.show',$r->announcement_id),'sort_at'=>$r->announcement->created_at->getTimestamp(),
+            ]));
+        }
         $items = $items->sortByDesc('sort_at')->take(10)->map(fn ($item) => array_diff_key($item, ['sort_at' => true]))->values();
         return response()->json(['count' => $count, 'items' => $items])->header('Cache-Control', 'private, no-store');
     }

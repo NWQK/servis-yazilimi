@@ -33,6 +33,7 @@ class SecurityEmail
 
     public function send(User $user, string $module, array $values): void
     {
+        if (!CentralEmail::enabled()) return;
         $admin=User::where('type','super admin')->orderBy('id')->firstOrFail();
         $template=self::template($admin,$module);
         // Password recovery must remain available even if login notifications are switched off.

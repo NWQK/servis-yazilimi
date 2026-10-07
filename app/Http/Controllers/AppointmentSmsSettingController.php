@@ -9,7 +9,7 @@ use Illuminate\Validation\ValidationException;
 
 class AppointmentSmsSettingController extends Controller
 {
-    private function authorizeAdmin(): void { abort_unless(auth()->user()->type === 'super admin', 403); }
+    private function authorizeAdmin(): void { abort_unless(auth()->user()?->type === 'super admin', 403); }
 
     public function index()
     {
@@ -53,11 +53,13 @@ class AppointmentSmsSettingController extends Controller
             foreach (['api_key', 'api_hash'] as $secret) {
                 if (empty($data[$secret])) unset($data[$secret]);
             }
+            $before=$settings->only(['enabled','brand','sender','verification_required','vehicle_sms_enabled','daily_limit','verification_template','approval_template','vehicle_template']);
             $settings->fill($data);
             if ($settings->enabled && !$settings->ready()) throw ValidationException::withMessages(['enabled' => 'Etkinleştirmek için API Anahtarı, API Hash ve onaylı gönderici başlığını girin. APITEST başlığı doğrulama kodunu değiştirdiği için kullanılamaz.']);
             $settings->save();
+            \App\Services\AdminAudit::record('communication.sms',null,$before,$settings->only(['enabled','brand','sender','verification_required','vehicle_sms_enabled','daily_limit','verification_template','approval_template','vehicle_template'])+['credentials_changed'=>!empty($data['api_key']) || !empty($data['api_hash'])]);
         });
-        return back()->with('success', 'Merkezi randevu SMS ayarları kaydedildi.');
+        return back()->with('success', 'Merkezi SMS ayarları kaydedildi.');
     }
 
     public function retry(int $id, AppointmentSms $sms)

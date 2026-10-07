@@ -1,0 +1,14 @@
+@extends('layouts.app')
+@section('page-title','Duyurular ve bildirimler')
+@section('content')
+@if($isAdmin)
+<div class="card"><div class="card-body"><h5>Duyuru veya işletmeye bildirim gönder</h5><p class="text-muted">Mesajlar işletmelerin panelindeki bildirim kutusuna düşer. E-posta veya SMS gönderilmez. Tüm işletmeler seçeneği mevcut işletmeleri kapsar.</p>
+@if($errors->any())<div class="alert alert-danger">{{ $errors->first() }}</div>@endif
+<form method="post" action="{{ route('announcements.store') }}">@csrf
+<div class="row g-3"><div class="col-md-6"><label class="form-label">Başlık</label><input class="form-control" name="title" maxlength="150" required value="{{ old('title') }}"></div><div class="col-md-6"><label class="form-label">Alıcı grubu</label><select class="form-select" name="audience" id="announcement-audience"><option value="all" @selected(old('audience')==='all')>Tüm işletmeler</option><option value="selected" @selected(old('audience')==='selected')>Seçilen işletmeler</option></select></div>
+<div class="col-12" id="announcement-owners"><label class="form-label">İşletmeler</label><select name="owner_ids[]" class="form-select" multiple size="5">@foreach($owners as $owner)<option value="{{ $owner->id }}" @selected(in_array($owner->id,old('owner_ids',[])))>{{ $owner->name }} · {{ $owner->email }}</option>@endforeach</select><small class="text-muted">Tek işletme seçerek doğrudan bildirim gönderebilirsiniz.</small></div><div class="col-12"><label class="form-label">Mesaj</label><textarea class="form-control" name="body" rows="4" maxlength="5000" required>{{ old('body') }}</textarea></div><div class="col-12"><button class="btn btn-secondary">Panel bildirimi gönder</button></div></div>
+</form></div></div>
+@push('script-page')<script>const audience=document.getElementById('announcement-audience');const owners=document.getElementById('announcement-owners');const update=()=>{owners.hidden=audience.value!=='selected';owners.querySelector('select').disabled=owners.hidden;};audience.addEventListener('change',update);update();</script>@endpush
+@endif
+<div class="card"><div class="card-body"><h5>{{ $isAdmin ? 'Gönderilen duyurular' : 'Yönetici duyuruları' }}</h5><div class="table-responsive"><table class="table"><thead><tr><th>Başlık</th><th>Tarih</th>@if($isAdmin)<th>Okunma</th><th>Durum</th>@endif<th></th></tr></thead><tbody>@forelse($announcements as $a)<tr><td>{{ $a->title }}</td><td>{{ dateFormat($a->created_at) }}</td>@if($isAdmin)<td>{{ $a->read_count }} / {{ $a->recipients_count }}</td><td>{{ $a->published ? 'Yayında' : 'Kaldırıldı' }}</td>@endif<td><a class="btn btn-sm btn-outline-secondary" href="{{ route('announcements.show',$a->id) }}">Görüntüle</a></td></tr>@empty<tr><td colspan="5">Henüz duyuru yok.</td></tr>@endforelse</tbody></table></div>{{ $announcements->links() }}</div></div>
+@endsection

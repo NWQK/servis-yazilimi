@@ -13,6 +13,19 @@ class NotificationController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+    public function __construct()
+    {
+        $this->middleware(function ($request, $next) {
+            abort_unless(auth()->user()?->type === 'super admin', 403);
+            return $next($request);
+        });
+    }
+
+    private function centralId(): int
+    {
+        return \App\Services\CentralEmail::administrator()->id;
+    }
+
     private function definitions(): array
     {
         $definitions = defaultTemplateList();
@@ -25,10 +38,11 @@ class NotificationController extends Controller
 
     public function index()
     {
-        if (\Auth::user()->can('manage notification')) {
-            if (auth()->user()->type === 'super admin') \App\Services\InvoiceCustomerEmail::template(auth()->user());
-            if (auth()->user()->type === 'super admin') foreach (array_keys(\App\Services\SecurityEmail::definitions()) as $module) \App\Services\SecurityEmail::template(auth()->user(),$module);
-            $notifications = Notification::where('parent_id', parentId())->orderBy('id', 'desc')->get();
+        if (auth()->user()->type === 'super admin') {
+            defaultTemplate($this->centralId());
+            if (auth()->user()->type === 'super admin') \App\Services\InvoiceCustomerEmail::template(\App\Services\CentralEmail::administrator());
+            if (auth()->user()->type === 'super admin') foreach (array_keys(\App\Services\SecurityEmail::definitions()) as $module) \App\Services\SecurityEmail::template(\App\Services\CentralEmail::administrator(),$module);
+            $notifications = Notification::where('parent_id', $this->centralId())->orderBy('id', 'desc')->get();
             return view('notification.index', compact('notifications'));
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
@@ -42,7 +56,7 @@ class NotificationController extends Controller
      */
     public function create()
     {
-        abort_unless(auth()->user()->can('create notification'), 403);
+        abort_unless(auth()->user()->type === 'super admin', 403);
         $Notifications = $this->definitions();
         $notification_option = [];
         foreach ($Notifications as $key => $value) {
@@ -59,7 +73,7 @@ class NotificationController extends Controller
      */
     public function store(Request $request)
     {
-        if (\Auth::user()->can('create notification')) {
+        if (auth()->user()->type === 'super admin') {
             $validator = \Validator::make(
                 $request->all(),
                 [
@@ -73,7 +87,7 @@ class NotificationController extends Controller
                 return redirect()->back()->with('error', $messages->first());
             }
 
-            $exist = Notification::where('parent_id', parentId())->where('module', $request->module)->first();
+            $exist = Notification::where('parent_id', $this->centralId())->where('module', $request->module)->first();
             if ($request->module === \App\Services\SecurityEmail::RESET && !str_contains($request->message, '{reset_link}')) return back()->with('error','Şifre sıfırlama mesajı {reset_link} bağlantısını içermelidir.');
             if (empty($exist)) {
                 $notification = new Notification();
@@ -86,8 +100,9 @@ class NotificationController extends Controller
                 $notification->enabled_email = $notification->module === \App\Services\SecurityEmail::RESET || $request->boolean('enabled_email') ? 1 : 0;
                 $notification->enabled_sms = 0;
                 $notification->sms_message = '';
-                $notification->parent_id = parentId();
+                $notification->parent_id = $this->centralId();
                 $notification->save();
+                \App\Services\AdminAudit::record('email.template_created',null,[],$notification->only(['module','subject','message','enabled_email']));
 
                 return redirect()->route('notification.index')->with('success', __('Notification successfully created.'));
             } else {
@@ -117,7 +132,7 @@ class NotificationController extends Controller
      */
     public function edit(Notification $notification)
     {
-        abort_unless(auth()->user()->can('edit notification') && (int) $notification->parent_id === (int) parentId(), 403);
+        abort_unless(auth()->user()->type === 'super admin' && (int) $notification->parent_id === (int) $this->centralId(), 403);
         $definition = $this->definitions()[$notification->module] ?? null;
         $notification->short_code = json_decode($notification->short_code);
 
@@ -134,8 +149,8 @@ class NotificationController extends Controller
      */
     public function update(Request $request, Notification $notification)
     {
-        if (\Auth::user()->can('edit notification')) {
-            abort_unless((int) $notification->parent_id === (int) parentId(), 403);
+        if (auth()->user()->type === 'super admin') {
+            abort_unless((int) $notification->parent_id === (int) $this->centralId(), 403);
             $validator = \Validator::make(
                 $request->all(),
                 [
@@ -148,6 +163,7 @@ class NotificationController extends Controller
                 return redirect()->back()->with('error', $messages->first());
             }
 
+            $before=$notification->only(['subject','message','enabled_email']);
             $definition = $this->definitions()[$notification->module] ?? null;
             $useDefault = $request->boolean('use_default_template') && $definition;
             $notification->subject = $useDefault ? $definition['subject'] : $request->subject;
@@ -159,6 +175,7 @@ class NotificationController extends Controller
             $notification->enabled_sms = 0;
             $notification->enabled_whatsapp = 0;
             $notification->save();
+            \App\Services\AdminAudit::record('email.template',null,$before,$notification->only(['subject','message','enabled_email'])+['module'=>$notification->module]);
 
             return redirect()->route('notification.index')->with('success', __('Notification successfully updated.'));
         } else {
@@ -174,9 +191,11 @@ class NotificationController extends Controller
      */
     public function destroy(Notification $notification)
     {
-        if (\Auth::user()->can('delete notification')) {
-            abort_unless((int) $notification->parent_id === (int) parentId(), 403);
+        if (auth()->user()->type === 'super admin') {
+            abort_unless((int) $notification->parent_id === (int) $this->centralId(), 403);
+            $before=$notification->only(['module','subject','message','enabled_email']);
             $notification->delete();
+            \App\Services\AdminAudit::record('email.template_deleted',null,$before,[]);
             return redirect()->back()->with('success', __('Notification successfully deleted.'));
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));

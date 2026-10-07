@@ -58,6 +58,9 @@
         ]],
         ['label' => $isSuperAdmin ? 'Platform yönetimi' : 'İşletme yönetimi', 'groups' => [
             $group('Destek', 'ti-lifebuoy', [$entry('Destek biletleri'.($supportUnread ? ' ('.$supportUnread.')' : ''), 'support.index', null, ['support.*'], $isOwner || $isSuperAdmin)]),
+            $group('Duyurular', 'ti-speakerphone', [$entry('Duyurular ve bildirimler','announcements.index',null,['announcements.*'],$isOwner || $isSuperAdmin)]),
+            $group('Yönetici kayıtları','ti-history',[$entry('İşlem geçmişi','admin-audit.index',null,['admin-audit.*'],$isSuperAdmin),$entry('İşletme kullanım özeti','business-usage.index',null,['business-usage.*'],$isSuperAdmin)]),
+            $group('E-posta ve SMS', 'ti-mail', [$entry('Gönderim durumu', 'communication-settings.index', null, ['communication-settings.*'], $isSuperAdmin), $entry('E-posta şablonları', 'notification.index', null, ['notification.*'], $isSuperAdmin), $entry('SMS ayarları', 'appointments.sms-settings', null, ['appointments.sms-settings*', 'appointments.sms.retry'], $isSuperAdmin)]),
             $group('İşletmeler', 'ti-users', [$entry('İşletmeler', 'users.index', 'manage user', ['users.*'], $isSuperAdmin)]),
             $group('Personel ve yetkiler', 'ti-users', [
                 $entry('Personel listesi', 'employee.index', 'manage employee'),
@@ -88,15 +91,13 @@
                 $entry('Kupon geçmişi', 'coupons.history', 'manage coupon history', ['coupons.history']),
             ]),
             $group('Ayarlar', 'ti-settings', [
-                $entry('Genel ayarlar', 'setting.index', null, ['setting.*'], Gate::any([
+                $entry('Genel ayarlar', 'setting.index', null, ['setting.*'], $isSuperAdmin || Gate::any([
                     'manage account settings', 'manage password settings', 'manage general settings',
                     'manage email settings', 'manage payment settings', 'manage company settings',
                     'manage seo settings', 'manage google recaptcha settings',
                 ])),
-                $entry('E-posta bildirimleri', 'notification.index', 'manage notification'),
                 $entry('İki aşamalı doğrulama', 'two-factor-admin.index', null, ['two-factor-admin.*'], $isSuperAdmin),
                 $entry('İşletme giriş geçmişi', 'owner-logins.index', null, ['owner-logins.*'], $isSuperAdmin),
-                $entry('SMS sistemi', 'appointments.sms-settings', null, ['appointments.sms-settings*', 'appointments.sms.retry'], $isSuperAdmin),
             ]),
         ]],
     ];
