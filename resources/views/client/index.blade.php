@@ -42,7 +42,7 @@
                                     <th>{{ __('Email') }}</th>
                                     <th>{{ __('Phone Number') }}</th>
                                     <th>{{ __('Address') }}</th>
-                                    @if (Gate::check('edit client') || Gate::check('delete client'))
+                                    @if (Gate::check('show client') || Gate::check('edit client') || Gate::check('delete client'))
                                         <th class="text-right">{{ __('Action') }}</th>
                                     @endif
                                 </tr>
@@ -61,9 +61,20 @@
                                         <td>{{ $client->email }} </td>
                                         <td>{{ !empty($client->phone_number) ? $client->phone_number : '-' }} </td>
                                         <td>{{ !empty($client->clients) ? $client->clients->address : '-' }} </td>
-                                        @if (Gate::check('edit client') || Gate::check('delete client'))
+                                        @if (Gate::check('show client') || Gate::check('edit client') || Gate::check('delete client'))
                                             <td>
                                                 <div class="cart-action">
+                                                    @php($whatsappPhone = \App\Support\TurkishPhone::mobile($client->phone_number))
+                                                    @if ($whatsappPhone)
+                                                        <a class="avtar avtar-xs btn-link-success text-success"
+                                                            href="https://wa.me/{{ ltrim($whatsappPhone, '+') }}"
+                                                            target="_blank" rel="noopener noreferrer"
+                                                            data-bs-toggle="tooltip"
+                                                            data-bs-original-title="Müşteriye WhatsApp’tan ulaş"
+                                                            aria-label="Müşteriye WhatsApp’tan ulaş">
+                                                            <i class="ti ti-brand-whatsapp" aria-hidden="true"></i>
+                                                        </a>
+                                                    @endif
                                                     {!! Form::open(['method' => 'DELETE', 'route' => ['client.destroy', $client->id]]) !!}
                                                     @can('show client')
                                                         <a class="avtar avtar-xs btn-link-warning text-warning" data-size="lg"
