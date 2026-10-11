@@ -59,7 +59,9 @@ class VehiclePortalController extends Controller
         $invoices = $this->invoices($vehicle)->orderByDesc('invoice_date')->orderByDesc('id')
             ->paginate(10, ['*'], 'invoices_page');
         $settings = $this->displaySettings($parentId);
-        return $this->page('vehicle_portal.show', compact('code', 'vehicle', 'invoices', 'settings'));
+        $customer = \App\Models\User::where('type','client')->where('parent_id',$parentId)->find($vehicle->client);
+        $review = $customer ? app(\App\Services\BusinessReviews::class)->invitation($customer) : null;
+        return $this->page('vehicle_portal.show', compact('code', 'vehicle', 'invoices', 'settings', 'review'));
     }
 
     public function invoice(string $token, int $invoiceId)

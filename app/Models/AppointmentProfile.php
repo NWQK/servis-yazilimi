@@ -10,6 +10,7 @@ class AppointmentProfile extends Model
     protected $casts = ['weekly_hours' => 'array', 'is_active' => 'boolean',
         'cancellation_cutoff_hours' => 'integer', 'pending_timeout_hours' => 'integer'];
 
+    public function businessLocation() { return $this->hasOne(BusinessLocation::class,'owner_id','owner_id'); }
     public function owner() { return $this->belongsTo(User::class, 'owner_id'); }
     public function appointments() { return $this->hasMany(Appointment::class); }
     public function publicUrl() { return rtrim(config('app.url'), '/') . '/randevu/' . $this->public_id; }

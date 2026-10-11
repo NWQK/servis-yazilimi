@@ -569,3 +569,15 @@ Route::group(
 Route::get('page/{slug}', [PageController::class, 'page'])->name('page');
 //-------------------------------FAQ-------------------------------------------
 Route::impersonate();
+
+Route::prefix('degerlendir/{token}')->where(['token'=>'[a-f0-9]{64}'])
+    ->withoutMiddleware(\App\Http\Middleware\Verify2FA::class)->group(function () {
+        Route::get('/', [\App\Http\Controllers\BusinessReviewController::class,'show'])->middleware('throttle:60,1,review-view')->name('reviews.show');
+        Route::post('/', [\App\Http\Controllers\BusinessReviewController::class,'store'])->middleware('throttle:10,1,review-save')->name('reviews.store');
+    });
+Route::get('/business-reviews', [\App\Http\Controllers\BusinessReviewController::class,'index'])->middleware(['auth','XSS'])->name('reviews.index');
+
+Route::post('/randevu/konum', [\App\Http\Controllers\BookingLocationController::class,'store'])->middleware('throttle:15,1,booking-location')->withoutMiddleware(\App\Http\Middleware\Verify2FA::class)->name('directory.location');
+
+Route::get('business-setup/{step?}', [\App\Http\Controllers\BusinessSetupController::class, 'index'])->middleware(['auth','XSS'])->name('business-setup.index');
+Route::post('business-setup/{step}', [\App\Http\Controllers\BusinessSetupController::class, 'store'])->middleware(['auth','XSS','throttle:30,1,business-setup'])->name('business-setup.store');

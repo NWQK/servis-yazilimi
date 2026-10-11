@@ -1,6 +1,7 @@
 @extends('appointments.layout')
 @section('title', 'Randevu al')
 @section('content')
+@if($reviewSummary->total)<p class="booking-muted">★ {{ number_format($reviewSummary->average,1,',','.') }} / 5 · {{ $reviewSummary->total }} müşteri değerlendirmesi</p>@endif
 @if($selectedService)
 <section class="booking-panel"><strong>{{ config('booking_directory.vehicles.'.$selection['vehicle']) }} · {{ $selectedService->name }}</strong><p>Seçiminiz randevu talebinizle birlikte işletmeye iletilecek.</p><a href="{{ route('directory.index', ['region'=>$profile->directory_region, 'vehicle'=>$selection['vehicle']]) }}">← Hizmet seçimine dön</a></section>
 @endif

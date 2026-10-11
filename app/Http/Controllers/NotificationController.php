@@ -31,6 +31,7 @@ class NotificationController extends Controller
         $definitions = defaultTemplateList();
         if (auth()->user()->type === 'super admin') {
             $definitions += \App\Services\SecurityEmail::definitions();
+            $definitions[\App\Services\BusinessReviews::MODULE] = \App\Services\BusinessReviews::definition();
             $definitions[\App\Services\InvoiceCustomerEmail::MODULE] = \App\Services\InvoiceCustomerEmail::definition();
         }
         return $definitions;
@@ -40,6 +41,7 @@ class NotificationController extends Controller
     {
         if (auth()->user()->type === 'super admin') {
             defaultTemplate($this->centralId());
+            \App\Services\BusinessReviews::template(\App\Services\CentralEmail::administrator());
             if (auth()->user()->type === 'super admin') \App\Services\InvoiceCustomerEmail::template(\App\Services\CentralEmail::administrator());
             if (auth()->user()->type === 'super admin') foreach (array_keys(\App\Services\SecurityEmail::definitions()) as $module) \App\Services\SecurityEmail::template(\App\Services\CentralEmail::administrator(),$module);
             $notifications = Notification::where('parent_id', $this->centralId())->orderBy('id', 'desc')->get();
@@ -88,6 +90,7 @@ class NotificationController extends Controller
             }
 
             $exist = Notification::where('parent_id', $this->centralId())->where('module', $request->module)->first();
+            if ($request->module === \App\Services\BusinessReviews::MODULE && !str_contains($request->message, '{review_link}')) return back()->with('error','Değerlendirme mesajı {review_link} bağlantısını içermelidir.');
             if ($request->module === \App\Services\SecurityEmail::RESET && !str_contains($request->message, '{reset_link}')) return back()->with('error','Şifre sıfırlama mesajı {reset_link} bağlantısını içermelidir.');
             if (empty($exist)) {
                 $notification = new Notification();
@@ -170,6 +173,7 @@ class NotificationController extends Controller
             if ($notification->module === \App\Services\SecurityEmail::RESET && !$useDefault && !str_contains($request->message, '{reset_link}')) {
                 return back()->with('error','Şifre sıfırlama mesajı {reset_link} bağlantısını içermelidir.');
             }
+            if ($notification->module === \App\Services\BusinessReviews::MODULE && !$useDefault && !str_contains($request->message, '{review_link}')) return back()->with('error','Değerlendirme mesajı {review_link} bağlantısını içermelidir.');
             $notification->message = $useDefault ? $definition['templete'] : $request->message;
             $notification->enabled_email = $notification->module === \App\Services\SecurityEmail::RESET || $request->boolean('enabled_email') ? 1 : 0;
             $notification->enabled_sms = 0;

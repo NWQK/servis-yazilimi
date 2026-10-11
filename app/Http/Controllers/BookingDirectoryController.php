@@ -20,6 +20,7 @@ class BookingDirectoryController extends Controller
             'region'=>['nullable', Rule::in(array_keys($regions))],
             'vehicle'=>['nullable', 'required_with:service', Rule::in(array_keys($vehicles))],
             'service'=>'nullable|integer|exists:booking_services,id',
+            'sort'=>['nullable',Rule::in(['rating','distance','appointments'])],
         ]);
         $region = $data['region'] ?? null; $vehicle = $data['vehicle'] ?? null; $service = null;
         if ($vehicle && !$region) return redirect()->route('directory.index');
@@ -29,15 +30,27 @@ class BookingDirectoryController extends Controller
             abort_unless($service, 404);
         }
         $shops = null;
+        $sort = $data['sort'] ?? 'rating';
+        $location = \App\Services\BookingLocation::current($request);
         if ($service) {
-            $shops = AppointmentProfile::where('directory_visible', true)->where('is_active', true)
+            $query = AppointmentProfile::query()->leftJoin('business_locations','business_locations.owner_id','=','appointment_profiles.owner_id')->with('businessLocation')->addSelect(['appointment_profiles.*',
+                'review_average'=>\App\Models\BusinessReview::selectRaw('AVG(rating)')->whereColumn('owner_id','appointment_profiles.owner_id'),
+                'appointment_count'=>\App\Models\Appointment::selectRaw('COUNT(*)')->whereColumn('appointment_profile_id','appointment_profiles.id')->whereIn('status',['approved','completed']),
+                'review_count'=>\App\Models\BusinessReview::selectRaw('COUNT(rating)')->whereColumn('owner_id','appointment_profiles.owner_id')])->where('directory_visible', true)->where('is_active', true)
                 ->where('directory_region', $region)->whereHas('owner', fn ($q) => $q->where('type', 'owner')->whereNull('subscription_suspended_at'))
                 ->whereExists(fn ($q) => $q->selectRaw('1')->from('booking_offerings')
                     ->whereColumn('appointment_profile_id', 'appointment_profiles.id')
                     ->where('vehicle_type', $vehicle)->where('booking_service_id', $service->id))
-                ->orderBy('display_name')->orderBy('id')->paginate(12)->withQueryString();
+                ;
+            if ($location) {
+                $expression=\App\Services\BookingLocation::distanceExpression();
+                $query->selectRaw('CASE WHEN business_locations.latitude IS NOT NULL THEN '.$expression.' ELSE NULL END AS distance_km',[$location['lat'],$location['lng'],$location['lat']]);
+            } else $query->selectRaw('NULL AS distance_km');
+            if ($sort==='distance' && $location) $query->orderByRaw('CASE WHEN business_locations.latitude IS NULL THEN 1 ELSE 0 END')->orderBy('distance_km');
+            if ($sort==='appointments') $query->orderByDesc('appointment_count');
+            $shops=$query->orderByDesc('review_average')->orderByDesc('review_count')->orderByDesc('appointment_count')->orderBy('appointment_profiles.id')->paginate(12)->withQueryString();
         }
-        return view('appointments.directory', compact('regions','vehicles','region','vehicle','service','services','shops'));
+        return response()->view('appointments.directory', compact('regions','vehicles','region','vehicle','service','services','shops','sort','location'))->header('Cache-Control','private, no-store');
     }
 
     public function catalog()

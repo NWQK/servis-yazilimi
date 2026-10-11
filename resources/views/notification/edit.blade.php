@@ -6,6 +6,7 @@
     @if($notification->module === \App\Services\InvoiceCustomerEmail::MODULE)
         <div class="alert alert-info">Tüm işletmelerin yeni faturaları için kullanılır. Müşterinin e-postası kayıtlıysa Sanayi Randevu adına, süper adminin SMTP ayarlarıyla gönderilir. Bağlantı, müşterinin aracına ait görüntüleme bağlantısıdır.</div>
     @endif
+    @if($notification->module === \App\Services\BusinessReviews::MODULE)<div class="alert alert-info">Yeni müşteri kaydında merkezi SMTP hesabından gönderilir. Mesajda {review_link} bulunmalıdır. SMS şablonu merkezi SMS ayarlarından ayrıca düzenlenir.</div>@endif
     @if($definition)
     <div class="alert alert-light"><label><input type="checkbox" name="use_default_template" value="1"> Hazır Türkçe şablonu kullan</label><small class="d-block">Kaydettiğinizde mevcut konu ve mesaj bu şablonla değiştirilir. E-posta gönderimi bildirim anahtarıyla ayrıca açılır.</small></div>
     <details class="mb-3"><summary>Hazır şablonu ön izle</summary><div class="border rounded p-3 mt-2"><strong>{{ $definition['subject'] }}</strong>{!! $definition['templete'] !!}</div></details>

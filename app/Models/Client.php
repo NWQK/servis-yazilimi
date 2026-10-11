@@ -21,6 +21,13 @@ class Client extends Model
         'notes',
     ];
 
+    protected static function booted(): void
+    {
+        static::created(function (self $client) {
+            \Illuminate\Support\Facades\DB::afterCommit(fn () => app(\App\Services\BusinessReviews::class)->registered((int)$client->user_id));
+        });
+    }
+
     public function vehicles()
     {
         return $this->hasMany(Vehicle::class, 'client', 'user_id');

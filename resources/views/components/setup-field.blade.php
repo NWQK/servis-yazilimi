@@ -1,0 +1,2 @@
+@props(['name','label','type'=>'text','required'=>false,'value'=>'','max'=>null,'step'=>null])
+<div class="mb-3"><label class="form-label" for="setup-{{ $name }}">{{ $label }}</label><input class="form-control" id="setup-{{ $name }}" name="{{ $name }}" type="{{ $type }}" value="{{ old($name,$value) }}" @if($type==='text') maxlength="150" @endif @if($type==='number') min="0" @endif @if($max!==null) max="{{ $max }}" @endif @if($step!==null) step="{{ $step }}" @endif @required($required)>{{ $slot }}</div>

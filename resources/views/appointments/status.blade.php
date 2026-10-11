@@ -15,6 +15,9 @@
 @if (session('success'))<div class="booking-alert" role="status">{{ session('success') }}</div>@endif
 @if ($errors->any())<div class="booking-alert" role="alert">{{ $errors->first() }}</div>@endif
 <section class="booking-panel"><h2>{{ dateFormat($appointment->starts_at) }}</h2><p class="booking-status-time">{{ timeFormat($appointment->starts_at) }}–{{ timeFormat($appointment->ends_at) }}</p><p>{{ $profile->display_name }}</p>
+    @if(in_array($appointment->status, ['pending','approved'], true) && $profile->businessLocation)
+        <p><a class="booking-button" href="{{ $profile->businessLocation->directionsUrl() }}" target="_blank" rel="noopener noreferrer">⌖ Yol tarifi al</a></p>
+    @endif
     @if ($appointment->status === 'pending' && $appointment->pending_expires_at)<p>Son yanıt zamanı: <strong>{{ dateFormat($appointment->pending_expires_at) }} {{ timeFormat($appointment->pending_expires_at) }}</strong>. Onay gelmezse talep otomatik kapanır.</p>@endif
     @if ($appointment->canCustomerCancel())
         <p>Bu randevuyu {{ dateFormat($appointment->customer_cancel_until) }} {{ timeFormat($appointment->customer_cancel_until) }} tarihine kadar iptal edebilirsiniz.</p>

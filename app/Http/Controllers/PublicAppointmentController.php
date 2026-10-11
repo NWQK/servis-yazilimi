@@ -27,13 +27,14 @@ class PublicAppointmentController extends Controller
         $selection = $request->validate(['vehicle'=>['nullable', \Illuminate\Validation\Rule::in(array_keys(config('booking_directory.vehicles')))], 'service'=>'nullable|integer']);
         $selectedService = app(\App\Services\BookingDirectory::class)->selection($profile, $selection['vehicle'] ?? null, $selection['service'] ?? null);
         $data = $request->validate(['date' => 'nullable|date_format:Y-m-d|after_or_equal:today|before_or_equal:' . today()->addDays(AppointmentBooking::BOOKING_WINDOW_DAYS)->toDateString()]);
+        $reviewSummary = \App\Models\BusinessReview::where('owner_id',$profile->owner_id)->selectRaw('COUNT(rating) as total, AVG(rating) as average')->first();
         $date = $data['date'] ?? today()->toDateString();
         $hours = $booking->availableHours($profile, $date);
         $requestKey = (string) Str::uuid();
         $smsSettings = AppointmentSmsSetting::central();
         $verificationRequired = $smsSettings->requiresVerification();
         $smsReady = !$verificationRequired || $smsSettings->ready();
-        return $this->page('appointments.public', compact('profile', 'date', 'hours', 'requestKey', 'smsReady', 'selection', 'selectedService', 'verificationRequired'));
+        return $this->page('appointments.public', compact('profile', 'date', 'hours', 'requestKey', 'smsReady', 'selection', 'selectedService', 'verificationRequired', 'reviewSummary'));
     }
 
     public function store(Request $request, string $publicId, AppointmentBooking $booking)

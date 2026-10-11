@@ -1,4 +1,5 @@
-{{ Form::open(['url' => 'employee', 'method' => 'post', 'enctype' => 'multipart/form-data']) }}
+{{ Form::open(['url' => $setupAction ?? 'employee', 'method' => 'post', 'enctype' => 'multipart/form-data']) }}
+@if(isset($setupAction))<input type="hidden" name="action" value="employee">@endif
 <div class="modal-body">
     <div class="row">
         <div class="form-group col-md-6">
@@ -18,7 +19,7 @@
 
         <div class="form-group col-md-6">
             {{ Form::label('password', __('Password'), ['class' => 'form-label']) }}
-            {{ Form::password('password', ['class' => 'form-control', 'placeholder' => __('Enter password'), 'required' => 'required', 'minlength' => '6']) }}
+            {{ Form::password('password', ['class' => 'form-control', 'placeholder' => __('Enter password'), 'required' => 'required', 'minlength' => isset($setupAction) ? '8' : '6']) }}
         </div>
         <div class="form-group col-md-6">
             {{ Form::label('gender', __('Gender'), ['class' => 'form-label']) }}

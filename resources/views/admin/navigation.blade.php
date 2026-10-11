@@ -58,6 +58,7 @@
         ]],
         ['label' => $isSuperAdmin ? 'Platform yönetimi' : 'İşletme yönetimi', 'groups' => [
             $group('Destek', 'ti-lifebuoy', [$entry('Destek biletleri'.($supportUnread ? ' ('.$supportUnread.')' : ''), 'support.index', null, ['support.*'], $isOwner || $isSuperAdmin)]),
+            $group('Değerlendirmeler', 'ti-star', [$entry('İşletme puanları','reviews.index',null,['reviews.*'],$isOwner || $isSuperAdmin)]),
             $group('Duyurular', 'ti-speakerphone', [$entry('Duyurular ve bildirimler','announcements.index',null,['announcements.*'],$isOwner || $isSuperAdmin)]),
             $group('Yönetici kayıtları','ti-history',[$entry('İşlem geçmişi','admin-audit.index',null,['admin-audit.*'],$isSuperAdmin),$entry('İşletme kullanım özeti','business-usage.index',null,['business-usage.*'],$isSuperAdmin)]),
             $group('E-posta ve SMS', 'ti-mail', [$entry('Gönderim durumu', 'communication-settings.index', null, ['communication-settings.*'], $isSuperAdmin), $entry('E-posta şablonları', 'notification.index', null, ['notification.*'], $isSuperAdmin), $entry('SMS ayarları', 'appointments.sms-settings', null, ['appointments.sms-settings*', 'appointments.sms.retry'], $isSuperAdmin)]),
@@ -149,3 +150,7 @@
         @endforeach
     @endif
 @endforeach
+
+@if($isOwner)
+<li class="pc-item {{ request()->routeIs('business-setup.*') ? 'active' : '' }}"><a class="pc-link" href="{{ route('business-setup.index') }}"><span class="pc-micon"><i class="ti ti-list-check"></i></span><span class="pc-mtext">İşletme kurulumu</span></a></li>
+@endif

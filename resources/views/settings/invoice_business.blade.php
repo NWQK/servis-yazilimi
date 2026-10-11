@@ -5,6 +5,7 @@
     <form method="post" action="{{ route('setting.invoice-business') }}">
         @csrf
         @include('invoice.billing_fields', ['business' => true, 'details' => \App\Services\InvoiceBilling::business(parentId())])
+        @include('settings.business_location_fields')
         <button type="submit" class="btn btn-primary">İşletme bilgilerini kaydet</button>
     </form>
 </div>

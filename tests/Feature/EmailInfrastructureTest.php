@@ -233,7 +233,8 @@ class EmailInfrastructureTest extends TestCase
         $this->post('/client',['name'=>'Wizard Client','email'=>'wizard-email@example.test','phone_number'=>'5551234567',
             'type'=>$brand,'brand'=>$model,'license_plate'=>'34 MAIL 01','assign'=>$this->owner->id,'status'=>'scheduled',
             'types'=>[['service_type'=>$type,'rate'=>1000]]])->assertRedirect()->assertSessionHasNoErrors();
-        Mail::assertSent(Common::class,2);
+        $this->assertCount(2,Mail::sent(Common::class,fn($mail)=>$mail->data['module']===\App\Services\InvoiceCustomerEmail::MODULE));
+        Mail::assertSent(Common::class,fn($mail)=>$mail->data['module']===\App\Services\BusinessReviews::MODULE && $mail->hasTo('wizard-email@example.test'));
         $this->assertSame(2,Invoice::whereNotNull('customer_email_sent_at')->count());
     }
 

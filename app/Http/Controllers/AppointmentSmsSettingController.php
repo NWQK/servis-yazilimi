@@ -32,6 +32,7 @@ class AppointmentSmsSettingController extends Controller
             'verification_template' => 'required|string|max:480', 'approval_template' => 'required|string|max:480',
             'verification_required'=>'sometimes|required|boolean', 'vehicle_sms_enabled'=>'sometimes|required|boolean',
             'vehicle_template'=>'sometimes|required|string|max:480',
+            'review_sms_enabled'=>'sometimes|required|boolean', 'review_template'=>'sometimes|required|string|max:480',
         ], [], ['api_key' => 'API Anahtarı', 'api_hash' => 'API Hash', 'daily_limit' => 'Günlük doğrulama SMS sınırı']);
         foreach (['verification_template' => ['kod', 'isletme', 'marka'], 'approval_template' => ['isletme', 'tarih', 'saat', 'marka']] as $field => $allowed) {
             preg_match_all('/\{([^{}]+)\}/u', $data[$field], $matches);
@@ -44,6 +45,12 @@ class AppointmentSmsSettingController extends Controller
                 throw ValidationException::withMessages(['vehicle_template'=>'Araç mesajında {link} zorunludur. Yalnızca {isletme}, {link}, {plaka}, {marka} kullanılabilir.']);
             }
         }
+        if (isset($data['review_template'])) {
+            preg_match_all('/\{([^{}]+)\}/u',$data['review_template'],$matches);
+            if (array_diff($matches[1],['isletme','link','marka']) || !str_contains($data['review_template'],'{link}')) {
+                throw ValidationException::withMessages(['review_template'=>'Değerlendirme mesajında {link} zorunludur. Yalnızca {isletme}, {link}, {marka} kullanılabilir.']);
+            }
+        }
         foreach (['{isletme}', '{tarih}', '{saat}'] as $field) {
             if (!str_contains($data['approval_template'], $field)) throw ValidationException::withMessages(['approval_template' => 'Onay mesajında {isletme}, {tarih} ve {saat} bulunmalıdır.']);
         }
@@ -53,11 +60,11 @@ class AppointmentSmsSettingController extends Controller
             foreach (['api_key', 'api_hash'] as $secret) {
                 if (empty($data[$secret])) unset($data[$secret]);
             }
-            $before=$settings->only(['enabled','brand','sender','verification_required','vehicle_sms_enabled','daily_limit','verification_template','approval_template','vehicle_template']);
+            $before=$settings->only(['enabled','brand','sender','verification_required','vehicle_sms_enabled','daily_limit','verification_template','approval_template','vehicle_template','review_sms_enabled','review_template']);
             $settings->fill($data);
             if ($settings->enabled && !$settings->ready()) throw ValidationException::withMessages(['enabled' => 'Etkinleştirmek için API Anahtarı, API Hash ve onaylı gönderici başlığını girin. APITEST başlığı doğrulama kodunu değiştirdiği için kullanılamaz.']);
             $settings->save();
-            \App\Services\AdminAudit::record('communication.sms',null,$before,$settings->only(['enabled','brand','sender','verification_required','vehicle_sms_enabled','daily_limit','verification_template','approval_template','vehicle_template'])+['credentials_changed'=>!empty($data['api_key']) || !empty($data['api_hash'])]);
+            \App\Services\AdminAudit::record('communication.sms',null,$before,$settings->only(['enabled','brand','sender','verification_required','vehicle_sms_enabled','daily_limit','verification_template','approval_template','vehicle_template','review_sms_enabled','review_template'])+['credentials_changed'=>!empty($data['api_key']) || !empty($data['api_hash'])]);
         });
         return back()->with('success', 'Merkezi SMS ayarları kaydedildi.');
     }
