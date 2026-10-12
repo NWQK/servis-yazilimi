@@ -8,6 +8,15 @@ use Spatie\Permission\Models\Role;
 
 class PermissionController extends Controller
 {
+    public function __construct()
+    {
+        // Global permission definitions affect every tenant, including the internal client role.
+        $this->middleware(function ($request, $next) {
+            abort_unless(auth()->user()?->type === 'super admin', 403);
+            return $next($request);
+        });
+    }
+
 
     public function index()
     {
@@ -18,7 +27,7 @@ class PermissionController extends Controller
 
     public function create()
     {
-        $userRoles = Role::get()->pluck('name','id');
+        $userRoles = Role::get()->pluck('name','id')->map(fn ($name) => \App\Services\RolePermissions::label($name));
         return view('user_permission.create', compact('userRoles'));
     }
 

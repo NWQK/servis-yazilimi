@@ -9,9 +9,6 @@
 @endsection
 
 @section('content')
-    @php
-        $systemModules = \App\Models\User::$systemModules;
-    @endphp
 
     <div class="row">
         <div class="col-sm-12">
@@ -19,7 +16,7 @@
                 <div class="card-header">
                     <div class="row align-items-center g-2">
                         <div class="col">
-                            <h5>{{ __('Create Role And Permissions') }}</h5>
+                            <h5>{{ __('Edit Role And Permissions') }}</h5>
                         </div>
 
                     </div>
@@ -28,24 +25,30 @@
                     {{ Form::model($role, ['route' => ['role.update', $role->id], 'method' => 'PUT']) }}
                     <div class="form-group">
                         {{ Form::label('title', __('Role Title'), ['class' => 'form-label']) }}
-                        {{ Form::text('name', $role->name, ['class' => 'form-control', 'placeholder' => __('Enter role title'), in_array($role->name, ['employee', 'client']) ? 'readonly' : '']) }}
+                        @if(in_array($role->name, ['employee', 'client'], true))
+                            <input class="form-control" value="{{ \App\Services\RolePermissions::label($role->name) }}" readonly aria-label="Rol adı">
+                            <input type="hidden" name="name" value="{{ $role->name }}">
+                        @else
+                            {{ Form::text('name', $role->name, ['class' => 'form-control', 'required' => true]) }}
+                        @endif
                     </div>
                     <div class="card-body">
                         <div class="row">
                             <div class="col-xl-12 col-md-12">
-                                @foreach ($systemModules as $module)
-                                    <div class="row">
-                                        @foreach ($permissionList as $permission)
-                                            @if (str_contains(strtolower($permission->name), strtolower($module)))
-                                                <div class="form-check custom-chek form-check-inline col-md-2">
-                                                    {{ Form::checkbox('user_permission[]', $permission->id, null, ['class' => 'form-check-input', 'id' => $module . '_permission' . $permission->id, in_array($permission->id, $assignPermission) ? 'checked' : '']) }}
-                                                    {{ Form::label($module . '_permission' . $permission->id, __(ucfirst($permission->name)), ['class' => 'form-check-label']) }}
-                                                    {!! Form::hidden('editable_permissions[]', $permission->id) !!}
+                                @foreach (\App\Services\RolePermissions::groups($permissionList) as $module => $permissions)
+                                    <fieldset class="mb-4">
+                                        <legend class="fs-6 fw-bold">{{ __(ucfirst($module)) }}</legend>
+                                        <div class="row g-3">
+                                            @foreach ($permissions as $permission)
+                                                <div class="col-12 col-sm-6 col-xl-4">
+                                                    <div class="form-check">
+                                                        <input type="checkbox" name="user_permission[]" value="{{ $permission->id }}" id="permission-{{ $permission->id }}" class="form-check-input" @checked(in_array($permission->id, old('user_permission', $assignPermission ?? [])))>
+                                                        <label for="permission-{{ $permission->id }}" class="form-check-label">{{ __(ucfirst($permission->name)) }}</label>
+                                                    </div>
                                                 </div>
-                                            @endif
-                                        @endforeach
-                                    </div>
-                                    <hr>
+                                            @endforeach
+                                        </div>
+                                    </fieldset>
                                 @endforeach
                             </div>
                         </div>

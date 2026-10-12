@@ -35,6 +35,25 @@ class InvoiceController extends Controller
     }
 
 
+    public function debts()
+    {
+        abort_unless(auth()->user()->type !== 'client' && auth()->user()->can('manage invoice'), 403);
+
+        // Status labels can be stale; the remaining balance is the source of truth.
+        $debts = Invoice::where('parent_id', parentId())
+            ->with(['items', 'types', 'payments', 'clients'])
+            ->orderBy('invoice_date')->orderBy('id')->get()
+            ->map(function (Invoice $invoice) {
+                $total = $invoice->getInvoiceAllTotalAmount();
+                $due = round($invoice->getInvoiceTotalDueAmount(), 2);
+                return ['invoice' => $invoice, 'total' => $total, 'paid' => round($total - $due, 2), 'due' => $due];
+            })->filter(fn ($row) => $row['due'] > 0)->values();
+
+        $totalDue = round($debts->sum('due'), 2);
+        return view('invoice.debts', compact('debts', 'totalDue'));
+    }
+
+
     public function create()
     {
 

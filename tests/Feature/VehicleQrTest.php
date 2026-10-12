@@ -393,6 +393,8 @@ class VehicleQrTest extends TestCase
     public function test_service_dates_and_times_can_be_omitted_or_cleared()
     {
         $vehicle = $this->vehicle();
+        $vehicle->client = $this->owner->id;
+        $vehicle->save();
         $fields = ['service_date', 'due_date', 'service_time', 'due_time'];
         $data = ['vehicle' => $vehicle->id, 'client' => $this->owner->id, 'assign' => $this->owner->id,
             'status' => 'scheduled', 'types' => []];
@@ -439,7 +441,8 @@ class VehicleQrTest extends TestCase
         @$dom->loadHTML($response->getContent());
         $xpath = new \DOMXPath($dom);
         $links = $xpath->query('//*[@id="quick-access-menu"]/a');
-        $this->assertSame(17, $links->length);
+        $this->assertSame(16, $links->length);
+        $this->assertSame(0, $xpath->query('//*[@id="quick-access-menu"]/a[contains(@data-url, "/n8n")]')->length);
         $fullPages = ['client.create', 'client.simple.create', 'service.create', 'quotation.create', 'invoice.create'];
         $pageUrls = array_map(fn ($name) => route($name), $fullPages);
         foreach ($links as $link) {

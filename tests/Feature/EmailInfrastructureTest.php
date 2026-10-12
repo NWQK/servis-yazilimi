@@ -354,12 +354,25 @@ class EmailInfrastructureTest extends TestCase
             $html=$mail->render();
             $this->assertStringContainsString('lang="tr"',$html);
             $this->assertStringContainsString('#ed001b',$html);
+            $this->assertStringContainsString('sanayirandevu-email-logo.png',$html);
+            $this->assertStringNotContainsString('Service Hub',$html);
         }
         $this->assertStringContainsString('test mesajı',(new TestMail(['settings'=>$settings,'subject'=>'Test','message'=>'test mesajı']))->render());
         $this->assertStringContainsString('doğrulayın',(new EmailVerification(['settings'=>$settings,'subject'=>'Doğrulama','name'=>'Ali','url'=>'https://example.test/verify']))->render());
         $this->assertStringContainsString('giriş yapın',(new Common(['settings'=>$settings,'module'=>'owner_create','subject'=>'Hoş geldiniz','name'=>'Ali','email'=>'ali@example.test','url'=>'https://example.test','password'=>'secret']))->render());
         $this->assertStringNotContainsString('secret',(new Common(['settings'=>$settings,'module'=>'owner_create','subject'=>'Hoş geldiniz','name'=>'Ali','email'=>'ali@example.test','url'=>'https://example.test','password'=>'secret']))->render());
         $this->assertStringContainsString('Belge',(new Document(['from'=>'sender@example.test','from_name'=>'Servis','subject'=>'Belge','message'=>'Belge içeriği']))->render());
+        foreach ([
+            new TestMail(['settings'=>$settings,'subject'=>'Test','message'=>'test mesajı']),
+            new EmailVerification(['settings'=>$settings,'subject'=>'Doğrulama','name'=>'Ali','url'=>'https://example.test/verify']),
+            new Document(['from'=>'sender@example.test','from_name'=>'Servis','subject'=>'Belge','message'=>'Belge içeriği']),
+        ] as $mail) {
+            $html=$mail->render();
+            $this->assertStringContainsString('sanayirandevu-email-logo.png',$html);
+            $this->assertStringContainsString('alt="sanayirandevu.com"',$html);
+            $this->assertStringNotContainsString('Service Hub',$html);
+        }
+
     }
 
     public function test_smtp_configuration_switch_clears_cached_transport_and_missing_tenant_credentials()

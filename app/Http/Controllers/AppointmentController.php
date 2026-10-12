@@ -69,6 +69,20 @@ class AppointmentController extends Controller
                 'url'=>route('announcements.show',$r->announcement_id),'sort_at'=>$r->announcement->created_at->getTimestamp(),
             ]));
         }
+        if (!$isAdmin && auth()->user()->can('manage item') && \Illuminate\Support\Facades\Schema::hasColumn('items', 'stock_alert_quantity')) {
+            $lowStock = \App\Models\Item::where('parent_id', auth()->id())->lowStock();
+            $count += (clone $lowStock)->count();
+            $items = $items->concat($lowStock->with(['supplier', 'unit'])->orderByDesc('updated_at')->limit(10)->get()->map(function ($item) {
+                $actions = [['label'=>'Stokları görüntüle', 'url'=>route('item.index', ['low_stock'=>1])]];
+                if ($item->supplier) $actions[] = ['label'=>'Tedarikçi ile iletişime geç', 'url'=>route('supplier.show', $item->supplier_id), 'modal'=>true];
+                return [
+                    'id'=>$item->id, 'type'=>'stock', 'title'=>$item->title.' · stok azaldı',
+                    'date'=>'Kalan: '.$item->quantity.' '.($item->unit?->unit ?? '').' · Uyarı eşiği: '.$item->stock_alert_quantity,
+                    'url'=>route('item.index', ['low_stock'=>1]), 'actions'=>$actions,
+                    'sort_at'=>$item->updated_at?->getTimestamp() ?? 0,
+                ];
+            }));
+        }
         $items = $items->sortByDesc('sort_at')->take(10)->map(fn ($item) => array_diff_key($item, ['sort_at' => true]))->values();
         return response()->json(['count' => $count, 'items' => $items])->header('Cache-Control', 'private, no-store');
     }

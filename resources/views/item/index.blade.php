@@ -51,6 +51,11 @@
                         <div class="col-auto align-self-end"><button class="btn btn-secondary">Filtrele</button>
                             <a href="{{ route('item.index') }}" class="btn btn-light">Temizle</a></div>
                     </form>
+                    <div class="d-flex flex-wrap gap-2 mb-3">
+                        <a href="{{ route('item.index', ['low_stock'=>1]) }}" class="btn btn-sm {{ request()->boolean('low_stock') ? 'btn-warning' : 'btn-outline-secondary' }}">Stok uyarıları</a>
+                        <a href="{{ route('item.purchases') }}" class="btn btn-sm btn-outline-secondary">Satın alım geçmişi</a>
+                        <a href="{{ route('supplier.index') }}" class="btn btn-sm btn-outline-secondary">Tedarikçiler</a>
+                    </div>
                     <div class="dt-responsive table-responsive">
                         <table class="table table-hover advance-datatable">
                             <thead>
@@ -74,7 +79,7 @@
                                         <td>{{ $item->title }}</td>
                                         <td>{{ $item->category?->name ?? 'Kategorisiz' }}</td>
                                         <td>{{ $item->item_code }}</td>
-                                        <td>{{ $item->quantity }}</td>
+                                        <td>{{ $item->quantity }} @if($item->stock_alert_quantity !== null && $item->quantity <= $item->stock_alert_quantity)<span class="badge bg-light-warning">Düşük stok</span>@endif</td>
                                         <td>{{ !empty($item->unit) ? $item->unit->unit : '-' }} </td>
                                         <td>{{ priceFormat($item->purchase_price) }} </td>
                                         <td>{{ priceFormat($item->sales_price) }} </td>
@@ -82,6 +87,12 @@
                                         @if (Gate::check('edit item') || Gate::check('delete item') || Gate::check('show item'))
                                             <td>
                                                 <div class="cart-action">
+                                                    @can('edit item')
+                                                        <a class="avtar avtar-xs btn-link-secondary text-secondary customModal" href="#" data-url="{{ route('item.purchase', $item->id) }}" data-size="lg" data-title="Stok alımı ekle" data-bs-toggle="tooltip" data-bs-original-title="Stok alımı ekle" aria-label="Stok alımı ekle"><i data-feather="plus-circle"></i></a>
+                                                    @endcan
+                                                    @if($item->supplier && Gate::check('manage item'))
+                                                        <a class="avtar avtar-xs btn-link-success text-success customModal" href="#" data-url="{{ route('supplier.show', $item->supplier_id) }}" data-title="Tedarikçi ile iletişime geç" data-bs-toggle="tooltip" data-bs-original-title="Tedarikçi ile iletişime geç" aria-label="Tedarikçi ile iletişime geç"><i data-feather="phone"></i></a>
+                                                    @endif
                                                     @if(Gate::check('edit item') && Gate::check('create invoice payment'))
                                                         <a class="btn btn-sm btn-outline-secondary customModal" href="#" data-url="{{ route('item.sale', $item->id) }}" data-title="Elden satış">Elden satış yap</a>
                                                     @endif

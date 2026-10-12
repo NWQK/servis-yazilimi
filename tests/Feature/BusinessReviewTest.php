@@ -99,6 +99,11 @@ class BusinessReviewTest extends TestCase
     }
     public function test_vehicle_portal_uses_the_same_review_for_multiple_vehicles_and_does_not_send_on_view() {
         $user=$this->customer();$review=BusinessReview::firstOrFail();
+        $role=\Spatie\Permission\Models\Role::create(['name'=>'client','guard_name'=>'web','parent_id'=>$this->owner->id]);
+        $user->assignRole($role);
+        $role->syncPermissions([]);
+        $this->assertFalse(\Illuminate\Support\Facades\Auth::check());
+        $this->get($review->publicUrl())->assertOk();
         for ($i=1;$i<=2;$i++) {
             $vehicle=app(VehicleQrPool::class)->createVehicle($this->owner->id,null,fn()=>Vehicle::create(['vehicle_id'=>$i,'parent_id'=>$this->owner->id,'client'=>$user->id,'type'=>1,'brand'=>1,'license_plate'=>'34 TEST '.$i,'status'=>'active']));
             $this->get($vehicle->qrCode->publicUrl())->assertOk()->assertSee('İşletmeyi değerlendir')->assertSee($review->publicUrl(),false);

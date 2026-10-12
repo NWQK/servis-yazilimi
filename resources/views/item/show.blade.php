@@ -1,6 +1,9 @@
 <div class="modal-body">
     <div class="product-card">
         <div class="row">
+            <div class="col-6"><h6>Tedarikçi</h6><p class="text-muted">{{ $item->supplier?->company_name ?: 'Tedarikçi seçilmedi' }}</p></div>
+            <div class="col-6"><h6>Stok uyarı miktarı</h6><p class="text-muted">{{ $item->stock_alert_quantity === null ? 'Kapalı' : $item->stock_alert_quantity }}</p></div>
+
             <div class="col-6">
                 <div class="detail-group">
                     <h6>Ürün Kategorisi</h6>

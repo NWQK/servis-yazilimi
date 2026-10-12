@@ -1279,5 +1279,17 @@
     "Show footer": "Alt bilgi — Görüntüleme",
     "Show 2FA settings": "İki aşamalı doğrulama ayarları — Görüntüleme",
     "Show auth page": "Giriş sayfası — Görüntüleme",
-    "Show invoice payment": "Fatura ödemesi — Görüntüleme"
+    "Show invoice payment": "Fatura ödemesi — Görüntüleme",
+    "Manager": "Yönetici",
+    "Edit Role And Permissions": "Rol ve yetkileri düzenle",
+    "Invoice payment": "Fatura ödemeleri",
+    "Account settings": "Hesap ayarları",
+    "Password settings": "Şifre ayarları",
+    "2FA settings": "İki aşamalı doğrulama",
+    "Company settings": "İşletme ayarları",
+    "General settings": "Genel ayarlar",
+    "Pricing transation": "Abonelik işlemleri",
+    "Logged history": "Giriş geçmişi",
+    "Service part": "Servis parçaları",
+    "Service task": "Servis işlemleri"
 }

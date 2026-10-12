@@ -12,6 +12,44 @@ use App\Services\InventoryAccounting;
 
 class ItemController extends Controller
 {
+    private function supplierOptions()
+    {
+        return \App\Models\Supplier::where('parent_id', parentId())->orderBy('company_name')->pluck('company_name', 'id')->prepend('Tedarikçi olmadan ekle', '');
+    }
+
+    private function supplierRules(): array
+    {
+        return ['nullable', 'integer', Rule::exists('suppliers', 'id')->where('parent_id', parentId())];
+    }
+
+    public function purchases(Request $request)
+    {
+        abort_unless(auth()->user()->type !== 'client' && auth()->user()->can('manage item'), 403);
+        $query = \App\Models\ItemPurchase::where('parent_id', parentId())->retained();
+        if ($request->filled('item')) $query->where('item_id', $request->input('item'));
+        $purchases = $query->orderByDesc('created_at')->orderByDesc('id')->paginate(30)->withQueryString();
+        return view('item.purchases', compact('purchases'));
+    }
+
+    public function purchase(int $id)
+    {
+        abort_unless(auth()->user()->type !== 'client' && auth()->user()->can('edit item'), 403);
+        $item = Item::where('parent_id', parentId())->findOrFail($id);
+        return view('item.purchase', ['item'=>$item, 'suppliers'=>$this->supplierOptions(), 'requestKey'=>(string)\Illuminate\Support\Str::uuid()]);
+    }
+
+    public function recordPurchase(Request $request, int $id, InventoryAccounting $accounting)
+    {
+        abort_unless(auth()->user()->type !== 'client' && auth()->user()->can('edit item'), 403);
+        $data = $request->validate([
+            'quantity'=>'required|integer|min:1|max:100000000', 'unit_price'=>'required|numeric|min:0|max:9999999.99',
+            'purchase_date'=>'required|date_format:Y-m-d|before_or_equal:today', 'supplier_id'=>$this->supplierRules(),
+            'notes'=>'nullable|string|max:2000', 'request_key'=>'required|uuid',
+        ]);
+        $accounting->replenish(parentId(), $id, $data);
+        return redirect()->route('item.index')->with('success', 'Satın alım kaydedildi. Stok ve mevcut alış gideri güncellendi.');
+    }
+
     public function sale(int $id)
     {
         abort_unless(auth()->user()->can('edit item') && auth()->user()->can('create invoice payment'), 403);
@@ -30,9 +68,11 @@ class ItemController extends Controller
     public function index(Request $request)
     {
         if (\Auth::user()->can('manage item')) {
-            $query = Item::where('parent_id', parentId())->with(['category', 'unit']);
+            $query = Item::where('parent_id', parentId())->with(['category', 'unit', 'supplier']);
             if ($request->input('category') === 'uncategorized') $query->whereNull('category_id');
             elseif ($request->filled('category')) $query->where('category_id', $request->input('category'));
+            if ($request->boolean('low_stock')) $query->lowStock();
+            if ($request->filled('supplier')) $query->where('supplier_id', $request->input('supplier'));
             $items = $query->orderByDesc('id')->get();
             $categories = ItemCategory::where('parent_id', parentId())->orderBy('name')->pluck('name', 'id');
         } else {
@@ -47,7 +87,8 @@ class ItemController extends Controller
         $units = Unit::where('parent_id', parentId())->get()->pluck('unit', 'id');
         $taxs = Tax::where('parent_id', parentId())->get()->pluck('title', 'id');
 
-        return view('item.create', compact('units', 'taxs', 'categories'));
+        $suppliers = $this->supplierOptions();
+        return view('item.create', compact('units', 'taxs', 'categories', 'suppliers'));
     }
 
     public function store(Request $request)
@@ -56,6 +97,8 @@ class ItemController extends Controller
             $validator = \Validator::make(
                 $request->all(), [
                     'title' => 'required',
+                    'supplier_id' => $this->supplierRules(),
+                    'stock_alert_quantity' => 'nullable|integer|min:0|max:100000000',
                     'category_id' => ['nullable', 'integer', Rule::exists('item_categories', 'id')->where('parent_id', parentId())],
                     'item_code' => 'required',
                     'quantity' => 'required|integer|min:0|max:100000000',
@@ -95,7 +138,8 @@ class ItemController extends Controller
         $categories = ItemCategory::where('parent_id', parentId())->orderBy('name')->pluck('name', 'id')->prepend('Kategorisiz', '');
         $units = Unit::where('parent_id', parentId())->get()->pluck('unit', 'id');
         $taxs = Tax::where('parent_id', parentId())->get()->pluck('title', 'id');
-        return view('item.edit', compact('units', 'taxs', 'item', 'categories'));
+        $suppliers = $this->supplierOptions();
+        return view('item.edit', compact('units', 'taxs', 'item', 'categories', 'suppliers'));
     }
 
     public function update(Request $request, Item $item)
@@ -104,6 +148,8 @@ class ItemController extends Controller
             $validator = \Validator::make(
                 $request->all(), [
                     'title' => 'required',
+                    'supplier_id' => $this->supplierRules(),
+                    'stock_alert_quantity' => 'nullable|integer|min:0|max:100000000',
                     'category_id' => ['nullable', 'integer', Rule::exists('item_categories', 'id')->where('parent_id', parentId())],
                     'item_code' => 'required',
                     'quantity' => 'required|integer|min:0|max:100000000',

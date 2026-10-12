@@ -133,4 +133,55 @@ class OwnerLoginSecurityTest extends TestCase
         $this->assertSame('Yeni konu',$template->fresh()->subject);
         $this->actingAs($this->owner)->get(route('notification.edit',$template))->assertForbidden();
     }
+    public function test_old_saved_reset_template_is_branded_without_losing_custom_text_or_token(): void
+    {
+        $template=SecurityEmail::template($this->admin,SecurityEmail::RESET);
+        DB::table('notifications')->where('id',$template->id)->update([
+            'name'=>'Service Hub şifre sıfırlama', 'subject'=>'Service Hub SaaS — Şifrenizi sıfırlayın',
+            'message'=>'<p>Merhaba {user_name}, Service Hub hesabınız.</p><p>Özel destek açıklaması.</p><p><a href="{reset_link}">Şifreyi yenile</a></p><p>{expire_minutes} dakika.</p>',
+        ]);
+        $this->post('/forgot-password',['email'=>$this->owner->email])->assertSessionHas('status');
+        $mail=Mail::sent(Common::class)->first();
+        $this->assertSame('sanayirandevu.com — Şifrenizi sıfırlayın',$mail->data['subject']);
+        $this->assertStringContainsString('Özel destek açıklaması.',$mail->data['message']);
+        $html=view($mail->build()->view,$mail->buildViewData())->render();
+        $this->assertStringNotContainsString('Service Hub',$html);
+        $this->assertStringContainsString('sanayirandevu-email-logo.png',$html);
+        preg_match('/href="([^"]+)"/',$mail->data['message'],$match);
+        $url=html_entity_decode($match[1]);$token=basename(parse_url($url,PHP_URL_PATH));
+        $this->post('/reset-password',['token'=>$token,'email'=>$this->owner->email,'password'=>'updated-password','password_confirmation'=>'updated-password'])->assertRedirect(route('login'));
+        $this->assertTrue(Hash::check('updated-password',$this->owner->fresh()->password));
+    }
+
+    public function test_saved_email_brand_migration_preserves_switches_markup_links_and_custom_values(): void
+    {
+        $template=SecurityEmail::template($this->admin,SecurityEmail::RESET);
+        $markup='<p class="kept">Service Hub SaaS: {user_name} — ATAXNET</p><a href="https://service-hub.example/reset/{reset_link}" data-id="service_hub">Özel bağlantı</a><img src="https://service-hub.example/logo.png"><p>destek@service-hub.example {service_hub}</p>';
+        DB::table('notifications')->where('id',$template->id)->update(['subject'=>'SERVICE_HUB — Özel konu {reset_link}','message'=>$markup,'enabled_email'=>0,'sms_message'=>'Dokunma','short_code'=>'["{reset_link}"]']);
+        $migration=require database_path('migrations/2026_10_12_000001_normalize_email_template_branding.php');
+        $migration->up();$first=DB::table('notifications')->find($template->id);$migration->up();
+        $this->assertEquals($first,DB::table('notifications')->find($template->id));
+        $this->assertSame('sanayirandevu.com — Özel konu {reset_link}',$first->subject);
+        $this->assertSame(str_replace(['Service Hub SaaS','ATAXNET'],'sanayirandevu.com',$markup),$first->message);
+        $this->assertEquals(0,$first->enabled_email);$this->assertSame('Dokunma',$first->sms_message);
+        $this->assertSame('["{reset_link}"]',$first->short_code);
+    }
+
+    public function test_framework_verification_resend_uses_platform_mail_and_signed_link(): void
+    {
+        config(['app.name'=>'Service Hub SaaS']);
+        $this->owner->forceFill(['email_verified_at'=>null])->save();
+        $mail=(new \Illuminate\Auth\Notifications\VerifyEmail)->toMail($this->owner);
+        $this->assertSame('sanayirandevu.com',$mail->from[1]);
+        $this->assertSame('smtp',$mail->mailer);
+        $this->assertSame('email.email_verification',$mail->view);
+        $html=view($mail->view,$mail->viewData)->render();
+        $this->assertStringNotContainsString('Service Hub',$html);
+        $this->assertStringContainsString('sanayirandevu-email-logo.png',$html);
+        $request=\Illuminate\Http\Request::create($mail->viewData['data']['url']);
+        $this->assertTrue(\Illuminate\Support\Facades\URL::hasValidSignature($request));
+        DB::table('settings')->insert(['parent_id'=>$this->admin->id,'type'=>'smtp','name'=>'EMAIL_ENABLED','value'=>'off']);
+        $this->actingAs($this->owner)->post(route('verification.send'))->assertRedirect()->assertSessionHas('error');
+    }
+
 }

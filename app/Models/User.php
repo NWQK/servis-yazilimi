@@ -158,8 +158,7 @@ class User extends Authenticatable
         'contact',
         'note',
         'logged history',
-        'settings',
-        'n8n'
+        'settings'
     ];
 
     public function SubscriptionLeftDay()

@@ -68,11 +68,6 @@
                                 <i data-feather="file-text"></i> {{ __('Create Expense') }}
                             </a>
 
-                            <a href="#" class="dropdown-item customModal" data-url="{{ route('n8n.create') }}"
-                                data-title="{{ __('Create N8n') }}" data-size="lg">
-                                <i class="ti ti-settings-automation"></i> {{ __('Create N8n') }}
-                            </a>
-
                             <a href="#" class="dropdown-item customModal"
                                 data-url="{{ route('contact.create') }}" data-title="{{ __('Create Contact') }}"
                                 data-size="lg">
@@ -150,11 +145,9 @@
                     </a>
                     <div class="dropdown-menu dropdown-user-profile dropdown-menu-end pc-h-dropdown">
                         <div class="dropdown-header">
-                            <h4>
-                                {{ __('Good Morning') }},
-                                <span class="small text-muted">{{ \Auth::user()->name }}</span>
+                            <h4 class="text-break">
+                                {{ __('Good Morning') }}, {{ \Auth::user()->name }}
                             </h4>
-                            <p class="text-muted">{{ \Auth::user()->type }}</p>
 
                             <div class="profile-notification-scroll position-relative"
                                 style="max-height: calc(100vh - 280px)">

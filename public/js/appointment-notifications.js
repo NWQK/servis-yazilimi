@@ -27,11 +27,11 @@
             previous = current;
             if (!data.items.length) { message('Yeni bildirim yok.'); return; }
             const links = data.items.map(item => {
-                const link = document.createElement('a');
+                const link = document.createElement(item.type === 'stock' ? 'div' : 'a');
                 link.className = 'dropdown-item py-3 border-bottom';
                 link.style.whiteSpace = 'normal';
                 link.style.overflowWrap = 'anywhere';
-                link.href = item.url;
+                if (item.type !== 'stock') link.href = item.url;
                 const title = document.createElement('strong');
                 title.className = 'd-block';
                 title.textContent = item.title;
@@ -40,8 +40,26 @@
                 date.textContent = item.date;
                 const category = document.createElement('small');
                 category.className = 'd-block text-muted';
-                category.textContent = item.type === 'announcement' ? 'Yönetici duyurusu' : (item.type === 'support' ? 'Destek bileti' : 'Randevu');
+                category.textContent = item.type === 'stock' ? 'Stok uyarısı' : item.type === 'announcement' ? 'Yönetici duyurusu' : (item.type === 'support' ? 'Destek bileti' : 'Randevu');
                 link.append(category, title, date);
+                if (item.type === 'stock') {
+                    const actions = document.createElement('div');
+                    actions.className = 'd-flex flex-wrap gap-2 mt-2';
+                    (item.actions || []).forEach(action => {
+                        const button = document.createElement('a');
+                        button.textContent = action.label;
+                        button.className = 'btn btn-sm btn-outline-secondary';
+                        button.href = action.modal ? '#' : action.url;
+                        if (action.modal) {
+                            button.classList.add('customModal');
+                            button.dataset.url = action.url;
+                            button.dataset.title = 'Tedarikçi iletişim bilgileri';
+                        }
+                        actions.append(button);
+                    });
+                    link.append(actions);
+                }
+
                 return link;
             });
             list.replaceChildren(...links);

@@ -288,6 +288,143 @@ class InventoryAccountingTest extends TestCase
         $this->get('/q/'.$code->token.'/invoice/'.$invoice->id)->assertOk()->assertSee('Güncel Unvan')->assertSee('Örnek adres');
     }
 
+    private function supplierFixture(?int $tenant = null): \App\Models\Supplier
+    {
+        $supplier = new \App\Models\Supplier(['company_name'=>'Yağ tedarikçisi', 'contact_name'=>'Ali Usta', 'phone'=>'5321234567', 'email'=>'tedarik@example.test']);
+        $supplier->parent_id = $tenant ?? $this->owner->id;
+        $supplier->save();
+        return $supplier;
+    }
+
+    public function test_supplier_directory_contacts_and_tenant_isolation()
+    {
+        $data = ['company_name'=>'Parça AŞ', 'contact_name'=>'Ali Yılmaz', 'phone'=>'5321234567', 'email'=>'parca@example.test'];
+        $this->post('/supplier', $data)->assertRedirect(route('supplier.index'));
+        $supplier = \App\Models\Supplier::firstOrFail();
+        $this->get('/supplier')->assertOk()->assertSee('Parça AŞ')->assertSee('https://wa.me/905321234567', false);
+        $this->get('/supplier/'.$supplier->id)->assertOk()->assertSee('Ali Yılmaz')->assertSee('mailto:parca@example.test', false);
+        $this->get('/supplier/'.$supplier->id.'/edit')->assertOk()->assertSee('5321234567');
+        $this->put('/supplier/'.$supplier->id, array_replace($data, ['company_name'=>'Yeni ad']))->assertRedirect();
+        $foreign = $this->supplierFixture(999);
+        $this->get('/supplier')->assertDontSee('Yağ tedarikçisi');
+        $this->get('/supplier/'.$foreign->id)->assertNotFound();
+        $this->get('/supplier/'.$foreign->id.'/edit')->assertNotFound();
+        $this->put('/supplier/'.$foreign->id, $data)->assertNotFound();
+        $this->delete('/supplier/'.$foreign->id)->assertNotFound();
+        $this->post('/supplier', array_replace($data, ['phone'=>'05321234567']))->assertSessionHasErrors('phone');
+        $this->post('/supplier', array_replace($data, ['email'=>'bad']))->assertSessionHasErrors('email');
+        $this->assertSame(0, Expense::count());
+    }
+
+    public function test_optional_supplier_and_stock_threshold_can_be_cleared()
+    {
+        $supplier = $this->supplierFixture();
+        $this->get('/item/create')->assertOk()->assertSee('Tedarikçi olmadan ekle')->assertSee('Stok uyarı miktarı');
+        $data = $this->attributes(2) + ['supplier_id'=>$supplier->id, 'stock_alert_quantity'=>2];
+        $this->post('/item', $data)->assertSessionMissing('error');
+        $item = Item::firstOrFail();
+        $this->assertEquals($supplier->id, $item->supplier_id);
+        $this->get('/item?low_stock=1')->assertOk()->assertSee('Düşük stok');
+        $this->get('/item/'.$item->id.'/edit')->assertOk()->assertSee('Stok uyarı miktarı');
+        $this->get('/item/'.$item->id)->assertOk()->assertSee('Yağ tedarikçisi');
+        $this->put('/item/'.$item->id, array_replace($data, ['supplier_id'=>'', 'stock_alert_quantity'=>'']))->assertSessionMissing('error');
+        $this->assertNull($item->fresh()->supplier_id);
+        $this->assertNull($item->fresh()->stock_alert_quantity);
+        $this->assertSame(0, Item::lowStock()->count());
+        $this->put('/item/'.$item->id, array_replace($data, ['stock_alert_quantity'=>-1]))->assertSessionHas('error');
+        $foreign = $this->supplierFixture(999);
+        $this->put('/item/'.$item->id, array_replace($data, ['supplier_id'=>$foreign->id]))->assertSessionHas('error');
+    }
+
+    public function test_stock_notifications_follow_stock_and_offer_supplier_contact()
+    {
+        $supplier = $this->supplierFixture(); $item = $this->purchase(3);
+        $item->supplier_id = $supplier->id; $item->stock_alert_quantity = 1; $item->save();
+        $stockItems = fn ($response) => collect($response->json('items'))->where('type', 'stock');
+        $this->assertCount(0, $stockItems($this->get(route('appointments.notifications'))->assertOk()));
+        $invoice = $this->invoice(); $line = $this->stock->add($invoice, ['item'=>$item->id, 'quantity'=>2]);
+        $stock = $stockItems($this->get(route('appointments.notifications'))->assertOk());
+        $this->assertCount(1, $stock);
+        $this->assertEquals(route('supplier.show', $supplier->id), $stock->first()['actions'][1]['url']);
+        $this->stock->remove($this->owner->id, $invoice->id, $line->id);
+        $this->assertCount(0, $stockItems($this->get(route('appointments.notifications'))->assertOk()));
+        $item->refresh(); $item->quantity = 0; $item->stock_alert_quantity = null; $item->save();
+        $this->assertCount(0, $stockItems($this->get(route('appointments.notifications'))->assertOk()));
+        $item->stock_alert_quantity = 0; $item->save();
+        $this->assertCount(1, $stockItems($this->get(route('appointments.notifications'))->assertOk()));
+        $item->parent_id = 999; $item->save();
+        $this->assertCount(0, $stockItems($this->get(route('appointments.notifications'))->assertOk()));
+    }
+
+    public function test_purchase_is_idempotent_and_history_survives_deletions()
+    {
+        $supplier = $this->supplierFixture(); $item = $this->purchase(2);
+        $data = ['quantity'=>3, 'unit_price'=>'210.50', 'purchase_date'=>now()->toDateString(),
+            'supplier_id'=>$supplier->id, 'notes'=>'Yeni yağ alımı', 'request_key'=>(string)\Illuminate\Support\Str::uuid()];
+        $this->get('/item/'.$item->id.'/purchase')->assertOk()->assertSee('Satın alımı kaydet');
+        for ($i=0; $i<2; $i++) $this->post('/item/'.$item->id.'/purchase', $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertEquals(5, $item->fresh()->quantity);
+        $this->assertSame(2, Expense::count());
+        $this->assertEquals(1031.50, Expense::sum('amount'));
+        $history = \App\Models\ItemPurchase::where('request_key', $data['request_key'])->firstOrFail();
+        $this->assertEquals(631.50, $history->amount);
+        $this->assertSame('Yağ tedarikçisi', $history->supplier_name);
+        $this->post('/item/'.$item->id.'/purchase', array_replace($data, ['quantity'=>4]))->assertSessionHasErrors('item');
+        $this->assertEquals(5, $item->fresh()->quantity);
+        $invoice = $this->invoice();
+        $line = $this->stock->add($invoice, ['item'=>$item->id, 'quantity'=>1]);
+        $supplier->company_name = 'Değişti'; $supplier->save();
+        $this->delete('/supplier/'.$supplier->id)->assertRedirect();
+        $this->assertNull($item->fresh()->supplier_id);
+        $this->delete('/item/'.$item->id)->assertRedirect();
+        $this->get('/item-purchases')->assertOk()->assertSee('Yağ tedarikçisi')->assertSee('Castrol motor yağı')->assertSee('Yeni yağ alımı');
+        $this->assertNotNull($history->fresh());
+        $this->stock->remove($this->owner->id, $invoice->id, $line->id);
+        $restored = Item::where('inventory_key', $item->inventory_key)->firstOrFail();
+        $this->assertNull($restored->supplier_id);
+        $this->assertEquals(1, $restored->quantity);
+        $this->assertSame(2, \App\Models\ItemPurchase::count());
+    }
+
+    public function test_purchase_history_excludes_returns_and_prunes_without_changing_finance()
+    {
+        $item = $this->purchase(5);
+        $this->assertSame(1, \App\Models\ItemPurchase::count());
+        $this->stock->savePurchase($this->owner->id, $this->attributes(3), $item->id);
+        $invoice = $this->invoice(); $line = $this->stock->add($invoice, ['item'=>$item->id, 'quantity'=>1]);
+        $this->stock->remove($this->owner->id, $invoice->id, $line->id);
+        $this->assertSame(1, \App\Models\ItemPurchase::count());
+        $this->stock->savePurchase($this->owner->id, $this->attributes(4), $item->id);
+        $old = \App\Models\ItemPurchase::firstOrFail();
+        $old->created_at = now()->subYears(2)->subDay(); $old->save();
+        $this->get('/item-purchases')->assertOk()->assertViewHas('purchases', fn ($p) => $p->total() === 1);
+        $before = Expense::sum('amount'); $movements = DB::table('stock_movements')->count();
+        $this->artisan('inventory:purge-purchases')->assertSuccessful();
+        $this->assertSame(1, \App\Models\ItemPurchase::count());
+        $this->assertEquals($before, Expense::sum('amount'));
+        $this->assertSame($movements, DB::table('stock_movements')->count());
+        $this->assertEquals(4, $item->fresh()->quantity);
+    }
+
+    public function test_supplier_purchase_permissions_and_tenant_scoping()
+    {
+        $foreign = $this->supplierFixture(999); $item = $this->purchase(3);
+        $data = ['quantity'=>1, 'unit_price'=>10, 'purchase_date'=>now()->toDateString(), 'request_key'=>(string)\Illuminate\Support\Str::uuid()];
+        $this->post('/item/'.$item->id.'/purchase', $data + ['supplier_id'=>$foreign->id])->assertSessionHasErrors('supplier_id');
+        $history = \App\Models\ItemPurchase::where('item_id', $item->id)->firstOrFail();
+        $history->parent_id = 999; $history->item_title = 'Yabancı alım'; $history->save();
+        $this->get('/item-purchases')->assertOk()->assertDontSee('Yabancı alım');
+        $item->parent_id = 999; $item->save();
+        $this->get('/item/'.$item->id.'/purchase')->assertNotFound();
+        $this->post('/item/'.$item->id.'/purchase', $data)->assertNotFound();
+        $employee = User::create(['name'=>'Personel', 'email'=>'supplier-access@example.test', 'password'=>bcrypt('test'), 'type'=>'employee', 'parent_id'=>$this->owner->id]);
+        $this->actingAs($employee);
+        $this->get('/supplier')->assertForbidden();
+        $this->get('/item-purchases')->assertForbidden();
+        $this->get('/item/'.$item->id.'/purchase')->assertForbidden();
+        $this->post('/item/'.$item->id.'/purchase', $data)->assertForbidden();
+    }
+
     private function invoice(): Invoice
     {
         return Invoice::create(['parent_id' => $this->owner->id, 'client' => $this->owner->id, 'invoice_id' => 1, 'invoice_date' => '2026-09-23', 'status' => 0]);
@@ -705,4 +842,95 @@ class InventoryAccountingTest extends TestCase
         $this->assertEquals(0, $invoice->fresh()->getInvoiceAllTotalAmount());
         $this->assertEquals(0, $invoice->payments()->sum('amount'));
     }
+    public function test_debt_tracking_uses_actual_balance_and_excludes_other_shops_and_settled_invoices()
+    {
+        $unpaid = $this->invoice();
+        $unpaid->update(['external_labor_amount'=>100, 'external_labor_tax_rate'=>20, 'discount_amount'=>10, 'status'=>2]);
+        $partial = $this->invoice();
+        $partial->update(['external_labor_amount'=>200]);
+        DB::table('invoice_payments')->insert(['invoice_id'=>$partial->id, 'parent_id'=>$this->owner->id, 'amount'=>50]);
+        $paid = $this->invoice();
+        $paid->update(['external_labor_amount'=>300]);
+        DB::table('invoice_payments')->insert(['invoice_id'=>$paid->id, 'parent_id'=>$this->owner->id, 'amount'=>300]);
+        $foreign = $this->invoice();
+        $foreign->update(['external_labor_amount'=>9999, 'parent_id'=>999]);
+        $this->invoice(); // Zero total is not a debt.
+        $response = $this->get(route('invoice.debts'))->assertOk()->assertViewHas('totalDue', 260);
+        $response->assertViewHas('debts', function ($rows) use ($unpaid, $partial) {
+            return $rows->count() === 2 && $rows->pluck('invoice.id')->all() === [$unpaid->id, $partial->id]
+                && $rows[0]['due'] == 110 && $rows[1]['paid'] == 50 && $rows[1]['due'] == 150;
+        });
+        $response->assertSee('Borç takibi')->assertSee('Ödeme ekle')->assertSee(route('invoice.payment', $partial->id), false);
+        DB::table('invoice_payments')->insert(['invoice_id'=>$partial->id, 'parent_id'=>$this->owner->id, 'amount'=>150]);
+        $this->get(route('invoice.debts'))->assertOk()->assertViewHas('totalDue', 110)
+            ->assertViewHas('debts', fn ($rows) => $rows->count() === 1);
+    }
+
+    public function test_debt_tracking_shows_empty_state_and_preserved_customer_details()
+    {
+        $this->get(route('invoice.debts'))->assertOk()->assertSee('Ödemesi beklenen fatura bulunmuyor.');
+        $invoice = $this->invoice();
+        $invoice->external_labor_amount = 100;
+        $invoice->client = 999999;
+        $invoice->customer_details = ['name'=>'Arşivlenmiş müşteri'];
+        $invoice->save();
+        $this->get(route('invoice.debts'))->assertOk()->assertSee('Arşivlenmiş müşteri');
+    }
+
+    public function test_debt_tracking_requires_invoice_permission_and_rejects_customer_accounts()
+    {
+        $employee = User::create(['name'=>'Personel', 'email'=>'debt-access@example.test', 'password'=>bcrypt('test'), 'type'=>'employee', 'parent_id'=>$this->owner->id]);
+        $this->actingAs($employee);
+        $this->get(route('invoice.debts'))->assertForbidden();
+        $employee->type = 'client';
+        $employee->save();
+        Gate::before(fn () => true);
+        $this->actingAs($employee);
+        $this->get(route('invoice.debts'))->assertForbidden();
+    }
+
+    public function test_service_mileage_defaults_are_returned_for_only_the_current_shop()
+    {
+        $vehicle = Vehicle::create(['parent_id'=>$this->owner->id, 'client'=>$this->owner->id, 'mileage'=>125000, 'license_plate'=>'34 KM 01']);
+        Vehicle::create(['parent_id'=>999, 'client'=>$this->owner->id, 'mileage'=>999, 'license_plate'=>'34 KM 99']);
+        $this->get(route('client.vehicle', $this->owner->id))->assertOk()->assertJsonCount(1)
+            ->assertJsonPath('0.id', $vehicle->id)->assertJsonPath('0.mileage', 125000);
+        $this->get('/service/create')->assertOk()->assertSee('Güncel araç kilometresi')->assertSee('data-mileage', false);
+    }
+
+    public function test_service_creation_and_edit_update_vehicle_mileage_and_blank_preserves_it()
+    {
+        $vehicle = Vehicle::create(['parent_id'=>$this->owner->id, 'client'=>$this->owner->id, 'mileage'=>125000, 'license_plate'=>'34 KM 02']);
+        $data = ['client'=>$this->owner->id, 'vehicle'=>$vehicle->id, 'assign'=>$this->owner->id,
+            'service_date'=>now()->toDateString(), 'status'=>'scheduled', 'types'=>[], 'mileage'=>'126000'];
+        $this->post('/service', $data)->assertRedirect()->assertSessionMissing('error');
+        $service = Service::firstOrFail();
+        $this->assertEquals(126000, $vehicle->fresh()->mileage);
+        $this->get('/service/'.encrypt($service->id).'/edit')->assertOk()->assertSee('Güncel araç kilometresi');
+        $data['mileage'] = '127000';
+        $this->put('/service/'.$service->id, $data)->assertRedirect()->assertSessionMissing('error');
+        $this->assertEquals(127000, $vehicle->fresh()->mileage);
+        $data['mileage'] = '';
+        $this->put('/service/'.$service->id, $data)->assertRedirect()->assertSessionMissing('error');
+        $this->assertEquals(127000, $vehicle->fresh()->mileage);
+        $data['mileage'] = '0';
+        $this->put('/service/'.$service->id, $data)->assertRedirect()->assertSessionMissing('error');
+        $this->assertEquals(0, $vehicle->fresh()->mileage);
+    }
+
+    public function test_service_mileage_rejects_invalid_values_and_foreign_or_mismatched_vehicles()
+    {
+        $vehicle = Vehicle::create(['parent_id'=>$this->owner->id, 'client'=>$this->owner->id, 'mileage'=>100, 'license_plate'=>'34 KM 03']);
+        $data = ['client'=>$this->owner->id, 'vehicle'=>$vehicle->id, 'assign'=>$this->owner->id,
+            'service_date'=>now()->toDateString(), 'status'=>'scheduled', 'types'=>[], 'mileage'=>'200'];
+        foreach (['-1', '1.5', 'abc', '2147483648'] as $invalid) {
+            $this->post('/service', array_replace($data, ['mileage'=>$invalid]))->assertSessionHas('error');
+        }
+        $this->post('/service', array_replace($data, ['client'=>999]))->assertSessionHas('error');
+        $vehicle->parent_id = 999; $vehicle->save();
+        $this->post('/service', $data)->assertSessionHas('error');
+        $this->assertEquals(100, $vehicle->fresh()->mileage);
+        $this->assertSame(0, Service::count());
+    }
+
 }

@@ -487,10 +487,11 @@ class ClientController extends Controller
 
     public function getVehicle($clientId)
     {
-        $vehicles = Vehicle::where('client', $clientId)->get();
+        $vehicles = Vehicle::where('parent_id', parentId())->where('client', $clientId)->get();
         $vehicleData = [];
         foreach ($vehicles as $vehicle) {
             $veh['id'] = $vehicle->id;
+            $veh['mileage'] = $vehicle->mileage;
             $veh['name'] = vehiclePrefix() . $vehicle->vehicle_id . ' | ' . $vehicle->display_name . ' | ' . $vehicle->license_plate;
             $vehicleData[] = $veh;
         }

@@ -9,9 +9,6 @@
 @endsection
 
 @section('content')
-    @php
-        $systemModules = \App\Models\User::$systemModules;
-    @endphp
 
     <div class="row">
         <div class="col-sm-12">
@@ -33,18 +30,20 @@
                     <div class="card-body">
                         <div class="row">
                             <div class="col-xl-12 col-md-12">
-                                @foreach ($systemModules as $module)
-                                    <div class="row">
-                                        @foreach ($permissionList as $permission)
-                                            @if (str_contains(strtolower($permission->name), strtolower($module)))
-                                                <div class="form-check custom-chek form-check-inline col-md-2">
-                                                    {{ Form::checkbox('user_permission[]', $permission->id, null, ['class' => 'form-check-input', 'id' => $module . '_permission' . $permission->id]) }}
-                                                    {{ Form::label($module . '_permission' . $permission->id, __(ucfirst($permission->name)), ['class' => 'form-check-label']) }}
+                                @foreach (\App\Services\RolePermissions::groups($permissionList) as $module => $permissions)
+                                    <fieldset class="mb-4">
+                                        <legend class="fs-6 fw-bold">{{ __(ucfirst($module)) }}</legend>
+                                        <div class="row g-3">
+                                            @foreach ($permissions as $permission)
+                                                <div class="col-12 col-sm-6 col-xl-4">
+                                                    <div class="form-check">
+                                                        <input type="checkbox" name="user_permission[]" value="{{ $permission->id }}" id="permission-{{ $permission->id }}" class="form-check-input" @checked(in_array($permission->id, old('user_permission', $assignPermission ?? [])))>
+                                                        <label for="permission-{{ $permission->id }}" class="form-check-label">{{ __(ucfirst($permission->name)) }}</label>
+                                                    </div>
                                                 </div>
-                                            @endif
-                                        @endforeach
-                                    </div>
-                                    <hr>
+                                            @endforeach
+                                        </div>
+                                    </fieldset>
                                 @endforeach
 
                             </div>

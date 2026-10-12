@@ -132,7 +132,7 @@ class PageController extends Controller
             }
 
             $page->title = $request->title;
-            $page->slug = strtolower(str_replace([' '],['_'], $request->title));
+            $page->slug = $page->slug === \App\Services\TermsAndConditions::SLUG ? $page->slug : strtolower(str_replace([' '],['_'], $request->title));
             $page->content = $request->content;
             $page->enabled = $request->enabled;
             $page->save();
@@ -161,7 +161,13 @@ class PageController extends Controller
 
     public function page(Request $request, $slug)
     {
-        $page = Page::where('slug', $request->slug)->first();
+        $page = Page::where('slug', $slug)->first();
+        if ($slug === \App\Services\TermsAndConditions::SLUG) {
+            abort_if($page && !$page->enabled, 404);
+            $content = $page && !\App\Services\TermsAndConditions::isLegacy($page->content)
+                ? $page->content : \App\Services\TermsAndConditions::content();
+            return view('Pages.terms', compact('page', 'content'));
+        }
         if ($page) {
             return view('Pages.page', compact('page'));
         } else {

@@ -5,7 +5,6 @@
     $supportUnread = ($isSuperAdmin || $isOwner) && \Illuminate\Support\Facades\Schema::hasTable('support_tickets')
         ? \App\Models\SupportTicket::when(!$isSuperAdmin, fn($q)=>$q->where('owner_id',auth()->id()))->where($isSuperAdmin ? 'admin_unread' : 'owner_unread',true)->count() : 0;
     $hasHistory = $pricing_feature_settings === 'off' || ($subscription->enabled_logged_history ?? 0) == 1;
-    $hasAutomation = !$isSuperAdmin && ($pricing_feature_settings === 'off' || ($subscription->enabled_n8n ?? 0) == 1);
     // Owners can still view their package when public pricing is disabled.
     $hasPricing = $isSuperAdmin || $isOwner || $pricing_feature_settings === 'on';
     $entry = static fn ($label, $route, $permission, $patterns = null, $visible = true) => [
@@ -37,12 +36,15 @@
                 $entry('Servis raporu', 'report.service', 'manage service report', ['report.service']),
             ]),
             $group('Ürünler ve stok', 'ti-package', [
-                $entry('Ürün ve stok listesi', 'item.index', 'manage item', ['item.*']),
+                $entry('Ürün ve stok listesi', 'item.index', 'manage item', ['item.*', '!item.purchases']),
+                $entry('Tedarikçiler', 'supplier.index', 'manage item', ['supplier.*'], auth()->user()->type !== 'client'),
+                $entry('Satın alım geçmişi', 'item.purchases', 'manage item', ['item.purchases'], auth()->user()->type !== 'client'),
                 $entry('Ürün kategorileri', 'item-category.index', 'manage item'),
                 $entry('Ürün birimleri', 'unit.index', 'manage unit'),
             ]),
             $group('Faturalar', 'ti-file-text', [
-                $entry('Fatura listesi', 'invoice.index', 'manage invoice', ['invoice.*', '!invoice.create']),
+                $entry('Fatura listesi', 'invoice.index', 'manage invoice', ['invoice.*', '!invoice.create', '!invoice.debts']),
+                $entry('Borç takibi', 'invoice.debts', 'manage invoice', ['invoice.debts'], auth()->user()->type !== 'client'),
                 $entry('Yeni fatura oluştur', 'invoice.create', 'create invoice', ['invoice.create']),
             ]),
             $group('Teklifler', 'ti-clipboard', [$entry('Teklifler', 'quotation.index', 'manage quotation')]),
@@ -72,7 +74,6 @@
             $group('İşletme araçları', 'ti-notebook', [
                 $entry('İletişim rehberi', 'contact.index', 'manage contact'),
                 $entry('Not panosu', 'note.index', 'manage note'),
-                $entry('Otomasyonlar', 'n8n.index', 'manage n8n', null, $hasAutomation),
             ]),
             $group('Site içeriği', 'ti-layout-rows', [
                 $entry('Ana sayfa', 'homepage.index', 'manage home page'),

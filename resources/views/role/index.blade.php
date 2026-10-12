@@ -39,9 +39,9 @@
                             <tbody>
                                 @foreach ($roleData as $role)
                                     <tr>
-                                        <td>{{ ucfirst($role->name) }} </td>
+                                        <td>{{ \App\Services\RolePermissions::label($role->name) }} </td>
                                         <td>{{ \Auth::user()->roleWiseUserCount($role->name) }}</td>
-                                        <td>{{ $role->permissions()->count() }}</td>
+                                        <td>{{ $role->permissions->filter(fn($permission) => \App\Services\RolePermissions::active($permission->name, auth()->user()))->count() }}</td>
                                         <td>
                                             <div class="cart-action">
                                                 {!! Form::open(['method' => 'DELETE', 'route' => ['role.destroy', $role->id]]) !!}

@@ -9,6 +9,22 @@ class Notification extends Model
 {
     use HasFactory;
 
+    // Also protect installations that have not yet run the data migration.
+    public function getNameAttribute($value)
+    {
+        return \App\Services\EmailBranding::text($value);
+    }
+
+    public function getSubjectAttribute($value)
+    {
+        return \App\Services\EmailBranding::text($value);
+    }
+
+    public function getMessageAttribute($value)
+    {
+        return \App\Services\EmailBranding::html($value);
+    }
+
     protected $fillable = [
         'module',
         'name',

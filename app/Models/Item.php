@@ -11,6 +11,8 @@ class Item extends Model
     protected $fillable=[
         'title',
         'category_id',
+        'supplier_id',
+        'stock_alert_quantity',
         'item_code',
         'quantity',
         'units',
@@ -23,6 +25,14 @@ class Item extends Model
         'notes',
         'parent_id',
     ];
+
+    protected $casts = ['stock_alert_quantity'=>'integer'];
+
+    public function supplier() { return $this->belongsTo(Supplier::class); }
+    public function scopeLowStock($query)
+    {
+        return $query->whereNotNull('stock_alert_quantity')->whereColumn('quantity', '<=', 'stock_alert_quantity');
+    }
 
     public function category()
     {

@@ -56,7 +56,8 @@ class ServiceController extends Controller
             $validator = \Validator::make(
                 $request->all(),
                 [
-                    'vehicle' => 'required',
+                    'vehicle' => ['required', 'integer', \Illuminate\Validation\Rule::exists('vehicles', 'id')->where(fn ($query) => $query->where('parent_id', parentId())->where('client', $request->client)->whereNull('deleted_at'))],
+                    'mileage' => 'nullable|integer|min:0|max:2147483647',
                     'client' => 'required',
                     'service_date' => 'nullable|date_format:Y-m-d',
                     'service_time' => 'nullable|date_format:H:i,H:i:s',
@@ -126,6 +127,8 @@ class ServiceController extends Controller
                 $invoiceService->parent_id = parentId();
                 $invoiceService->save();
             }
+
+            $this->updateVehicleMileage($request);
 
             $setting = settings();
 
@@ -243,7 +246,7 @@ class ServiceController extends Controller
     {
         $id = Crypt::decrypt($id);
 
-        $service = Service::with('types')->where('id', $id)->first();
+        $service = Service::with('types')->where('parent_id', parentId())->findOrFail($id);
 
         // convert tax string to array
         if ($service->types) {
@@ -274,7 +277,8 @@ class ServiceController extends Controller
             $validator = \Validator::make(
                 $request->all(),
                 [
-                    'vehicle' => 'required',
+                    'vehicle' => ['required', 'integer', \Illuminate\Validation\Rule::exists('vehicles', 'id')->where(fn ($query) => $query->where('parent_id', parentId())->where('client', $request->client)->whereNull('deleted_at'))],
+                    'mileage' => 'nullable|integer|min:0|max:2147483647',
                     'client' => 'required',
                     'service_date' => 'nullable|date_format:Y-m-d',
                     'service_time' => 'nullable|date_format:H:i,H:i:s',
@@ -315,9 +319,19 @@ class ServiceController extends Controller
                 $serviceItem->parent_id = parentId();
                 $serviceItem->save();
             }
+            $this->updateVehicleMileage($request);
             return redirect()->route('service.index')->with('success', __('Service successfully updated.'));
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
+        }
+    }
+
+    private function updateVehicleMileage(Request $request): void
+    {
+        // An omitted/empty field leaves the recorded mileage unchanged, including legacy forms.
+        if ($request->filled('mileage')) {
+            Vehicle::where('parent_id', parentId())->where('client', $request->client)
+                ->whereKey($request->vehicle)->update(['mileage' => (int) $request->mileage]);
         }
     }
 

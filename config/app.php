@@ -15,7 +15,7 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'sanayirandevu.com'),
+    'name' => \App\Services\EmailBranding::text(env('APP_NAME', 'sanayirandevu.com')),
 
     /*
     |--------------------------------------------------------------------------

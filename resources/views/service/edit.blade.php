@@ -78,45 +78,7 @@
             }
         }
     </script>
-    <script>
-        $('#client_id').on('change', function() {
-            "use strict";
-            var client_id = $(this).val();
-            var url = '{{ route('client.vehicle', ':id') }}';
-            url = url.replace(':id', client_id);
-            $.ajax({
-                url: url,
-                headers: {
-                    'X-CSRF-TOKEN': $('meta[name="csrf-token"]').attr('content')
-                },
-                data: {
-                    client_id: client_id,
-                },
-                contentType: false,
-                processData: false,
-                type: 'GET',
-                success: function(data) {
-                    $('.vehicle').empty();
-                    var vehicle =
-                        `<select class="form-control select2 vehicle" id="vehicle" name="vehicle"></select>`;
-                    $('.vehicle_div').html(vehicle);
-
-                    $.each(data, function(key, value) {
-                        var vehicle_id = $('#edit_vehicle').val();
-                        if (value['id'] == vehicle_id) {
-                            $('.vehicle').append('<option selected value="' + value['id'] +
-                                '">' + value['name'] + '</option>');
-                        } else {
-                            $('.vehicle').append('<option value="' + value['id'] + '">' + value[
-                                'name'] + '</option>');
-                        }
-                    });
-                    select2(); // ← replaced manual .select2({ minimumResultsForSearch: -1 })
-                },
-            });
-        });
-        $('#client_id').trigger('change');
-    </script>
+    @include('service.vehicle_mileage_script')
 
     <script>
         $(document).on('change', '.service_type', function() {
@@ -173,6 +135,7 @@
                                 </div>
                             </div>
 
+                            @include('service.vehicle_mileage_field')
                             <div class="form-group col-md-4 col-lg-3">
                                 {{ Form::label('assign', __('Assign To'), ['class' => 'form-label']) }}
                                 {!! Form::select('assign', $employees, null, ['class' => 'form-control select2 ', 'required' => 'required']) !!}

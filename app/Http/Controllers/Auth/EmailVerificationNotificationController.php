@@ -20,6 +20,9 @@ class EmailVerificationNotificationController extends Controller
             return redirect()->intended(RouteServiceProvider::HOME);
         }
 
+        if (!\App\Services\CentralEmail::enabled()) {
+            return back()->with('error', 'E-posta gönderimi şu anda kapalı. Lütfen sistem yöneticisiyle iletişime geçin.');
+        }
         $request->user()->sendEmailVerificationNotification();
 
         return back()->with('status', 'verification-link-sent');

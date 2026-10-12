@@ -15,6 +15,7 @@
         </div>
     @endif
     <div class="row">
+        @include('item.supplier_fields')
         <div class="form-group col-md-6">
             {{ Form::label('category_id', 'Ürün Kategorisi', ['class' => 'form-label']) }}
             {{ Form::select('category_id', $categories, null, ['class' => 'form-control select2']) }}

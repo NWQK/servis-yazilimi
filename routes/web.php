@@ -330,6 +330,10 @@ Route::group(
 
 
 //-------------------------------Item-------------------------------------------
+Route::resource('supplier', \App\Http\Controllers\SupplierController::class)->middleware(['auth', 'XSS']);
+Route::get('item-purchases', [ItemController::class, 'purchases'])->middleware(['auth','XSS'])->name('item.purchases');
+Route::get('item/{id}/purchase', [ItemController::class, 'purchase'])->whereNumber('id')->middleware(['auth','XSS'])->name('item.purchase');
+Route::post('item/{id}/purchase', [ItemController::class, 'recordPurchase'])->whereNumber('id')->middleware(['auth','XSS'])->name('item.purchase.store');
 Route::resource('item-category', \App\Http\Controllers\ItemCategoryController::class)->except('show')->middleware(['auth', 'XSS']);
 
 Route::get('inventory/setup', [\App\Http\Controllers\InventorySetupController::class, 'index'])->middleware(['auth','XSS'])->name('inventory.setup');
@@ -422,6 +426,7 @@ Route::group(
         Route::get('invoice/{id}/create/item', [InvoiceController::class, 'invoiceItem'])->name('invoice.create.item');
         Route::post('invoice/{id}/item/store', [InvoiceController::class, 'invoiceItemStore'])->name('invoice.item.store');
         Route::post('invoice/{id}/item/{tid}/store', [InvoiceController::class, 'invoiceItemDestroy'])->name('invoice.item.line.destroy');
+        Route::get('invoice/debts', [InvoiceController::class, 'debts'])->name('invoice.debts');
         Route::resource('invoice', InvoiceController::class);
         Route::get('invoice-customer/{id}/billing', [\App\Http\Controllers\InvoiceBillingController::class, 'customer'])->whereNumber('id')->name('invoice.billing.customer');
         Route::get('invoice/{id}/billing', [\App\Http\Controllers\InvoiceBillingController::class, 'edit'])->whereNumber('id')->name('invoice.billing.edit');

@@ -86,7 +86,7 @@ class RegisteredUserController extends Controller
 
             $data = [
                 'module' => 'email_verification',
-                'subject' => 'Email Verification',
+                'subject' => 'E-posta adresinizi doğrulayın — sanayirandevu.com',
                 'email' => $owner->email,
                 'name' => $owner->name,
                 'url' => $url,

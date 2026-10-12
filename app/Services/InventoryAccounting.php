@@ -43,13 +43,19 @@ class InventoryAccounting
         });
     }
 
-    public function savePurchase(int $tenant, array $attributes, ?int $id = null): Item
+    public function savePurchase(int $tenant, array $attributes, ?int $id = null, array $purchaseMeta = []): Item
     {
-        return $this->transaction($tenant, function () use ($tenant, $attributes, $id) {
+        return $this->transaction($tenant, function () use ($tenant, $attributes, $id, $purchaseMeta) {
             $item = $id ? Item::where('parent_id', $tenant)->lockForUpdate()->findOrFail($id) : new Item();
             $previousQuantity = $item->exists ? (int) $item->quantity : 0;
             if (!empty($attributes['category_id']) && !\App\Models\ItemCategory::where('parent_id', $tenant)->whereKey($attributes['category_id'])->exists()) {
                 $this->invalid('Geçersiz ürün kategorisi.');
+            }
+            if (!empty($attributes['supplier_id']) && !\App\Models\Supplier::where('parent_id', $tenant)->whereKey($attributes['supplier_id'])->exists()) {
+                $this->invalid('Geçersiz tedarikçi.');
+            }
+            foreach (['supplier_id', 'stock_alert_quantity'] as $optional) {
+                if (array_key_exists($optional, $attributes) && $attributes[$optional] === '') $attributes[$optional] = null;
             }
             $item->fill($attributes);
             $item->parent_id = $tenant;
@@ -67,9 +73,43 @@ class InventoryAccounting
                     $expense->parent_id = $tenant;
                     $expense->stock_movement_id = $movement;
                     $expense->save();
+                    \App\Models\ItemPurchase::create([
+                        'parent_id'=>$tenant, 'item_id'=>$item->id, 'inventory_key'=>$item->inventory_key,
+                        'item_title'=>$item->title, 'supplier_id'=>$item->supplier_id,
+                        'supplier_name'=>$item->supplier?->company_name, 'unit_name'=>$item->unit?->unit,
+                        'quantity'=>$difference, 'unit_price'=>$this->money($item->purchase_price),
+                        'amount'=>$this->money($item->purchase_price, $difference), 'purchase_date'=>$expense->date,
+                        'stock_movement_id'=>$movement, 'notes'=>$purchaseMeta['notes'] ?? null,
+                        'request_key'=>$purchaseMeta['request_key'] ?? null,
+                    ]);
+
                 }
             }
             return $item;
+        });
+    }
+
+    public function replenish(int $tenant, int $itemId, array $data): Item
+    {
+        return $this->transaction($tenant, function () use ($tenant, $itemId, $data) {
+            $item = Item::where('parent_id', $tenant)->lockForUpdate()->findOrFail($itemId);
+            $existing = \App\Models\ItemPurchase::where('parent_id', $tenant)->where('request_key', $data['request_key'])->first();
+            if ($existing) {
+                if ((int)$existing->item_id !== $itemId || (int)$existing->quantity !== (int)$data['quantity'] ||
+                    $existing->unit_price !== $this->money($data['unit_price']) ||
+                    (int)$existing->supplier_id !== (int)($data['supplier_id'] ?? null) ||
+                    $existing->purchase_date->toDateString() !== $data['purchase_date'] ||
+                    (string)$existing->notes !== (string)($data['notes'] ?? '')) {
+                    $this->invalid('Bu alım isteği farklı bilgilerle kaydedilmiş. Sayfayı yenileyin.');
+                }
+                return $item;
+            }
+            $quantity = filter_var($data['quantity'], FILTER_VALIDATE_INT);
+            if ($quantity === false || $quantity < 1 || $quantity + (int)$item->quantity > 100000000) $this->invalid('Alım miktarı veya toplam stok sınırı geçersiz.');
+            return $this->savePurchase($tenant, [
+                'quantity'=>(int)$item->quantity + $quantity, 'purchase_price'=>$data['unit_price'],
+                'purchase_date'=>$data['purchase_date'], 'supplier_id'=>$data['supplier_id'] ?? null,
+            ], $itemId, $data);
         });
     }
 
@@ -232,6 +272,9 @@ class InventoryAccounting
             $item->fill($snapshot);
             if ($item->category_id && !\App\Models\ItemCategory::where('parent_id', $line->parent_id)->whereKey($item->category_id)->exists()) {
                 $item->category_id = null;
+            }
+            if ($item->supplier_id && !\App\Models\Supplier::where('parent_id', $line->parent_id)->whereKey($item->supplier_id)->exists()) {
+                $item->supplier_id = null;
             }
             $item->parent_id = $line->parent_id;
             $item->inventory_key = $snapshot['inventory_key'];

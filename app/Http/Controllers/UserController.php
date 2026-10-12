@@ -34,7 +34,7 @@ class UserController extends Controller
 
     public function create()
     {
-        $userRoles = Role::where('parent_id', parentId())->whereNotIn('name', ['client', 'employee'])->get()->pluck('name', 'id');
+        $userRoles = Role::where('parent_id', parentId())->whereNotIn('name', ['client', 'employee'])->get()->pluck('name', 'id')->map(fn ($name) => \App\Services\RolePermissions::label($name));
         return view('user.create', compact('userRoles'));
     }
 
@@ -121,7 +121,7 @@ class UserController extends Controller
                         'name' => 'required',
                         'email' => 'required|email|unique:users',
                         'password' => 'required|min:6',
-                        'role' => 'required',
+                        'role' => 'required|integer',
                     ]
                 );
                 if ($validator->fails()) {
@@ -140,7 +140,8 @@ class UserController extends Controller
                         return redirect()->back()->with('error', __('Your user limit is over, please upgrade your subscription.'));
                     }
                 }
-                $userRole = Role::findById($request->role);
+                $userRole = Role::where('parent_id', parentId())
+                    ->whereRaw('LOWER(TRIM(name)) != ?', ['client'])->findOrFail($request->role);
                 $user = new User();
                 $user->name = $request->name;
                 $user->email = $request->email;
@@ -229,7 +230,8 @@ class UserController extends Controller
     public function edit($id)
     {
         $user = User::findOrFail($id);
-        $userRoles = Role::where('parent_id', '=', parentId())->whereNotIn('name', ['client', 'employee'])->get()->pluck('name', 'id');
+        abort_if(auth()->user()->type !== 'super admin' && $user->type === 'client', 403);
+        $userRoles = Role::where('parent_id', '=', parentId())->whereNotIn('name', ['client', 'employee'])->get()->pluck('name', 'id')->map(fn ($name) => \App\Services\RolePermissions::label($name));
         $assignedRoleId = $user->roles->first()?->id;
         return view('user.edit', compact('user', 'userRoles', 'assignedRoleId'));
     }
@@ -282,7 +284,7 @@ class UserController extends Controller
                     [
                         'name' => 'required',
                         'email' => 'required|email|unique:users,email,' . $id,
-                        'role' => 'required',
+                        'role' => 'required|integer',
                     ]
                 );
                 if ($validator->fails()) {
@@ -291,8 +293,10 @@ class UserController extends Controller
                     return redirect()->back()->with('error', $messages->first());
                 }
 
-                $userRole = Role::findById($request->role);
+                $userRole = Role::where('parent_id', parentId())
+                    ->whereRaw('LOWER(TRIM(name)) != ?', ['client'])->findOrFail($request->role);
                 $user = User::findOrFail($id);
+                abort_if($user->type === 'client', 403);
                 $user->name = $request->name;
                 $user->email = $request->email;
                 $user->phone_number = $request->phone_number;

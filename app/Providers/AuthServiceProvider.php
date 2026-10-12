@@ -25,6 +25,15 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        //
+        // The framework's verification resend must use the same central brand and SMTP.
+        \Illuminate\Auth\Notifications\VerifyEmail::toMailUsing(function ($user, $url) {
+            $smtp = app(\App\Services\TenantMailSettings::class)->apply($user->id);
+            $subject = 'E-posta adresinizi doğrulayın — sanayirandevu.com';
+            return (new \Illuminate\Notifications\Messages\MailMessage)
+                ->mailer('smtp')->from($smtp['FROM_EMAIL'], \App\Services\EmailBranding::NAME)
+                ->subject($subject)->view('email.email_verification', [
+                    'subject' => $subject, 'data' => ['name' => $user->name, 'url' => $url],
+                ]);
+        });
     }
 }
