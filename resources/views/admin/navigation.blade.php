@@ -101,6 +101,7 @@
                 $entry('İki aşamalı doğrulama', 'two-factor-admin.index', null, ['two-factor-admin.*'], $isSuperAdmin),
                 $entry('İşletme giriş geçmişi', 'owner-logins.index', null, ['owner-logins.*'], $isSuperAdmin),
                 $entry('Yedekler', 'backups.index', null, ['backups.*'], $isSuperAdmin),
+                $entry('Bakım modu', 'maintenance.index', null, ['maintenance.*'], $isSuperAdmin),
             ]),
         ]],
     ];

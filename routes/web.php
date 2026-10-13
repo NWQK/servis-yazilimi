@@ -92,6 +92,8 @@ use GuzzleHttp\Psr7\Query;
 
 require __DIR__ . '/auth.php';
 Route::middleware(['auth', 'XSS'])->group(function () {
+    Route::get('admin/maintenance', [\App\Http\Controllers\PlatformMaintenanceController::class,'index'])->name('maintenance.index');
+    Route::post('admin/maintenance', [\App\Http\Controllers\PlatformMaintenanceController::class,'save'])->name('maintenance.save');
     Route::get('admin/backups', [\App\Http\Controllers\PlatformBackupController::class,'index'])->name('backups.index');
     Route::post('admin/backups/settings', [\App\Http\Controllers\PlatformBackupController::class,'save'])->name('backups.save');
     Route::post('admin/backups/request', [\App\Http\Controllers\PlatformBackupController::class,'requestBackup'])->middleware('throttle:3,5')->name('backups.request');
