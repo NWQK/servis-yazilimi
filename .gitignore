@@ -1,3 +1,5 @@
 /vendor/srmklive
 /.idea
 /.vscode
+/storage/app/private/backups/
+/storage/app/private/rclone.conf
