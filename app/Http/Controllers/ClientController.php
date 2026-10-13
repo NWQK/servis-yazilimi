@@ -72,7 +72,7 @@ class ClientController extends Controller
 
         $validator = \Validator::make($request->all(), [
             'name'         => 'required',
-            'email'        => 'nullable|email|max:255|unique:users',
+            'email'        => 'nullable|email|max:255',
             'phone_number' => 'required',
             'address'      => 'nullable|string',
             'state'        => 'nullable|string|max:255',
@@ -366,7 +366,7 @@ class ClientController extends Controller
         if (\Auth::user()->can('edit client')) {
             $validator = \Validator::make($request->all(), [
                 'name'          => 'required',
-                'email'         => 'nullable|email|max:255|unique:users,email,' . $id,
+                'email'         => 'nullable|email|max:255',
                 'phone_number'  => 'required',
                 'address'       => 'nullable|string',
                 'state'         => 'nullable|string|max:255',

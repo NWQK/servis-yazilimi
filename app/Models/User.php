@@ -15,6 +15,35 @@ class User extends Authenticatable
     use Notifiable;
     use Impersonate;
 
+    protected static function booted(): void
+    {
+        static::saving(function (self $user) {
+            // Creation forms sometimes assign email before type; move it once type is known.
+            if ($user->type === 'client' && !empty($user->attributes['email'])) {
+                $user->attributes['contact_email'] = $user->attributes['email'];
+                $user->attributes['email'] = null;
+            }
+        });
+    }
+
+    public function getEmailAttribute($value)
+    {
+        return ($this->attributes['type'] ?? null) === 'client'
+            ? ($this->attributes['contact_email'] ?? $value) : $value;
+    }
+
+    public function setEmailAttribute($value): void
+    {
+        $value = is_string($value) ? trim($value) : $value;
+        $value = $value === '' ? null : $value;
+        if (($this->attributes['type'] ?? null) === 'client') {
+            $this->attributes['contact_email'] = $value;
+            $this->attributes['email'] = null;
+        } else {
+            $this->attributes['email'] = $value;
+        }
+    }
+
 
     public function sendPasswordResetNotification($token)
     {

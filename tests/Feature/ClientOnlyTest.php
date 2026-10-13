@@ -55,7 +55,7 @@ class ClientOnlyTest extends TestCase
         $this->put(route('client.simple.update',$customer->id),['name'=>'Güncel müşteri','phone_number'=>'5551234568','email'=>'simple@example.test','city'=>'Ankara','state'=>'Çankaya','notes'=>'Güncel not'])->assertRedirect(route('client.index'))->assertSessionHasNoErrors();
         $this->assertSame('Ankara',$customer->fresh()->clients->city);
         $this->assertSame('Güncel müşteri',$customer->fresh()->name);
-        $this->post($url,['name'=>'Duplicate','phone_number'=>'5551234569','email'=>'simple@example.test'])->assertSessionHasErrors('email');
+        $this->post($url,['name'=>'Duplicate','phone_number'=>'5551234569','email'=>'simple@example.test'])->assertSessionHasNoErrors();
         $other=User::create(['name'=>'Other','email'=>'simple-other@example.test','password'=>'x','type'=>'owner']);
         $this->actingAs($other)->put(route('client.simple.update',$customer->id),['name'=>'Hack','phone_number'=>'5551234567'])->assertNotFound();
         $this->get(route('client.edit',encrypt($customer->id)))->assertNotFound();

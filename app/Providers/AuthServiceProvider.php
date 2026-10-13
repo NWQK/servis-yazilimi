@@ -25,6 +25,10 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
+        \Illuminate\Support\Facades\Auth::provider('accounts', function ($app, array $config) {
+            return new \App\Auth\AccountUserProvider($app['hash'], $config['model']);
+        });
+
         // The framework's verification resend must use the same central brand and SMTP.
         \Illuminate\Auth\Notifications\VerifyEmail::toMailUsing(function ($user, $url) {
             $smtp = app(\App\Services\TenantMailSettings::class)->apply($user->id);

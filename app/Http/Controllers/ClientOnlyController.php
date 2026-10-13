@@ -19,7 +19,7 @@ class ClientOnlyController extends Controller
     private function validated(Request $request, ?User $customer = null): array
     {
         return $request->validate([
-            'name'=>'required|string|max:255', 'email'=>['nullable','email','max:255',Rule::unique('users','email')->ignore($customer?->id)],
+            'name'=>'required|string|max:255', 'email'=>['nullable','email','max:255'],
             'phone_number'=>['required','string','regex:/\A5[0-9]{9}\z/'],
             'city'=>'nullable|string|max:255', 'state'=>'nullable|string|max:255',
             'zip_code'=>'nullable|string|max:255', 'address'=>'nullable|string|max:1000', 'notes'=>'nullable|string|max:5000',
