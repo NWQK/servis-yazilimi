@@ -190,33 +190,38 @@ function datatable() {
     }
 
     if ($(".advance-datatable").length > 0) {
-        $(".advance-datatable").DataTable({
-            scrollX: true,
-            ordering: false,
-            stateSave: false,
-            dom: "Bfrtip",
-            buttons: [
-                {
-                    extend: "excelHtml5",
-                    exportOptions: {
-                        columns: ":visible",
+        $(".advance-datatable").each(function () {
+            const adjustablePageSize = this.dataset.pageSizes === "true";
+            $(this).DataTable({
+                scrollX: true,
+                ordering: false,
+                stateSave: false,
+                dom: adjustablePageSize ? "Bfrti<'sr-table-bottom'lp>" : "Bfrtip",
+                pageLength: adjustablePageSize ? 30 : 10,
+                lengthMenu: [30, 50, 100],
+                buttons: [
+                    {
+                        extend: "excelHtml5",
+                        exportOptions: {
+                            columns: ":visible",
+                        },
                     },
-                },
-                {
-                    extend: "pdfHtml5",
-                    exportOptions: {
-                        columns: ":visible",
+                    {
+                        extend: "pdfHtml5",
+                        exportOptions: {
+                            columns: ":visible",
+                        },
                     },
-                },
-                {
-                    extend: "copyHtml5",
-                    exportOptions: {
-                        columns: ":visible",
+                    {
+                        extend: "copyHtml5",
+                        exportOptions: {
+                            columns: ":visible",
+                        },
                     },
-                },
 
-                "colvis",
-            ],
+                    "colvis",
+                ],
+            });
         });
     }
 }

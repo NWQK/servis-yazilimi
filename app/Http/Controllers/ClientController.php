@@ -70,6 +70,7 @@ class ClientController extends Controller
             return redirect()->back()->with('error', __('Permission Denied.'));
         }
 
+        \App\Services\ChassisNumber::validateForm($request);
         $validator = \Validator::make($request->all(), [
             'name'         => 'required',
             'email'        => 'nullable|email|max:255',
@@ -163,6 +164,7 @@ class ClientController extends Controller
                 $vehicle->notes               = $request->vehicle_notes;
                 $vehicle->parent_id           = parentId();
                 $vehicle->save();
+                if ($request->exists('history_public')) app(\App\Services\PublicVehicleHistory::class)->share($vehicle,$request->boolean('history_public'));
                 $service               = new Service();
                 $service->service_id   = $this->serviceNumber();
                 $service->vehicle      = $vehicle->id;
@@ -362,105 +364,118 @@ class ClientController extends Controller
 
     public function update(Request $request, $id)
     {
-        $request->validate(['external_labor_amount' => \App\Services\ExternalLabor::RULE, 'external_labor_tax_id' => \App\Services\ExternalLabor::taxRules()]);
-        if (\Auth::user()->can('edit client')) {
-            $validator = \Validator::make($request->all(), [
-                'name'          => 'required',
-                'email'         => 'nullable|email|max:255',
-                'phone_number'  => 'required',
-                'address'       => 'nullable|string',
-                'state'         => 'nullable|string|max:255',
-                'city'          => 'nullable|string|max:255',
-                'zip_code'      => 'nullable|string|max:255',
-                'notes'         => 'nullable|string',
-                'type' => ['required', Rule::exists('vehicle_types', 'id')->where('parent_id', parentId())],
-                'brand' => ['required', Rule::exists('vehicle_brands', 'id')->where('parent_id', parentId())->where('type', $request->type)],
-                'color'         => 'nullable|string|max:255',
-                'license_plate' => 'required',
-                'engine_type'   => 'nullable|string|max:255',
-                'engine_no'     => 'nullable|string|max:255',
-                'fuel_type'     => 'nullable|string|max:255',
-                'chassis_no'    => 'nullable|string|max:255',
-                'mileage'       => 'nullable|integer|min:0|max:2147483647',
-                'last_service_date' => 'nullable|date',
-                'next_service_due_date' => 'nullable|date',
-                'insurance_details' => 'nullable|string',
-                'vehicle_notes' => 'nullable|string',
-                'assign'        => 'required',
-                'service_date'  => 'nullable|date_format:Y-m-d',
-                'service_time'  => 'nullable|date_format:H:i,H:i:s',
-                'due_date'      => 'nullable|date_format:Y-m-d',
-                'due_time'      => 'nullable|date_format:H:i,H:i:s',
-                'status'        => 'required',
-            ]);
-            if ($validator->fails()) {
-                return redirect()->back()->withErrors($validator)->withInput();
-            }
-            $user = User::findOrFail($id);
-            $user->update([
-                'name'         => $request->name,
-                'email'        => $request->filled('email') ? $request->email : null,
-                'phone_number' => $request->phone_number,
-            ]);
-            $client = Client::where('user_id', $id)->first();
-            if ($client) {
-                $client->update([
-                    'state'     => $request->state,
-                    'city'      => $request->city,
-                    'zip_code'  => $request->zip_code,
-                    'address'   => $request->address,
-                    'notes'     => $request->notes,
+        abort_unless(auth()->user()->type!=='client' && auth()->user()->can('edit client'),403);
+        return \Illuminate\Support\Facades\DB::transaction(function() use($request,$id){
+            User::whereKey(parentId())->lockForUpdate()->firstOrFail();
+            User::where('parent_id',parentId())->where('type','client')->findOrFail($id);
+            $editingVehicle=Vehicle::where('parent_id',parentId())->where('client',$id)->first();
+            if ($editingVehicle) \App\Services\ChassisNumber::validateForm($request,$editingVehicle);
+            $request->validate(['external_labor_amount' => \App\Services\ExternalLabor::RULE, 'external_labor_tax_id' => \App\Services\ExternalLabor::taxRules()]);
+            if (\Auth::user()->can('edit client')) {
+                $validator = \Validator::make($request->all(), [
+                    'name'          => 'required',
+                    'email'         => 'nullable|email|max:255',
+                    'phone_number'  => 'required',
+                    'address'       => 'nullable|string',
+                    'state'         => 'nullable|string|max:255',
+                    'city'          => 'nullable|string|max:255',
+                    'zip_code'      => 'nullable|string|max:255',
+                    'notes'         => 'nullable|string',
+                    'type' => ['required', Rule::exists('vehicle_types', 'id')->where('parent_id', parentId())],
+                    'brand' => ['required', Rule::exists('vehicle_brands', 'id')->where('parent_id', parentId())->where('type', $request->type)],
+                    'color'         => 'nullable|string|max:255',
+                    'license_plate' => 'required',
+                    'engine_type'   => 'nullable|string|max:255',
+                    'engine_no'     => 'nullable|string|max:255',
+                    'fuel_type'     => 'nullable|string|max:255',
+                    'chassis_no'    => 'nullable|string|max:255',
+                    'mileage'       => 'nullable|integer|min:0|max:2147483647',
+                    'last_service_date' => 'nullable|date',
+                    'next_service_due_date' => 'nullable|date',
+                    'insurance_details' => 'nullable|string',
+                    'vehicle_notes' => 'nullable|string',
+                    'assign'        => 'required',
+                    'service_date'  => 'nullable|date_format:Y-m-d',
+                    'service_time'  => 'nullable|date_format:H:i,H:i:s',
+                    'due_date'      => 'nullable|date_format:Y-m-d',
+                    'due_time'      => 'nullable|date_format:H:i,H:i:s',
+                    'status'        => 'required',
                 ]);
-            }
-            $vehicle = Vehicle::where('client', $id)->first();
-            if ($vehicle) {
-                $vehicle->update([
-                    'type'                  => $request->type,
-                    'brand'                 => $request->brand,
-                    'color'                 => $request->color,
-                    'license_plate'         => $request->license_plate,
-                    'engine_type'           => $request->engine_type,
-                    'engine_no'             => $request->engine_no,
-                    'fuel_type'             => $request->fuel_type,
-                    'chassis_no'            => $request->chassis_no,
-                    'mileage'               => $request->mileage,
-                    'last_service_date'     => $request->last_service_date,
-                    'next_service_due_date' => $request->next_service_due_date,
-                    'insurance_details'     => $request->insurance_details,
-                    'notes'                 => $request->vehicle_notes,
+                if ($validator->fails()) {
+                    return redirect()->back()->withErrors($validator)->withInput();
+                }
+                $user = User::findOrFail($id);
+                $user->update([
+                    'name'         => $request->name,
+                    'email'        => $request->filled('email') ? $request->email : null,
+                    'phone_number' => $request->phone_number,
                 ]);
-            }
-            $service = Service::where('client', $id)->first();
-            if ($service) {
-                abort_unless((int) $service->parent_id === (int) parentId(), 403);
-                if ($request->exists('external_labor_amount') || $request->exists('external_labor_tax_id')) app(\App\Services\ExternalLabor::class)->update($service, $request->exists('external_labor_amount') ? $request->external_labor_amount : $service->external_labor_amount, $request->external_labor_tax_id, $request->exists('external_labor_tax_id'));
-                $service->update([
-                    'assign'       => $request->assign,
-                    'service_date' => $request->service_date,
-                    'service_time' => $request->service_time,
-                    'due_date'     => $request->due_date,
-                    'due_time'     => $request->due_time,
-                    'status'       => $request->status,
-                    'notes'        => $request->service_notes,
-                ]);
-                ServiceItem::where('service_id', $service->id)->delete();
-                if (!empty($request->types)) {
-                    foreach ($request->types as $type) {
-                        ServiceItem::create([
-                            'service_id' => $service->id,
-                            'type_id'    => $type['service_type'],
-                            'rate'       => $type['rate'],
-                            'tax'        => !empty($type['tax']) ? implode(',', $type['tax']) : '',
-                            'note'       => $type['note'] ?? '',
-                            'parent_id'  => parentId(),
-                        ]);
+                $client = Client::where('user_id', $id)->first();
+                if ($client) {
+                    $client->update([
+                        'state'     => $request->state,
+                        'city'      => $request->city,
+                        'zip_code'  => $request->zip_code,
+                        'address'   => $request->address,
+                        'notes'     => $request->notes,
+                    ]);
+                }
+                $vehicle = Vehicle::where('client', $id)->first();
+                if ($vehicle) {
+                    $serviceMileageChanged=$request->filled('mileage') && (int)$request->mileage !== (int)$vehicle->mileage;
+                    $historyIdentityChanged=\App\Services\ChassisNumber::normalize($vehicle->chassis_no)!==\App\Services\ChassisNumber::normalize($request->chassis_no);
+                    $vehicle->chassis_no=$request->chassis_no;
+                    \App\Services\ChassisNumber::assertUnique($vehicle);
+                    $vehicle->update([
+                        'type'                  => $request->type,
+                        'brand'                 => $request->brand,
+                        'color'                 => $request->color,
+                        'license_plate'         => $request->license_plate,
+                        'engine_type'           => $request->engine_type,
+                        'engine_no'             => $request->engine_no,
+                        'fuel_type'             => $request->fuel_type,
+                        'chassis_no'            => $request->chassis_no,
+                        'mileage'               => $request->mileage,
+                        'last_service_date'     => $request->last_service_date,
+                        'next_service_due_date' => $request->next_service_due_date,
+                        'insurance_details'     => $request->insurance_details,
+                        'notes'                 => $request->vehicle_notes,
+                    ]);
+                }
+                if ($vehicle && $request->exists('history_public')) app(\App\Services\PublicVehicleHistory::class)->share($vehicle,!$historyIdentityChanged && $request->boolean('history_public'));
+                $service = Service::where('client', $id)->first();
+                if ($service) {
+                    abort_unless((int) $service->parent_id === (int) parentId(), 403);
+                    if ($request->exists('external_labor_amount') || $request->exists('external_labor_tax_id')) app(\App\Services\ExternalLabor::class)->update($service, $request->exists('external_labor_amount') ? $request->external_labor_amount : $service->external_labor_amount, $request->external_labor_tax_id, $request->exists('external_labor_tax_id'));
+                    $service->update([
+                        'mileage_at_service' => !empty($serviceMileageChanged) ? (int)$request->mileage : $service->mileage_at_service,
+                        'assign'       => $request->assign,
+                        'service_date' => $request->service_date,
+                        'service_time' => $request->service_time,
+                        'due_date'     => $request->due_date,
+                        'due_time'     => $request->due_time,
+                        'status'       => $request->status,
+                        'notes'        => $request->service_notes,
+                    ]);
+                    ServiceItem::where('service_id', $service->id)->delete();
+                    if (!empty($request->types)) {
+                        foreach ($request->types as $type) {
+                            ServiceItem::create([
+                                'service_id' => $service->id,
+                                'type_id'    => $type['service_type'],
+                                'rate'       => $type['rate'],
+                                'tax'        => !empty($type['tax']) ? implode(',', $type['tax']) : '',
+                                'note'       => $type['note'] ?? '',
+                                'parent_id'  => parentId(),
+                            ]);
+                        }
                     }
                 }
+                return redirect()->route('client.index')->with('success', __('Client successfully updated.'));
+            } else {
+                return redirect()->back()->with('error', __('Permission Denied.'));
             }
-            return redirect()->route('client.index')->with('success', __('Client successfully updated.'));
-        } else {
-            return redirect()->back()->with('error', __('Permission Denied.'));
-        }
+        },5);
     }
 
     public function destroy($id)

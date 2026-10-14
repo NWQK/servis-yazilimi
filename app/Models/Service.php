@@ -12,6 +12,7 @@ class Service extends Model
     protected $casts = ['external_labor_tax_rate' => 'decimal:4', 'external_labor_amount' => 'decimal:2'];
 
     protected $fillable = [
+        'mileage_at_service',
         'external_labor_amount',
         'external_labor_tax_id',
         'external_labor_tax_rate',
@@ -28,6 +29,14 @@ class Service extends Model
         'assign',
         'parent_id',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function(self $service){
+            if (\Illuminate\Support\Facades\Schema::hasColumn('services','mileage_at_service') && $service->mileage_at_service===null)
+                $service->mileage_at_service=Vehicle::where('parent_id',$service->parent_id)->whereKey($service->vehicle)->value('mileage');
+        });
+    }
 
     public function getExternalLaborTaxAmount(): float
     {

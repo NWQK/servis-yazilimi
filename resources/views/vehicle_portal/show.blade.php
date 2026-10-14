@@ -3,6 +3,7 @@
 @section('content')
     <section class="hero"><span class="eyebrow">ARACINIZ</span><h1>{{ $vehicle->license_plate }}</h1><p>{{ $vehicle->display_name }} · {{ $vehicle->mileage !== null ? number_format($vehicle->mileage, 0, ',', '.') . ' km' : 'Kilometre belirtilmedi' }}</p></section>
     @if($review)<a class="card invoice-link" href="{{ $review->publicUrl() }}"><div><h3>{{ $review->rating ? 'Değerlendirmeniz' : 'İşletmeyi değerlendir' }}</h3><p>{{ $review->rating ? $review->rating . ' / 5 puan verdiniz. Teşekkür ederiz.' : 'Deneyiminizi yıldızlarla puanlayın.' }}</p></div><span>{{ $review->rating ? 'Görüntüle' : 'Değerlendir' }} →</span></a>@endif
+    <a class="card invoice-link" href="{{ route('vehicle-history.index') }}"><div><h3>Araç servis geçmişini sorgula</h3><p>Şasi numarasıyla paylaşılan tamamlanmış işlemleri görüntüleyin.</p></div><span>Sorgula →</span></a>
     <section id="invoices"><h2>Faturalar ({{ $invoices->total() }})</h2>
         @forelse ($invoices as $invoice)
             <a class="card invoice-link" href="{{ route('vehicle-portal.invoice', [$code->token, $invoice->id]) }}"><div><h3>{{ $settings['invoice_number_prefix'] . $invoice->invoice_id }}</h3><p>{{ dateFormat($invoice->invoice_date) }} · {{ ['Ödenmedi', 'Kısmen ödendi', 'Ödendi'][$invoice->status] ?? '—' }}</p></div><span>Faturayı görüntüle →</span></a>

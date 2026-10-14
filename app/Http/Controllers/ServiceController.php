@@ -89,6 +89,7 @@ class ServiceController extends Controller
             $service->external_labor_amount = $request->external_labor_amount ?? 0;
             $service->parent_id = parentId();
             \App\Services\ExternalLabor::selectTax($service, $request->external_labor_tax_id);
+            if ($request->filled('mileage')) $service->mileage_at_service=(int)$request->mileage;
             $service->save();
             $serviceTypes = $request->types;
 
@@ -293,6 +294,7 @@ class ServiceController extends Controller
                 $messages = $validator->getMessageBag();
                 return redirect()->back()->with('error', $messages->first());
             }
+            $serviceVehicleChanged=(int)$service->vehicle !== (int)$request->vehicle;
             $service->vehicle = $request->vehicle;
             $service->client = $request->client;
             $service->service_date = $request->service_date;
@@ -302,6 +304,10 @@ class ServiceController extends Controller
             $service->assign = $request->assign;
             $service->status = $request->status;
             $service->notes = $request->notes;
+            $currentMileage=Vehicle::where('parent_id',parentId())->whereKey($request->vehicle)->value('mileage');
+            if ($serviceVehicleChanged || ($request->filled('mileage') && (int)$request->mileage !== (int)$currentMileage)) {
+                $service->mileage_at_service=$request->filled('mileage') ? (int)$request->mileage : $currentMileage;
+            }
             $service->save();
             if ($request->exists('external_labor_amount') || $request->exists('external_labor_tax_id')) app(\App\Services\ExternalLabor::class)->update($service, $request->exists('external_labor_amount') ? $request->external_labor_amount : $service->external_labor_amount, $request->external_labor_tax_id, $request->exists('external_labor_tax_id'));
             $serviceTypes = $request->types;

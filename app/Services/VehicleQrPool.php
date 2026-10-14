@@ -28,6 +28,7 @@ class VehicleQrPool
             $qr = $qrId ? $this->readyCode($parentId, $qrId) : VehicleQrCode::create(['parent_id'=>$parentId,'token'=>bin2hex(random_bytes(32))]);
             $vehicle = $create();
             abort_unless((int) $vehicle->parent_id === $parentId, 404);
+            ChassisNumber::assertUnique($vehicle);
             $this->assign($qr, $vehicle);
             $this->fill($parentId);
             return $vehicle;

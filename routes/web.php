@@ -594,3 +594,11 @@ Route::post('/randevu/konum', [\App\Http\Controllers\BookingLocationController::
 
 Route::get('business-setup/{step?}', [\App\Http\Controllers\BusinessSetupController::class, 'index'])->middleware(['auth','XSS'])->name('business-setup.index');
 Route::post('business-setup/{step}', [\App\Http\Controllers\BusinessSetupController::class, 'store'])->middleware(['auth','XSS','throttle:30,1,business-setup'])->name('business-setup.store');
+
+// Shared vehicle history is a public lookup; full VINs are submitted by POST and never placed in URLs.
+Route::get('/arac-gecmisi',[\App\Http\Controllers\PublicVehicleHistoryController::class,'index'])
+    ->withoutMiddleware(\App\Http\Middleware\Verify2FA::class)->middleware('throttle:60,1,vehicle-history-view')->name('vehicle-history.index');
+Route::post('/arac-gecmisi',[\App\Http\Controllers\PublicVehicleHistoryController::class,'search'])
+    ->withoutMiddleware(\App\Http\Middleware\Verify2FA::class)->middleware('throttle:10,1,vehicle-history-search')->name('vehicle-history.search');
+Route::post('/vehicle/{vehicle}/history-sharing',[VehicleController::class,'historySharing'])
+    ->middleware(['auth','XSS'])->name('vehicle.history-sharing');

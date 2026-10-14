@@ -51,7 +51,7 @@
                 </div>
                 <div class="card-body pt-0">
                     <div class="dt-responsive table-responsive">
-                        <table class="table table-hover advance-datatable client-list-table">
+                        <table data-page-sizes="true" class="table table-hover advance-datatable client-list-table">
                             <thead>
                                 <tr>
                                     <th>{{ __('ID') }}</th>

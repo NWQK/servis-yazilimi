@@ -17,6 +17,7 @@
             $group('Müşteriler', 'ti-user', [$entry('Müşteriler', 'client.index', 'manage client')]),
             $group('Araçlar', 'ti-truck', [
                 $entry('Araç listesi', 'vehicle.index', 'manage vehicle'),
+                $entry('Araç servis geçmişi sorgula', 'vehicle-history.index', 'manage vehicle', ['vehicle-history.*']),
                 $entry('QR etiketleri', 'vehicle-qr.index', 'create vehicle', null, auth()->user()->type !== 'client'),
                 $entry('Araç markaları', 'vehicle-type.index', 'manage vehicle type'),
                 $entry('Araç modelleri', 'vehicle-brand.index', 'manage vehicle brand'),

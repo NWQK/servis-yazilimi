@@ -16,6 +16,19 @@ class Vehicle extends Model
         return $this->hasOne(VehicleQrCode::class);
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function(self $vehicle){
+            if ($vehicle->isDirty('chassis_no')) $vehicle->chassis_no=\App\Services\ChassisNumber::normalize($vehicle->chassis_no);
+        });
+        static::saved(fn(self $vehicle)=>app(\App\Services\PublicVehicleHistory::class)->sync($vehicle));
+        static::deleted(function(self $vehicle){
+            if (\Illuminate\Support\Facades\Schema::hasTable('vehicle_history_index'))
+                \Illuminate\Support\Facades\DB::table('vehicle_history_index')->where('vehicle_id',$vehicle->id)->delete();
+        });
+        static::restored(fn(self $vehicle)=>app(\App\Services\PublicVehicleHistory::class)->sync($vehicle));
+    }
+
     protected $fillable=[
         'client',
         'vehicle_id',

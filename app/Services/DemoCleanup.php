@@ -35,7 +35,7 @@ class DemoCleanup
             $tickets=DB::table('support_tickets')->where('owner_id',$ownerId)->pluck('id');
             DB::table('support_ticket_messages')->whereIn('ticket_id',$tickets)->delete();
             // Explicit tenant table list, children first. Global catalogs/settings are never truncated.
-            foreach (['invoice_changes','invoice_payments','invoice_services','invoice_items','invoices',
+            foreach (['vehicle_history_index','invoice_changes','invoice_payments','invoice_services','invoice_items','invoices',
                 'service_items','services','quotation_items','quotation_services','quotations',
                 'vehicle_sms_messages','vehicle_qr_codes','vehicles','item_purchases','stock_movements','counter_sales',
                 'items','item_categories','suppliers','expenses','clients','employees','vehicle_catalog_imports',

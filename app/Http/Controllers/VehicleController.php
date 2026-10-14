@@ -47,6 +47,7 @@ class VehicleController extends Controller
     {
         abort_if(auth()->user()->type === 'client', 403);
         if (\Auth::user()->can('create vehicle')) {
+            \App\Services\ChassisNumber::validateForm($request);
             $validator = \Validator::make(
                 $request->all(),
                 [
@@ -96,6 +97,7 @@ class VehicleController extends Controller
                 return $vehicle;
             });
 
+            if ($request->exists('history_public')) app(\App\Services\PublicVehicleHistory::class)->share($vehicle,$request->boolean('history_public'));
             $module = 'vehicle_create';
             $notification = \App\Services\CentralEmail::template($module);
             $setting = settings();
@@ -152,6 +154,7 @@ class VehicleController extends Controller
     {
         abort_unless((int) $vehicle->parent_id === (int) parentId() && auth()->user()->type !== 'client', 403);
         if (\Auth::user()->can('edit vehicle')) {
+            \App\Services\ChassisNumber::validateForm($request,$vehicle);
             $validator = \Validator::make(
                 $request->all(),
                 [
@@ -177,22 +180,31 @@ class VehicleController extends Controller
                 return redirect()->back()->with('error', $messages->first());
             }
 
-            $vehicle->client = $request->client;
-            $vehicle->type = $request->type;
-            $vehicle->brand = $request->brand;
-            $vehicle->license_plate = $request->license_plate;
-            $vehicle->engine_type = $request->engine_type;
-            $vehicle->engine_no = $request->engine_no;
-            $vehicle->fuel_type = $request->fuel_type;
-            $vehicle->chassis_no = $request->chassis_no;
-            $vehicle->mileage = $request->mileage;
-            $vehicle->last_service_date = $request->last_service_date;
-            $vehicle->next_service_due_date = $request->next_service_due_date;
-            $vehicle->insurance_details = $request->insurance_details;
-            $vehicle->color = $request->color;
-            $vehicle->status = $request->status;
-            $vehicle->notes = $request->notes;
-            $vehicle->save();
+            \Illuminate\Support\Facades\DB::transaction(function() use($request,$vehicle){
+                User::whereKey(parentId())->lockForUpdate()->firstOrFail();
+                $vehicle=Vehicle::where('parent_id',parentId())->lockForUpdate()->findOrFail($vehicle->id);
+                \App\Services\ChassisNumber::validateForm($request,$vehicle);
+                $historyIdentityChanged=\App\Services\ChassisNumber::normalize($vehicle->chassis_no)!==\App\Services\ChassisNumber::normalize($request->chassis_no);
+                $vehicle->client = $request->client;
+                $vehicle->type = $request->type;
+                $vehicle->brand = $request->brand;
+                $vehicle->license_plate = $request->license_plate;
+                $vehicle->engine_type = $request->engine_type;
+                $vehicle->engine_no = $request->engine_no;
+                $vehicle->fuel_type = $request->fuel_type;
+                $vehicle->chassis_no = $request->chassis_no;
+                $vehicle->mileage = $request->mileage;
+                $vehicle->last_service_date = $request->last_service_date;
+                $vehicle->next_service_due_date = $request->next_service_due_date;
+                $vehicle->insurance_details = $request->insurance_details;
+                $vehicle->color = $request->color;
+                $vehicle->status = $request->status;
+                $vehicle->notes = $request->notes;
+                \App\Services\ChassisNumber::assertUnique($vehicle);
+                $vehicle->save();
+                if ($request->exists('history_public')) app(\App\Services\PublicVehicleHistory::class)->share($vehicle,!$historyIdentityChanged && $request->boolean('history_public'));
+
+            },5);
 
             return redirect()->route('vehicle.index')->with('success', __('Vehicle successfully updated.'));
         } else {
@@ -210,6 +222,20 @@ class VehicleController extends Controller
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
         }
+    }
+
+    public function historySharing(Request $request, Vehicle $vehicle)
+    {
+        abort_unless(auth()->user()->type!=='client' && auth()->user()->can('edit vehicle') && (int)$vehicle->parent_id===(int)parentId(),403);
+        $request->validate(['history_public'=>'required|boolean']);
+        \Illuminate\Support\Facades\DB::transaction(function() use($request,$vehicle){
+            User::whereKey(parentId())->lockForUpdate()->firstOrFail();
+            $vehicle=Vehicle::where('parent_id',parentId())->lockForUpdate()->findOrFail($vehicle->id);
+            if ($request->boolean('history_public') && !\App\Services\ChassisNumber::valid(\App\Services\ChassisNumber::normalize($vehicle->chassis_no)))
+                throw \Illuminate\Validation\ValidationException::withMessages(['chassis_no'=>'Önce araç düzenleme formundan geçerli şasi numarasını kaydedin.']);
+            app(\App\Services\PublicVehicleHistory::class)->share($vehicle,$request->boolean('history_public'));
+        },5);
+        return redirect()->route('vehicle.index')->with('success','Servis geçmişi paylaşım tercihi kaydedildi.');
     }
 
     public function vehicleNumber()

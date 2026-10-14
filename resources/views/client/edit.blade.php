@@ -163,8 +163,7 @@
                                             {{ Form::text('fuel_type', $vehicle->fuel_type ?? '', ['class' => 'form-control', 'placeholder' => __('Enter fuel type')]) }}
                                         </div>
                                         <div class="form-group col-md-6">
-                                            {{ Form::label('chassis_no', __('Chassis Number'), ['class' => 'form-label']) }}
-                                            {{ Form::text('chassis_no', $vehicle->chassis_no ?? '', ['class' => 'form-control', 'placeholder' => __('Enter chassis number')]) }}
+@include('vehicle.history-fields', ['historyVehicle'=>$vehicle ?? null])
                                         </div>
                                         <div class="form-group col-md-6">
                                             {{ Form::label('mileage', __('Mileage'), ['class' => 'form-label']) }}

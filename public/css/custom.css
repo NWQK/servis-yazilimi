@@ -276,3 +276,14 @@ form label{
 .sanayi-navigation .pc-mtext {
     text-transform: none;
 }
+
+/* Page-size selector and pagination share the bottom row of the four main lists. */
+.sr-table-bottom{clear:both;width:100%;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;padding:12px}
+.sr-table-bottom .dt-length,.sr-table-bottom .dataTables_length,.sr-table-bottom .dt-paging,.sr-table-bottom .dataTables_paginate{float:none!important;margin:0!important}
+.sr-table-bottom label{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin:0}
+.sr-table-bottom select{width:auto!important;min-width:68px;min-height:40px;margin:0 4px}
+@media(max-width:575px){.sr-table-bottom{justify-content:center}.sr-table-bottom .dt-paging,.sr-table-bottom .dataTables_paginate{max-width:100%;overflow-x:auto}.sr-table-bottom .pagination{flex-wrap:wrap;justify-content:center}}
+
+.sr-table-bottom .dt-length,.sr-table-bottom .dataTables_length{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:0 0 auto}
+.sr-table-bottom .dt-paging,.sr-table-bottom .dataTables_paginate{flex:0 1 auto;min-width:0}
+@media(max-width:575px){.sr-table-bottom .dt-paging,.sr-table-bottom .dataTables_paginate{flex-basis:100%;width:100%}.sr-table-bottom .dt-length,.sr-table-bottom .dataTables_length{justify-content:center}.sr-table-bottom .pagination{display:flex;gap:0}}

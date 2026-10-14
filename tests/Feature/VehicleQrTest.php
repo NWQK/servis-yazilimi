@@ -334,7 +334,7 @@ class VehicleQrTest extends TestCase
 
     private function optionalVehicleFields()
     {
-        return ['color', 'engine_type', 'engine_no', 'fuel_type', 'chassis_no', 'mileage',
+        return ['color', 'engine_type', 'engine_no', 'fuel_type', 'mileage',
             'last_service_date', 'next_service_due_date', 'insurance_details'];
     }
 
@@ -375,6 +375,7 @@ class VehicleQrTest extends TestCase
         foreach (array_keys($emptyDetails) as $field) {
             $this->assertNull(Vehicle::first()->$field);
         }
+        $data['chassis_no']='C124';
         $this->post('/vehicle', $data)->assertSessionHasErrors('qr_code_id');
         $this->assertSame(1, Vehicle::count());
     }
@@ -583,6 +584,7 @@ class VehicleQrTest extends TestCase
         $this->assertSame(10, VehicleQrCode::available()->count());
         // A stale tab must not leave an orphan customer behind when the QR was taken.
         $data['email'] = 'retry@example.test';
+        $data['chassis_no']='C124';
         $this->post('/client', $data)->assertSessionHasErrors('qr_code_id');
         $this->assertFalse(User::where('email', 'retry@example.test')->exists());
         $this->assertSame(1, Invoice::count());
