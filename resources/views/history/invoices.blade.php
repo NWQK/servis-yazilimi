@@ -1,0 +1,10 @@
+@extends('layouts.app')
+@section('page-title','Fatura işlem geçmişi')
+@section('content')
+@include('history.mobile-style')
+<div class="card"><div class="card-body"><h5>Fatura işlem geçmişi</h5><p class="text-muted">Son 2 yılda yapılan değişiklikler. Silinen faturaların işlem geçmişi de bu süre boyunca korunur. Boş kaydetmeler geçmiş oluşturmaz.</p>
+<div class="table-responsive"><table class="table align-middle history-grid-table invoice-grid"><thead><tr><th>Tarih</th><th>Fatura</th><th>Personel</th><th>İşlem</th><th>Değişiklikler</th></tr></thead><tbody>
+@php($labels=['invoice.store'=>'Fatura oluşturuldu','invoice.update'=>'Fatura düzenlendi','invoice.destroy'=>'Fatura silindi','invoice.payment.store'=>'Ödeme eklendi','invoice.payment.destroy'=>'Ödeme silindi','invoice.item.store'=>'Ürün eklendi','invoice.item.line.destroy'=>'Ürün çıkarıldı','invoice.item.destroy'=>'Ürün çıkarıldı','invoice.billing.update'=>'Müşteri bilgileri değişti','invoice.status.change'=>'Durum güncellendi','created'=>'Fatura oluşturuldu','payment.auto'=>'Otomatik ödeme / gelir düzeltmesi','invoice.banktransfer.payment'=>'Dekont eklendi','invoice.bank.transfer.action'=>'Dekont sonucu değişti'])
+@forelse($rows as $row)<tr><td data-label="Tarih" class="text-nowrap">{{ $row->created_at }}</td><td data-label="Fatura">#{{ $row->invoice_number }}</td><td data-label="Personel">{{ $row->actor_name ?? 'Sistem' }}</td><td data-label="İşlem">{{ $labels[$row->action] ?? 'Fatura işlemi' }}</td><td data-label="Değişiklikler"><details><summary>Değişiklikleri görüntüle</summary><dl class="small mt-2">@foreach(json_decode($row->changes,true) as $field=>$change)<dt>{{ \App\Services\InvoiceJournal::label($field) }}</dt><dd style="overflow-wrap:anywhere">{{ \App\Services\InvoiceJournal::display($field,$change['before']) }} → {{ \App\Services\InvoiceJournal::display($field,$change['after']) }}</dd>@endforeach</dl></details></td></tr>@empty<tr><td colspan="5">Henüz işlem geçmişi yok.</td></tr>@endforelse
+</tbody></table></div>{{ $rows->links() }}</div></div>
+@endsection

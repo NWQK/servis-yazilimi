@@ -8,6 +8,7 @@ use Tests\TestCase;
 
 class EmailInfrastructureTest extends TestCase
 {
+    use \Tests\FinancialForms;
     private $owner;
     protected function setUp(): void
     {
@@ -138,7 +139,7 @@ class EmailInfrastructureTest extends TestCase
         DB::table('settings')->insert(['parent_id'=>$this->owner->id,'name'=>'company_name','value'=>'Örnek Motor']);
         defaultTemplate($this->owner->id);
         Notification::where('parent_id',$this->owner->id)->where('module','invoice_create')->update(['enabled_email'=>1]);
-        $this->post('/invoice',['client'=>$client->id,'service'=>$service->id,'invoice_date'=>'2026-10-06','types'=>[]])->assertRedirect()->assertSessionMissing('error');
+        $this->postInvoice('/invoice',['client'=>$client->id,'service'=>$service->id,'invoice_date'=>'2026-10-06','types'=>[]])->assertRedirect()->assertSessionMissing('error');
         $invoice=Invoice::firstOrFail();
         $this->assertNotNull($invoice->customer_email_sent_at);
         $this->assertSame('central.example.test',config('mail.mailers.smtp.host'));
@@ -151,7 +152,7 @@ class EmailInfrastructureTest extends TestCase
         });
         app(\App\Services\InvoiceCustomerEmail::class)->send($invoice);
         Mail::assertSent(Common::class,1);
-        $this->put('/invoice/'.encrypt($invoice->id),['client'=>$client->id,'service'=>$service->id,'invoice_date'=>'2026-10-06','types'=>[]])->assertRedirect();
+        $this->putInvoice('/invoice/'.encrypt($invoice->id),['client'=>$client->id,'service'=>$service->id,'invoice_date'=>'2026-10-06','types'=>[]])->assertRedirect();
         Mail::assertSent(Common::class,1);
         $template=\App\Services\InvoiceCustomerEmail::template($admin);
         $this->get(route('notification.edit',$template))->assertForbidden();
@@ -159,13 +160,13 @@ class EmailInfrastructureTest extends TestCase
         $this->actingAs($admin)->get(route('notification.index'))->assertOk()->assertSee('Müşteriye fatura bildirimi');
         $this->get(route('notification.edit',$template))->assertOk()->assertSee('{vehicle_link}');
         $this->put(route('notification.update',$template),['subject'=>'Yeni fatura {invoice_number}','message'=>'{company_name}: {vehicle_link}','enabled_email'=>1])->assertRedirect();
-        $this->actingAs($this->owner)->post('/invoice',['client'=>$client->id,'service'=>$service->id,'invoice_date'=>'2026-10-06','types'=>[]])->assertRedirect();
+        $this->actingAs($this->owner)->postInvoice('/invoice',['client'=>$client->id,'service'=>$service->id,'invoice_date'=>'2026-10-06','types'=>[]])->assertRedirect();
         Mail::assertSent(Common::class,2);
         Mail::assertSent(Common::class,fn($mail)=>str_starts_with($mail->data['subject'],'Yeni fatura'));
         $this->actingAs($admin)->put(route('notification.update',$template),['subject'=>'x','message'=>'x','use_default_template'=>1,'enabled_email'=>0])->assertRedirect();
         $this->assertSame(\App\Services\InvoiceCustomerEmail::definition()['subject'],$template->fresh()->subject);
         $this->actingAs($this->owner);
-        $this->post('/invoice',['client'=>$client->id,'service'=>$service->id,'invoice_date'=>'2026-10-06','types'=>[]])->assertRedirect();
+        $this->postInvoice('/invoice',['client'=>$client->id,'service'=>$service->id,'invoice_date'=>'2026-10-06','types'=>[]])->assertRedirect();
         Mail::assertSent(Common::class,2);
     }
 
@@ -208,7 +209,7 @@ class EmailInfrastructureTest extends TestCase
         $vehicle=Vehicle::create(['client'=>$client->id,'parent_id'=>$this->owner->id]);
         VehicleQrCode::create(['vehicle_id'=>$vehicle->id,'parent_id'=>$this->owner->id,'token'=>str_repeat('c',64)]);
         $service=Service::create(['client'=>$client->id,'vehicle'=>$vehicle->id,'parent_id'=>$this->owner->id]);
-        $this->post('/invoice',['client'=>$client->id,'service'=>$service->id,'invoice_date'=>'2026-10-06','types'=>[],
+        $this->postInvoice('/invoice',['client'=>$client->id,'service'=>$service->id,'invoice_date'=>'2026-10-06','types'=>[],
             'billing'=>['email'=>'optional-billing@example.test']])->assertRedirect()->assertSessionMissing('error');
         Mail::assertSent(Common::class,fn($mail)=>$mail->hasTo('optional-billing@example.test'));
         $this->assertNull($client->fresh()->email);

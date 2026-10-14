@@ -39,6 +39,7 @@
                 $entry('Ürün ve stok listesi', 'item.index', 'manage item', ['item.*', '!item.purchases']),
                 $entry('Tedarikçiler', 'supplier.index', 'manage item', ['supplier.*'], auth()->user()->type !== 'client'),
                 $entry('Satın alım geçmişi', 'item.purchases', 'manage item', ['item.purchases'], auth()->user()->type !== 'client'),
+                $entry('Stok hareket geçmişi', 'history.stock', 'manage item', ['history.stock'], auth()->user()->type !== 'client'),
                 $entry('Ürün kategorileri', 'item-category.index', 'manage item'),
                 $entry('Ürün birimleri', 'unit.index', 'manage unit'),
             ]),
@@ -46,6 +47,7 @@
                 $entry('Fatura listesi', 'invoice.index', 'manage invoice', ['invoice.*', '!invoice.create', '!invoice.debts']),
                 $entry('Borç takibi', 'invoice.debts', 'manage invoice', ['invoice.debts'], auth()->user()->type !== 'client'),
                 $entry('Yeni fatura oluştur', 'invoice.create', 'create invoice', ['invoice.create']),
+                $entry('Fatura işlem geçmişi', 'history.invoices', 'manage invoice', ['history.invoices'], auth()->user()->type !== 'client'),
             ]),
             $group('Teklifler', 'ti-clipboard', [$entry('Teklifler', 'quotation.index', 'manage quotation')]),
         ]],
@@ -102,6 +104,7 @@
                 $entry('İşletme giriş geçmişi', 'owner-logins.index', null, ['owner-logins.*'], $isSuperAdmin),
                 $entry('Yedekler', 'backups.index', null, ['backups.*'], $isSuperAdmin),
                 $entry('Bakım modu', 'maintenance.index', null, ['maintenance.*'], $isSuperAdmin),
+                $entry('Sistem sağlığı', 'system-health.index', null, ['system-health.*'], $isSuperAdmin),
             ]),
         ]],
     ];

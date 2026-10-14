@@ -27,7 +27,10 @@ class EventServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        $this->app['mail.manager']->extend('tracked_smtp', function(array $config) {
+            $config['transport']='smtp';
+            return new \App\Services\HealthSmtpTransport($this->app['mail.manager']->createSymfonyTransport($config));
+        });
     }
 
     /**

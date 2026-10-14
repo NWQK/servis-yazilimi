@@ -61,7 +61,7 @@ class ReportController extends Controller
             $clients->prepend(__('Select Client'), '');
 
             $status = Invoice::statues();
-            $invoices = Invoice::where('parent_id', parentId())->withSum('payments', 'amount');
+            $invoices = Invoice::where('parent_id', parentId())->withSum(['payments'=>fn($q)=>$q->accounted()], 'amount');
 
             if ($request->filled('client') && $request->client != 0) {
                 $invoices->where('client', $request->client);
@@ -175,7 +175,7 @@ public function incomeByMonth($year = null)
         $year = date('Y', $currentdate);
         $payment['label'][] = \Carbon\Carbon::createFromTimestamp($currentdate)->locale('tr')->translatedFormat('M Y');
 
-        $incomeQuery = InvoicePayment::join('invoices', 'invoices.id', '=', 'invoice_payments.invoice_id')
+        $incomeQuery = InvoicePayment::accounted()->join('invoices', 'invoices.id', '=', 'invoice_payments.invoice_id')
             ->whereMonth('payment_date', $month)
             ->whereYear('payment_date', $year)
             ->where('invoice_payments.parent_id', parentId());

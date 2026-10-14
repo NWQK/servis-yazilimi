@@ -1,4 +1,5 @@
-<form method="post" action="{{ route('invoice.destroy', $invoice->id) }}">@csrf @method('DELETE')
+<form method="post" action="{{ route('invoice.destroy', $invoice->id) }}">
+@include('invoice.operation-fields')@csrf @method('DELETE')
 <div class="modal-body"><h5>{{ invoicePrefix().$invoice->invoice_id }} numaralı fatura silinsin mi?</h5><p>Fatura ve bağlı ödeme kayıtları silinecek. Bu işlem para iadesi yapmaz.</p>
 <fieldset><legend class="h6">Fatura içerisindeki ürünler stoklara tekrar eklensin mi?</legend>
 <label class="d-block py-2"><input type="radio" name="return_stock" value="1" required> Evet, ürünleri stoğa geri ekle.</label>

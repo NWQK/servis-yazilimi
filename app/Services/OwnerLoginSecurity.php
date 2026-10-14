@@ -17,6 +17,7 @@ class OwnerLoginSecurity
         $user=$request->user();
         if (!$user || $user->type !== 'owner' || $request->session()->get('owner_login_recorded')) return;
         try {
+            app(DemoLifecycle::class)->recordLogin($user);
             $this->purge();
             $ua=mb_substr(preg_replace('/[\x00-\x1F\x7F]/','',$request->userAgent() ?? ''),0,512);
             $parser=new \WhichBrowser\Parser($ua);

@@ -14,6 +14,24 @@ class Invoice extends Model
 
     protected static function booted()
     {
+        static::updated(function(Invoice $invoice){
+            if(request()->attributes->get('invoice_operation_guard') || !\Schema::hasTable('invoice_changes')) return;
+            $keys=['status','client','service','invoice_date','discount_amount','external_labor_amount','external_labor_tax_rate','customer_details'];
+            $before=[]; $after=[];
+            foreach($keys as $key) if($invoice->wasChanged($key)) {$before[$key]=$invoice->getOriginal($key);$after[$key]=$invoice->$key;}
+            $changes=\App\Services\InvoiceJournal::difference($before,$after);
+            if(!$changes) return;
+            \DB::table('invoices')->where('id',$invoice->id)->increment('revision');
+            $invoice->revision=(int)$invoice->revision+1; $invoice->syncOriginalAttribute('revision');
+            \App\Services\InvoiceJournal::record($invoice,$changes,'invoice.update');
+        });
+        static::created(function(Invoice $invoice){
+            if(request()->attributes->get('invoice_operation_guard') || !\Schema::hasTable('invoice_changes')) return;
+            \DB::afterCommit(function() use($invoice){
+                $fresh=Invoice::find($invoice->id);
+                if($fresh) \App\Services\InvoiceJournal::record($fresh,\App\Services\InvoiceJournal::difference([],\App\Services\InvoiceJournal::snapshot($fresh)),'created');
+            });
+        });
         static::creating(function (Invoice $invoice) {
             $invoice->customer_details = array_replace(
                 \App\Services\InvoiceBilling::customer((int) $invoice->parent_id, $invoice->client),
@@ -160,6 +178,7 @@ class Invoice extends Model
     {
         $invoiceTotalPaid = 0;
         foreach ($this->payments as $invoicePayment) {
+            if ($invoicePayment->payment_status !== null && !in_array($invoicePayment->payment_status,['success','succeeded'],true)) continue;
             $invoiceTotalPaid += $invoicePayment->amount;
         }
 

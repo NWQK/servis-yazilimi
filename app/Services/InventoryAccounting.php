@@ -14,7 +14,7 @@ class InventoryAccounting
         return $this->transaction($tenant, function () use ($tenant, $actor, $itemId, $quantity, $requestKey, $expectedPrice) {
             $existing = DB::table('counter_sales')->where('parent_id',$tenant)->where('request_key',$requestKey)->first();
             if ($existing) {
-                if ((int)$existing->item_id !== $itemId || (int)$existing->quantity !== $quantity) $this->invalid('Bu satış isteği daha önce farklı bilgilerle kaydedildi. Sayfayı yenileyin.');
+                if ((int)$existing->item_id !== $itemId || (int)$existing->quantity !== $quantity || (int)$existing->created_by !== $actor || $this->money($existing->unit_price) !== $this->money($expectedPrice)) $this->invalid('Bu satış isteği daha önce farklı bilgilerle kaydedildi. Sayfayı yenileyin.');
                 return $existing;
             }
             $item = Item::where('parent_id',$tenant)->lockForUpdate()->findOrFail($itemId);
@@ -173,7 +173,7 @@ class InventoryAccounting
         $reduction = max(0, (int) round($previousTotal * 100) - $newTotal);
         if ($reduction === 0) return;
 
-        $paid = (int) round($invoice->payments()->sum('amount') * 100);
+        $paid = (int) round($invoice->payments()->accounted()->sum('amount') * 100);
         // A partial payment still covered by the remaining invoice is retained.
         // Never reverse unpaid income or repeat an already-recorded correction.
         $correction = min($reduction, max(0, $paid - $newTotal));
@@ -194,7 +194,7 @@ class InventoryAccounting
     public function refreshStatus(Invoice $invoice): void
     {
         $invoice->unsetRelation('items')->unsetRelation('types')->unsetRelation('payments');
-        $paid = (float) $invoice->payments()->sum('amount');
+        $paid = (float) $invoice->payments()->accounted()->sum('amount');
         $invoice->status = $paid <= 0 ? 0 : ($paid >= $invoice->getInvoiceAllTotalAmount() ? 2 : 1);
         $invoice->save();
     }
@@ -288,6 +288,8 @@ class InventoryAccounting
     {
         return DB::table('stock_movements')->insertGetId([
             'parent_id' => $item->parent_id, 'inventory_key' => $item->inventory_key,
+            'actor_id'=>auth()->id(), 'actor_name'=>auth()->user()?->name, 'item_title'=>$item->title,
+            'invoice_id'=>$lineId ? InvoiceItem::find($lineId)?->invoice_id : null,
             'invoice_item_id' => $lineId, 'kind' => $kind, 'quantity' => $quantity,
             'unit_price' => $this->money($price), 'created_at' => now(), 'updated_at' => now(),
         ]);

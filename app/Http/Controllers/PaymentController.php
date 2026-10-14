@@ -76,6 +76,7 @@ class PaymentController extends Controller
 
     public function subscriptionManualAssignPackage(Request $request, $id, $user_id)
     {
+        abort_unless(auth()->user()->type === 'super admin', 403);
         $subscriptionId = \Illuminate\Support\Facades\Crypt::decrypt($id);
 
         $coupon = $request->coupon;
@@ -102,6 +103,8 @@ class PaymentController extends Controller
 
     public function subscriptionBankTransferAction($id, $status)
     {
+        abort_unless(auth()->user()->type === 'super admin', 403);
+        abort_unless(in_array($status, ['accept', 'reject'], true), 422);
         $order = PackageTransaction::find($id);
         if ($status == 'accept') {
             $subscription = Subscription::find($order->subscription_id);

@@ -37,7 +37,7 @@ class BookingDirectoryController extends Controller
                 'review_average'=>\App\Models\BusinessReview::selectRaw('AVG(rating)')->whereColumn('owner_id','appointment_profiles.owner_id'),
                 'appointment_count'=>\App\Models\Appointment::selectRaw('COUNT(*)')->whereColumn('appointment_profile_id','appointment_profiles.id')->whereIn('status',['approved','completed']),
                 'review_count'=>\App\Models\BusinessReview::selectRaw('COUNT(rating)')->whereColumn('owner_id','appointment_profiles.owner_id')])->where('directory_visible', true)->where('is_active', true)
-                ->where('directory_region', $region)->whereHas('owner', fn ($q) => $q->where('type', 'owner')->whereNull('subscription_suspended_at'))
+                ->where('directory_region', $region)->whereHas('owner', fn ($q) => $q->where('type', 'owner')->whereNull('subscription_suspended_at')->where(fn($owner)=>$owner->whereNull('demo_expires_at')->orWhere('demo_expires_at','>',now())->orWhereNotIn('subscription',\App\Models\Subscription::where('vehicle_limit',50)->select('id'))))
                 ->whereExists(fn ($q) => $q->selectRaw('1')->from('booking_offerings')
                     ->whereColumn('appointment_profile_id', 'appointment_profiles.id')
                     ->where('vehicle_type', $vehicle)->where('booking_service_id', $service->id))

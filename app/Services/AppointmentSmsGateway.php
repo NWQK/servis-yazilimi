@@ -7,6 +7,12 @@ class AppointmentSmsGateway
 {
     public function send(string $phone, string $body): array
     {
+        $result=$this->deliver($phone,$body);
+        SystemHealth::record('sms',$result['status']==='accepted',$result['error_code']??'accepted');
+        return $result;
+    }
+    private function deliver(string $phone, string $body): array
+    {
         $settings = AppointmentSmsSetting::central();
         if (!$settings->ready()) return ['status' => 'failed', 'error_code' => 'not_configured'];
         if (!preg_match('/^\+905[0-9]{9}$/D', $phone)) return ['status' => 'failed', 'error_code' => 'invalid_phone'];

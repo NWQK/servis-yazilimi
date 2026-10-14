@@ -65,6 +65,7 @@ class InvoiceCustomerEmail
                 $invoice->save();
             });
         } catch (\Throwable $exception) {
+            SystemHealth::record('smtp',false,'invoice_mail_error');
             Log::warning('Merkezi fatura e-postası gönderilemedi.', ['invoice_id' => $invoice->id,
                 'parent_id' => $invoice->parent_id, 'exception_type' => get_class($exception)]);
         }

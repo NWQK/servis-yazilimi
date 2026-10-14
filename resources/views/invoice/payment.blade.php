@@ -1,4 +1,5 @@
 {{ Form::open(array('route' => array('invoice.payment.store', $invoice->id),'method'=>'post')) }}
+@include('invoice.operation-fields')
 <div class="modal-body">
     <div class="row">
         <div class="form-group  col-md-12">

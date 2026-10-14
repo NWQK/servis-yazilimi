@@ -8,6 +8,14 @@ class TenantMailSettings
     // Keep the legacy argument for callers; shop credentials are never selected.
     public function apply(int $ownerId): array
     {
+        try { return $this->configure($ownerId); }
+        catch(\Throwable $e) {
+            if(CentralEmail::enabled()) SystemHealth::record('smtp',false,'configuration_error');
+            throw $e;
+        }
+    }
+    private function configure(int $ownerId): array
+    {
         if (!CentralEmail::enabled()) throw new \RuntimeException('Merkezi e-posta sistemi kapalı.');
         $ownerId = CentralEmail::administrator()?->id;
         $values = $ownerId ? DB::table('settings')->where('type', 'smtp')->where('parent_id', $ownerId)->pluck('value', 'name')->all() : [];
@@ -21,7 +29,7 @@ class TenantMailSettings
         }
         // Clear every field, including URL overrides, so another shop's credentials cannot be reused.
         config(['mail.default'=>'smtp', 'mail.mailers.smtp'=>[
-            'transport'=>'smtp', 'scheme'=>$values['SERVER_ENCRYPTION'] === 'ssl' ? 'smtps' : 'smtp',
+            'transport'=>'tracked_smtp', 'scheme'=>$values['SERVER_ENCRYPTION'] === 'ssl' ? 'smtps' : 'smtp',
             'url'=>null, 'host'=>$values['SERVER_HOST'], 'port'=>(int) $values['SERVER_PORT'],
             'encryption'=>$values['SERVER_ENCRYPTION'] ?: null, 'username'=>$values['SERVER_USERNAME'],
             'password'=>$values['SERVER_PASSWORD'], 'timeout'=>15, 'local_domain'=>strtolower($localDomain),

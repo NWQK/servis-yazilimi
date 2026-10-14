@@ -58,7 +58,7 @@ class VehicleCapacityController extends Controller
                     'subscription_transactions_id' => 'vehicle-capacity-' . $record->id]);
             }
             \App\Services\AdminAudit::record('capacity.review',$owner->id,['status'=>$record->status],['request_id'=>$record->id,'status'=>$data['decision'],'vehicles'=>$record->vehicles,'amount'=>$record->amount]);
-            $record->update(['status' => $data['decision'], 'reviewed_by' => auth()->id(), 'reviewed_at' => now()]);
+            $record->update(['status' => $data['decision'], 'reviewed_by' => auth()->id(), 'reviewed_at' => now(), 'expires_at' => $data['decision']==='approved' ? now()->addMonthNoOverflow() : null]);
         }, 5);
         return back()->with('success', 'Ek kapasite talebi işlendi.');
     }

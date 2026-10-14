@@ -105,6 +105,7 @@ class InvoiceController extends Controller
             $invoice->status = 0;
             $invoice->parent_id = parentId();
             $invoice->save();
+            $request->attributes->set('created_invoice_id',$invoice->id);
 
             $totalAmount = 0;
 
@@ -307,12 +308,13 @@ class InvoiceController extends Controller
         return view('invoice.delete', compact('invoice'));
     }
 
-    public function destroy(Request $request, Invoice $invoice)
+    public function destroy(Request $request, $invoice)
     {
         abort_unless(auth()->user()->can('delete invoice'), 403);
         $request->validate(['return_stock'=>'required|boolean']);
-        app(InventoryAccounting::class)->transaction(parentId(), function () use ($invoice, $request) {
-            $invoice = Invoice::where('parent_id', parentId())->lockForUpdate()->findOrFail($invoice->id);
+        $invoiceId=$invoice instanceof Invoice ? $invoice->id : (int)$invoice;
+        app(InventoryAccounting::class)->transaction(parentId(), function () use ($invoiceId, $request) {
+            $invoice = Invoice::where('parent_id', parentId())->lockForUpdate()->findOrFail($invoiceId);
             if ($request->boolean('return_stock')) app(InventoryAccounting::class)->sync($invoice, []);
             else $invoice->items()->delete();
             $invoice->types()->delete();
@@ -362,11 +364,10 @@ class InvoiceController extends Controller
 
     public function statusChange(Request $request, $id)
     {
-        $status = $request->status;
-        $invoice = Invoice::where('parent_id', parentId())->findOrFail($id);
-        $invoice->status = $status;
-        $invoice->save();
-        return redirect()->back()->with('success', __('Invoice status changed successfully.'));
+        abort_unless(auth()->user()->can('edit invoice'),403);
+        $invoice=Invoice::where('parent_id',parentId())->lockForUpdate()->findOrFail($id);
+        app(InventoryAccounting::class)->refreshStatus($invoice);
+        return back()->with('success','Fatura durumu ödemelere göre güncellendi.');
     }
 
     public function payment($invoice_id)
@@ -387,120 +388,33 @@ class InvoiceController extends Controller
 
     public function createPayment(Request $request, $invoice_id)
     {
-        if (\Auth::user()->can('create invoice payment')) {
-
-            $invoice = Invoice::find($invoice_id);
-            $dueAmount = $invoice->getInvoiceTotalDueAmount();
-            $validator = \Validator::make(
-                $request->all(),
-                [
-                    'payment_date' => 'required',
-                    'amount' => 'required|numeric|min:1|max:' . $dueAmount,
-                ],
-
-            );
-
-            if ($validator->fails()) {
-                $messages = $validator->getMessageBag();
-
-                return redirect()->back()->with('error', $messages->first());
-            }
-            $invoicePayment = new InvoicePayment();
-            $invoicePayment->transaction_id = uniqid(1);
-            $invoicePayment->invoice_id = $invoice_id;
-            $invoicePayment->payment_date = $request->payment_date;
-            $invoicePayment->amount = $request->amount;
-            $invoicePayment->payment_type = 'Manual';
-            $invoicePayment->payment_status = 'success';
-            $invoicePayment->description = $request->description;
-            $invoicePayment->parent_id = parentId();
-            $invoicePayment->save();
-            $invoice = Invoice::where('parent_id', parentId())->findOrFail($invoice_id);
-            $due = $invoice->getInvoiceTotalDueAmount();
-
-
-            if ($due <= 0) {
-                $invoice->status = 2;
-                $invoice->save();
-            } else {
-                $invoice->status = 1;
-                $invoice->save();
-            }
-
-            if ($invoice->status == 0) {
-                $status = 'Unpaid';
-            }
-            if ($invoice->status == 2) {
-                $status = 'Paid';
-            }
-            if ($invoice->status == 1) {
-                $status = 'Partialy Paid';
-            }
-            $setting = settings();
-
-            $n8nData = [
-                'transaction_id' => $invoicePayment->transaction_id,
-                'invoice_id' => $invoice_id,
-                'payment_date' => $request->payment_date,
-                'amount' => $request->amount,
-                'payment_type' => 'Manual',
-                'description' => $request->description,
-                'invoice_status' => $invoice->status,
-                'due_amount' => $due,
-                'client_name' => !empty($invoice->clients) ? $invoice->clients->name : '',
-                'client_email' => $invoice->clients->email,
-                'client_phone' => $invoice->clients->phone_number,
-                'company_logo' => $setting['company_logo'],
-                'parent_id' => parentId(),
-            ];
-
-            triggerN8n('new_payment', $n8nData);
-            $module = 'payment_create';
-            $notification = \App\Services\CentralEmail::template($module);
-            if ($notification) { $notification->status = $status; }
-            $errorMessage = '';
-
-            if (!empty($notification)) {
-                $notificationResponse = MessageReplace($notification, $invoice->id);
-                $data['subject'] = $notificationResponse['subject'];
-                $data['message'] = $notificationResponse['message'];
-                $data['module'] = $module;
-                $data['logo'] = $setting['company_logo'];
-                $to = $invoice->clients->email;
-
-                if ($notification->enabled_email == 1 && !empty($to)) {
-                    $response = commonEmailSend($to, $data);
-                    if ($response['status'] == 'error') {
-                        $errorMessage = $response['message'];
-                    }
-                }
-                if ($notification->enabled_sms == 1) {
-
-                }
-
-            }
-
-            return redirect()->back()->with('success', __('Payment successfully created.') . '</br>' . $errorMessage);
+        abort_unless(auth()->user()->can('create invoice payment'),403);
+        $invoice=Invoice::where('parent_id',parentId())->lockForUpdate()->findOrFail($invoice_id);
+        $due=round($invoice->getInvoiceTotalDueAmount(),2);
+        $data=$request->validate(['payment_date'=>'required|date','amount'=>['required','numeric','min:0.01','max:'.$due,'regex:/^\d+(\.\d{1,2})?$/'],'description'=>'nullable|string|max:2000']);
+        $payment=new InvoicePayment();
+        $payment->transaction_id=(string)\Illuminate\Support\Str::uuid();
+        $payment->invoice_id=$invoice->id; $payment->parent_id=parentId();
+        $payment->payment_date=$data['payment_date']; $payment->amount=$data['amount'];
+        $payment->payment_type='Manual'; $payment->payment_status='success'; $payment->description=$data['description']??null;
+        $payment->save();
+        app(InventoryAccounting::class)->refreshStatus($invoice);
+        $notification=\App\Services\CentralEmail::template('payment_create');
+        if($notification && $notification->enabled_email && $invoice->clients?->email) {
+            $message=MessageReplace($notification,$invoice->id);
+            commonEmailSend($invoice->clients->email,['module'=>'payment_create','subject'=>$message['subject'],'message'=>$message['message']]);
         }
+        return back()->with('success','Ödeme kaydedildi.');
     }
 
     public function paymentDestroy(Request $request, $invoice_id, $payment_id)
     {
-        if (\Auth::user()->can('delete invoice payment')) {
-            InvoicePayment::where('id', $payment_id)->delete();
-            $invoice = Invoice::where('parent_id', parentId())->findOrFail($invoice_id);
-            $due = $invoice->getInvoiceTotalDueAmount();
-            $total = $invoice->getInvoiceAllTotalAmount();
-            if ($due > 0 && $total != $due) {
-                $invoice->status = 2;
-            } else {
-                $invoice->status = 0;
-            }
-            $invoice->save();
-            return redirect()->back()->with('success', __('Payment successfully deleted.'));
-        } else {
-            return redirect()->back()->with('error', __('Permission denied.'));
-        }
+        abort_unless(auth()->user()->can('delete invoice payment'),403);
+        $invoice=Invoice::where('parent_id',parentId())->lockForUpdate()->findOrFail($invoice_id);
+        $payment=InvoicePayment::where('parent_id',parentId())->where('invoice_id',$invoice->id)->lockForUpdate()->findOrFail($payment_id);
+        $payment->delete();
+        app(InventoryAccounting::class)->refreshStatus($invoice);
+        return back()->with('success','Ödeme silindi.');
     }
 
     private function itemSelectionData(?Invoice $invoice = null): array
@@ -567,76 +481,32 @@ class InvoiceController extends Controller
 
     public function banktransferPayment(Request $request, $id)
     {
-        $invoiceId = decrypt($id);
-        $validator = \Validator::make(
-            $request->all(),
-            [
-                'receipt' => 'required',
-                'amount' => 'required',
-            ]
-        );
-        if ($validator->fails()) {
-            $messages = $validator->getMessageBag();
-
-            return redirect()->back()->with('error', $messages->first());
-        }
-
-
-
-        if ($request->hasFile('receipt')) {
-            $invoicenameWithExt = $request->file('receipt')->getClientOriginalName();
-            $invoicename = pathinfo($invoicenameWithExt, PATHINFO_FILENAME);
-            $tenantExtension = $request->file('receipt')->getClientOriginalExtension();
-            $invoiceName = $invoicename . '_' . time() . '.' . $tenantExtension;
-            $dir = storage_path('upload/receipt');
-            if (!file_exists($dir)) {
-                mkdir($dir, 0777, true);
-            }
-            $request->file('receipt')->storeAs('upload/receipt/', $invoiceName);
-        }
-
-        $invoice = Invoice::find($invoiceId);
-        $transactionID = uniqid('', true);
-
-        $payment['invoice_id'] = $invoice->id;
-        $payment['transaction_id'] = $transactionID;
-        $payment['receipt'] = $invoicename;
-        $payment['payment_type'] = 'Bank Transfer';
-        $payment['amount'] = $request->amount;
-        $payment['notes'] = $request->notes;
-        $payment['payment_status'] = 'pending';
-        $payment['payment_date'] = date('Y-m-d');
-        $payment['parent_id'] = parentId();
-
-
-        InvoicePayment::insert($payment);
-        return redirect()->back()->with('success', __('Invoice payment successfully completed.'));
+        abort_unless(auth()->user()->can('create invoice payment'),403);
+        $invoice=Invoice::where('parent_id',parentId())->lockForUpdate()->findOrFail(decrypt($id));
+        $data=$request->validate(['receipt'=>'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'amount'=>['required','numeric','min:0.01','max:'.round($invoice->getInvoiceTotalDueAmount(),2),'regex:/^\d+(\.\d{1,2})?$/'],
+            'notes'=>'nullable|string|max:2000']);
+        $name=(string)\Illuminate\Support\Str::uuid().'.'.$request->file('receipt')->extension();
+        $request->file('receipt')->storeAs('upload/receipt/',$name);
+        $payment=new InvoicePayment(); $payment->invoice_id=$invoice->id; $payment->parent_id=parentId();
+        $payment->transaction_id=(string)\Illuminate\Support\Str::uuid(); $payment->receipt=$name;
+        $payment->payment_type='Bank Transfer'; $payment->amount=$data['amount']; $payment->description=$data['notes']??null;
+        $payment->payment_status='pending'; $payment->payment_date=now()->toDateString(); $payment->save();
+        return back()->with('success','Ödeme onay bekliyor. Henüz tahsilat olarak sayılmadı.');
     }
+
     public function invoicePaymentStatus($id, $status)
     {
-        $order = InvoicePayment::find($id);
-        $invoice = Invoice::find($order->invoice_id);
-        if ($status == 'accept') {
-            $due = $invoice->getInvoiceTotalDueAmount();
-            $total = $invoice->amount;
-            $status = $due <= 0 ? 2 : ($due == $total ? 0 : 1);
-            Invoice::statusChange($invoice->id, $status);
-            $order->payment_status = 'success';
-            $order->save();
-        } else {
-            $order->payment_status = 'reject';
-            $order->save();
-        }
-        return redirect()->back()->with('success', __('Invoice payment status is ' . $status));
+        abort_unless(auth()->user()->can('edit invoice'),403);
+        abort_unless(in_array($status,['accept','reject'],true),422);
+        $order=InvoicePayment::where('parent_id',parentId())->lockForUpdate()->findOrFail($id);
+        $invoice=Invoice::where('parent_id',parentId())->lockForUpdate()->findOrFail($order->invoice_id);
+        if($order->payment_status!=='pending') return back()->with('success','Bu ödeme daha önce işlenmiş.');
+        if($status==='accept' && (float)$order->amount>round($invoice->getInvoiceTotalDueAmount(),2)) throw \Illuminate\Validation\ValidationException::withMessages(['amount'=>'Ödeme kalan borcu aşıyor. Faturayı yenileyip kontrol edin.']);
+        $order->payment_status=$status==='accept' ? 'success' : 'reject'; $order->save();
+        app(InventoryAccounting::class)->refreshStatus($invoice);
+        return back()->with('success',$status==='accept' ? 'Ödeme onaylandı.' : 'Ödeme reddedildi.');
     }
-
-
-
-
-
-
-
-
 
     public function getServiceType(Request $request, $id)
     {

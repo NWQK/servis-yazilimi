@@ -11,7 +11,7 @@
     <script src="{{ asset('js/sanayi-auth.js') }}" defer></script>
 </head>
 <body>
-<a class="login-skip" href="#login-content">Giriş formuna geç</a>
+<a class="login-skip" href="#login-content">Forma geç</a>
 <main class="login-shell">
     <aside class="login-story" aria-label="Sanayi Randevu servis yönetimi">
         <a class="login-brand" href="{{ route('marketing.index') }}"><img src="{{ asset('images/brand/sanayirandevu-logo-light.svg') }}" width="290" height="41" alt="sanayirandevu.com"></a>
@@ -31,7 +31,7 @@
         </div>
         <div class="login-story-footer"><span>Otomobil · Motosiklet · Ağır vasıta</span><span>sanayirandevu.com</span></div>
     </aside>
-    <section class="login-panel" id="login-content" aria-label="İşletme girişi">
+    <section class="login-panel" id="login-content" aria-label="@yield('panel-label','İşletme girişi')">
         <header class="login-panel-header"><a class="login-brand" href="{{ route('marketing.index') }}"><img src="{{ asset('images/brand/sanayirandevu-logo.svg') }}" width="254" height="36" alt="sanayirandevu.com"></a><a class="login-back" href="{{ route('marketing.index') }}">Siteye dön <span aria-hidden="true">↗</span></a></header>
         <div class="login-form-wrap">@yield('content')</div>
         <footer class="login-panel-footer">© {{ date('Y') }} Sanayi Randevu</footer>

@@ -18,6 +18,7 @@ class User extends Authenticatable
     protected static function booted(): void
     {
         static::saving(function (self $user) {
+            app(\App\Services\DemoLifecycle::class)->prepare($user);
             // Creation forms sometimes assign email before type; move it once type is known.
             if ($user->type === 'client' && !empty($user->attributes['email'])) {
                 $user->attributes['contact_email'] = $user->attributes['email'];

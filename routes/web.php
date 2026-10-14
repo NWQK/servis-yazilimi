@@ -92,6 +92,9 @@ use GuzzleHttp\Psr7\Query;
 
 require __DIR__ . '/auth.php';
 Route::middleware(['auth', 'XSS'])->group(function () {
+    Route::get('history/invoices', [\App\Http\Controllers\OperationHistoryController::class,'invoices'])->name('history.invoices');
+    Route::get('history/stock', [\App\Http\Controllers\OperationHistoryController::class,'stock'])->name('history.stock');
+    Route::get('admin/system-health', [\App\Http\Controllers\SystemHealthController::class,'index'])->name('system-health.index');
     Route::get('admin/maintenance', [\App\Http\Controllers\PlatformMaintenanceController::class,'index'])->name('maintenance.index');
     Route::post('admin/maintenance', [\App\Http\Controllers\PlatformMaintenanceController::class,'save'])->name('maintenance.save');
     Route::get('admin/backups', [\App\Http\Controllers\PlatformBackupController::class,'index'])->name('backups.index');
@@ -423,7 +426,7 @@ Route::group(
         Route::post('invoice/item', [InvoiceController::class, 'item'])->name('invoice.item');
         Route::get('invoice/product', [InvoiceController::class, 'product'])->name('invoice.product');
         Route::post('invoice/item/destroy', [InvoiceController::class, 'itemDestroy'])->name('invoice.item.destroy');
-        Route::get('invoice/{id}/status/change', [InvoiceController::class, 'statusChange'])->name('invoice.status.change');
+        Route::post('invoice/{id}/status/change', [InvoiceController::class, 'statusChange'])->name('invoice.status.change');
         Route::get('invoice/{id}/payment', [InvoiceController::class, 'payment'])->name('invoice.payment');
         Route::post('invoice/{id}/payment', [InvoiceController::class, 'createPayment'])->name('invoice.payment.store');
         Route::post('invoice/{id}/payment/{pid}/destroy', [InvoiceController::class, 'paymentDestroy'])->name('invoice.payment.destroy');
@@ -438,7 +441,7 @@ Route::group(
         Route::put('invoice/{id}/billing', [\App\Http\Controllers\InvoiceBillingController::class, 'update'])->whereNumber('id')->name('invoice.billing.update');
 
         Route::post('invoice/{id}/banktransfer/payment', [InvoiceController::class, 'banktransferPayment'])->name(name: 'invoice.banktransfer.payment');
-        Route::get('invoice-payment-status/{id}/{status}', [InvoiceController::class, 'invoicePaymentStatus'])->name('invoice.bank.transfer.action');
+        Route::post('invoice-payment-status/{id}/{status}', [InvoiceController::class, 'invoicePaymentStatus'])->name('invoice.bank.transfer.action');
 
 
 

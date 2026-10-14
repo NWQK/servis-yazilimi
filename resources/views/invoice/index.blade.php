@@ -75,6 +75,7 @@
                                             <td>
                                                 <div class="cart-action">
                                                     {!! Form::open(['method' => 'DELETE', 'route' => ['invoice.destroy', $invoice->id]]) !!}
+@include('invoice.operation-fields')
                                                     @can('show invoice')
                                                         <a class="avtar avtar-xs btn-link-warning text-warning" data-bs-toggle="tooltip"
                                                             data-bs-original-title="{{ __('Detail') }}"

@@ -58,11 +58,14 @@ class AuthenticatedSessionController extends Controller
         if( $loginUser->type=='owner'){
 
             if($loginUser->subscription_expire_date!=null && date('Y-m-d') > $loginUser->subscription_expire_date){
-                assignSubscription(\App\Models\Subscription::where('vehicle_limit', 50)->value('id') ?? 1);
+                // Keep the assigned plan and its original expiry; never renew Demo on login.
                  return redirect()->intended(RouteServiceProvider::HOME)->with('error', __('Your subscription has ended, and access to premium features is now restricted. To continue using our services without interruption, please renew your plan or upgrade to a higher-tier package.'));
             }
         }
-        if ($loginUser->type !== 'owner') userLoggedHistory();
+        if ($loginUser->type !== 'owner') {
+            app(\App\Services\DemoLifecycle::class)->recordLogin($loginUser);
+            userLoggedHistory();
+        }
 
         return redirect()->intended(RouteServiceProvider::HOME);
     }

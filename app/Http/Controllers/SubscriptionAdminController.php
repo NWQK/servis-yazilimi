@@ -26,7 +26,7 @@ class SubscriptionAdminController extends Controller
         $filters=$request->validate(['search'=>'nullable|string|max:150','status'=>'nullable|in:active,suspended,expired','plan'=>'nullable|integer']);
         $query=User::where('type','owner')->with('subscriptions')->select('users.*')
             ->selectSub(Vehicle::selectRaw('COUNT(*)')->whereColumn('parent_id','users.id'),'vehicle_count')
-            ->selectSub(VehicleCapacityRequest::selectRaw('COALESCE(SUM(vehicles),0)')->whereColumn('owner_id','users.id')->where('status','approved'),'extra_vehicles');
+            ->selectSub(VehicleCapacityRequest::selectRaw('COALESCE(SUM(vehicles),0)')->whereColumn('owner_id','users.id')->where('status','approved')->where(fn($q)=>$q->whereNull('expires_at')->orWhere('expires_at','>',now())),'extra_vehicles');
         if (!empty($filters['search'])) {
             $term=$filters['search'];
             $query->where(fn($q)=>$q->where('name','like','%'.$term.'%')->orWhere('email','like','%'.$term.'%'));

@@ -18,6 +18,7 @@
 @section('content')
     <div class="row mt-1">
         {{ Form::model($invoice, ['route' => ['invoice.update', encrypt($invoice->id)], 'method' => 'put']) }}
+@include('invoice.operation-fields')
         <div class="col-sm-12">
             <div class="card">
                 <div class="card-body">

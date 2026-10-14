@@ -18,6 +18,7 @@
 @section('content')
     <div class="row mt-1">
         {{ Form::open(['url' => 'invoice', 'method' => 'post']) }}
+@include('invoice.operation-fields')
         <div class="col-sm-12">
             <div class="card">
                 <div class="card-body">

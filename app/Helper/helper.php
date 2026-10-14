@@ -295,7 +295,9 @@ if (!function_exists('assignSubscription')) {
         $subscription = Subscription::find($id);
         if ($subscription) {
             \Auth::user()->subscription = $subscription->id;
-            if ($subscription->interval == 'Monthly') {
+            if ((int) $subscription->vehicle_limit === 50) {
+                app(\App\Services\DemoLifecycle::class)->prepare(\Auth::user());
+            } elseif ($subscription->interval == 'Monthly') {
                 \Auth::user()->subscription_expire_date = Carbon::now()->addMonths(1)->isoFormat('YYYY-MM-DD');
             } elseif ($subscription->interval == 'Quarterly') {
                 \Auth::user()->subscription_expire_date = Carbon::now()->addMonths(3)->isoFormat('YYYY-MM-DD');
@@ -325,7 +327,9 @@ if (!function_exists('assignManuallySubscription')) {
         $subscription = Subscription::find($id);
         if ($subscription) {
             $owner->subscription = $subscription->id;
-            if ($subscription->interval == 'Monthly') {
+            if ((int) $subscription->vehicle_limit === 50) {
+                app(\App\Services\DemoLifecycle::class)->prepare($owner);
+            } elseif ($subscription->interval == 'Monthly') {
                 $owner->subscription_expire_date = Carbon::now()->addMonths(1)->isoFormat('YYYY-MM-DD');
             } elseif ($subscription->interval == 'Quarterly') {
                 $owner->subscription_expire_date = Carbon::now()->addMonths(3)->isoFormat('YYYY-MM-DD');
@@ -852,6 +856,10 @@ if (!function_exists('sendEmail')) {
 if (!function_exists('commonEmailSend')) {
     function commonEmailSend($to, $datas)
     {
+        if (\DB::transactionLevel()>0) {
+            \DB::afterCommit(fn()=>commonEmailSend($to,$datas));
+            return ['status'=>'success','message'=>'E-posta işlemin kaydedilmesinden sonra gönderilecek.'];
+        }
         if (!\App\Services\CentralEmail::enabled()) return ['status'=>'success', 'skipped'=>true, 'message'=>'Merkezi e-posta sistemi kapalı; gönderim yapılmadı.'];
         $datas['settings'] = settings();
         try {

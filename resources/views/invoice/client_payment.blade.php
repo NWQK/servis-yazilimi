@@ -31,6 +31,7 @@
                                             action="{{ route('invoice.banktransfer.payment', [encrypt($invoice->id)]) }}"
                                             method="post" class="require-validation" id="bank-payment"
                                             enctype="multipart/form-data">
+@include('invoice.operation-fields')
                                             @csrf
                                             <div class="row">
                                                 <div class="col-md-6">

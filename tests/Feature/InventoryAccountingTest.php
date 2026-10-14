@@ -10,6 +10,7 @@ use Tests\TestCase;
 
 class InventoryAccountingTest extends TestCase
 {
+    use \Tests\FinancialForms;
     private $owner;
     private $stock;
 
@@ -75,9 +76,9 @@ class InventoryAccountingTest extends TestCase
         $this->assertSame(3,(int)$item->fresh()->quantity);
         $this->assertSame(0,$invoice->payments()->count());
         $this->get('/invoice/'.$invoice->id.'/delete-confirmation')->assertOk()->assertSee('stoklara tekrar eklensin mi');
-        $this->delete('/invoice/'.$invoice->id)->assertSessionHasErrors('return_stock');
+        $this->deleteInvoice('/invoice/'.$invoice->id)->assertSessionHasErrors('return_stock');
         $this->assertNotNull($invoice->fresh());
-        $this->delete('/invoice/'.$invoice->id,['return_stock'=>0])->assertRedirect(route('invoice.index'));
+        $this->deleteInvoice('/invoice/'.$invoice->id,['return_stock'=>0])->assertRedirect(route('invoice.index'));
         $this->assertSame(3,(int)$item->fresh()->quantity);
         $this->assertNull($invoice->fresh());
         $this->assertSame(0,InvoiceItem::count());
@@ -241,7 +242,7 @@ class InventoryAccountingTest extends TestCase
         $this->get('/invoice')->assertOk()->assertSee('1.589,75 ₺');
         $this->get('/invoice/'.$invoice->id.'/billing')->assertOk()->assertSee('Müşteri bilgileri ekle')->assertDontSee('Müşteri türü')->assertDontSee('billing[type]', false);
         $data = ['billing' => ['type' => 'company', 'name' => 'Örnek <script>firma</script>', 'tax_number' => '0123456789', 'email' => '', 'phone' => '5321234567', 'extra' => 'discard'], 'discount_amount' => 999, 'parent_id' => 999];
-        $this->put('/invoice/'.$invoice->id.'/billing', $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->putInvoice('/invoice/'.$invoice->id.'/billing', $data)->assertRedirect()->assertSessionHasNoErrors();
         $invoice->refresh();
         $this->assertArrayNotHasKey('extra', $invoice->customer_details);
         $this->assertArrayNotHasKey('type', $invoice->customer_details);
@@ -255,15 +256,15 @@ class InventoryAccountingTest extends TestCase
         $this->post('/settings/invoice-business', ['billing' => ['name' => 'Yeni Unvan']])->assertRedirect();
         $this->assertSame('Deneme Servis', $invoice->fresh()->business_details['name']);
         $this->assertSame('Yeni Unvan', $this->invoice()->business_details['name']);
-        $this->put('/invoice/'.$invoice->id.'/billing', ['billing' => ['name' => '', 'phone' => '']])->assertRedirect()->assertSessionHasNoErrors();
+        $this->putInvoice('/invoice/'.$invoice->id.'/billing', ['billing' => ['name' => '', 'phone' => '']])->assertRedirect()->assertSessionHasNoErrors();
         $this->assertNull($invoice->fresh()->customer_details['name']);
-        $this->put('/invoice/'.$invoice->id.'/billing', ['billing' => ['phone' => '05321234567', 'tax_number' => '12']])->assertSessionHasErrors(['billing.phone', 'billing.tax_number']);
+        $this->putInvoice('/invoice/'.$invoice->id.'/billing', ['billing' => ['phone' => '05321234567', 'tax_number' => '12']])->assertSessionHasErrors(['billing.phone', 'billing.tax_number']);
         $invoice->parent_id = 999; $invoice->save();
         $this->get('/invoice/'.$invoice->id.'/billing')->assertNotFound();
-        $this->put('/invoice/'.$invoice->id.'/billing', $data)->assertNotFound();
+        $this->putInvoice('/invoice/'.$invoice->id.'/billing', $data)->assertNotFound();
         $staff = User::create(['name'=>'Staff','email'=>'billing-staff@example.test','password'=>bcrypt('test'),'type'=>'staff','parent_id'=>$this->owner->id]);
         $this->actingAs($staff);
-        $this->put('/invoice/'.$invoice->id.'/billing', $data)->assertForbidden();
+        $this->putInvoice('/invoice/'.$invoice->id.'/billing', $data)->assertForbidden();
         $this->post('/settings/invoice-business', ['billing'=>['name'=>'Unauthorized']])->assertForbidden();
         $this->assertSame('Yeni Unvan', \App\Services\InvoiceBilling::business($this->owner->id)['name']);
     }
@@ -273,11 +274,11 @@ class InventoryAccountingTest extends TestCase
         $vehicle = Vehicle::create(['parent_id'=>$this->owner->id,'license_plate'=>'34 BILL 01']);
         $service = Service::create(['parent_id'=>$this->owner->id,'client'=>$this->owner->id,'vehicle'=>$vehicle->id]);
         $data = ['invoice_date'=>now()->toDateString(),'client'=>$this->owner->id,'service'=>$service->id,'types'=>[], 'billing'=>['name'=>'Müşteri Unvanı','type'=>'individual']];
-        $this->post('/invoice', $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->postInvoice('/invoice', $data)->assertRedirect()->assertSessionHasNoErrors();
         $invoice = Invoice::firstOrFail();
         $this->assertSame('Müşteri Unvanı', $invoice->customer_details['name']);
         $data['billing'] = ['name'=>'Güncel Unvan','address'=>'Örnek adres'];
-        $this->put('/invoice/'.encrypt($invoice->id), $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->putInvoice('/invoice/'.encrypt($invoice->id), $data)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('Güncel Unvan', $invoice->fresh()->customer_details['name']);
         $pool = app(\App\Services\VehicleQrPool::class);
         $pool->replenish($this->owner->id);
@@ -437,20 +438,20 @@ class InventoryAccountingTest extends TestCase
         $this->get('/invoice-customer/'.$client->id.'/billing')->assertOk()->assertJsonFragment(['name'=>'Kayıtlı Müşteri','phone'=>'5321234567','district'=>'Kartal','postcode'=>'34860']);
         $service = Service::create(['parent_id'=>$this->owner->id,'client'=>$client->id]);
         $data = ['invoice_date'=>now()->toDateString(),'client'=>$client->id,'service'=>$service->id,'types'=>[], 'billing'=>['name'=>'','tax_office'=>'Örnek vergi dairesi']];
-        $this->post('/invoice',$data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->postInvoice('/invoice',$data)->assertRedirect()->assertSessionHasNoErrors();
         $invoice = Invoice::firstOrFail();
         $this->assertSame('Kayıtlı Müşteri',$invoice->customer_details['name']);
         $this->assertSame('customer@example.test',$invoice->customer_details['email']);
         $this->assertSame('Sanayi sitesi',$invoice->customer_details['address']);
         $this->assertSame('Örnek vergi dairesi',$invoice->customer_details['tax_office']);
-        $this->put('/invoice/'.$invoice->id.'/billing',['billing'=>['name'=>'Faturaya özel ad','address'=>'Faturaya özel adres']])->assertRedirect();
+        $this->putInvoice('/invoice/'.$invoice->id.'/billing',['billing'=>['name'=>'Faturaya özel ad','address'=>'Faturaya özel adres']])->assertRedirect();
         $this->assertSame('Kayıtlı Müşteri',$client->fresh()->name);
         $this->get('/invoice/'.$invoice->id.'/billing')->assertOk()->assertSee('Faturaya özel ad');
         $other = User::create(['name'=>'İkinci Müşteri','email'=>'second@example.test','password'=>bcrypt('test'),'type'=>'client','parent_id'=>$this->owner->id]);
         $secondService = Service::create(['parent_id'=>$this->owner->id,'client'=>$other->id]);
         unset($data['billing']);
         $data['client']=$other->id; $data['service']=$secondService->id;
-        $this->put('/invoice/'.encrypt($invoice->id),$data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->putInvoice('/invoice/'.encrypt($invoice->id),$data)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame('İkinci Müşteri',$invoice->fresh()->customer_details['name']);
         $this->assertSame('',$invoice->fresh()->customer_details['address']);
         $client->parent_id=999; $client->save();
@@ -551,12 +552,12 @@ class InventoryAccountingTest extends TestCase
         $other = User::create(['name' => 'Other', 'email' => 'other-stock@example.test', 'password' => bcrypt('test'), 'type' => 'owner']);
         $foreign = $this->stock->savePurchase($other->id, $this->attributes());
         $invoice = $this->invoice();
-        $this->post('/invoice/' . $invoice->id . '/item/store', ['item' => $foreign->id, 'quantity' => 1])->assertSessionHasErrors('item');
+        $this->postInvoice('/invoice/' . $invoice->id . '/item/store', ['item' => $foreign->id, 'quantity' => 1])->assertSessionHasErrors('item');
         $this->assertSame(5, (int) $foreign->fresh()->quantity);
         $foreignInvoice = Invoice::create(['parent_id' => $other->id, 'client' => $other->id, 'invoice_id' => 1]);
         $foreignLine = $this->stock->add($foreignInvoice, ['item' => $foreign->id, 'quantity' => 1]);
-        $this->post('/invoice/' . $foreignInvoice->id . '/item/' . $foreignLine->id . '/store')->assertNotFound();
-        $this->post('/invoice/item/destroy', ['id' => $foreignLine->id])->assertRedirect();
+        $this->postInvoice('/invoice/' . $foreignInvoice->id . '/item/' . $foreignLine->id . '/store')->assertNotFound();
+        $this->postInvoice('/invoice/item/destroy', ['id' => $foreignLine->id])->assertNotFound();
         $this->assertSame(4, (int) $foreign->fresh()->quantity);
         $this->assertNotNull($foreignLine->fresh());
     }
@@ -567,7 +568,7 @@ class InventoryAccountingTest extends TestCase
         $service = Service::create(['parent_id' => $this->owner->id, 'client' => $this->owner->id]);
         $data = ['invoice_date' => '2026-09-23', 'client' => $this->owner->id, 'service' => $service->id,
             'item' => [$item->id], 'quantity' => [2], 'types' => []];
-        $this->post('/invoice', $data)->assertSessionHasErrors('item');
+        $this->postInvoice('/invoice', $data)->assertSessionHasErrors('item');
         $this->assertSame(0, Invoice::count());
         $this->assertSame(1, (int) $item->fresh()->quantity);
         $this->assertSame(0, InvoiceItem::count());
@@ -578,7 +579,7 @@ class InventoryAccountingTest extends TestCase
         $item = $this->purchase(5);
         $invoice = $this->invoice();
         $this->stock->add($invoice, ['item' => $item->id, 'quantity' => 3]);
-        $this->delete('/invoice/' . $invoice->id, ['return_stock'=>1])->assertRedirect(route('invoice.index'));
+        $this->deleteInvoice('/invoice/' . $invoice->id, ['return_stock'=>1])->assertRedirect(route('invoice.index'));
         $this->assertSame(5, (int) $item->fresh()->quantity);
         $this->assertSame(0, InvoiceItem::count());
         $this->assertSame(1, Expense::count());
@@ -675,7 +676,7 @@ class InventoryAccountingTest extends TestCase
         $pool->markPrinted($this->owner->id, [$code->id]); $pool->assignExisting($this->owner->id, $vehicle->id, $code->id);
         $tax->rate = 10; $tax->save();
         $this->get('/q/' . $code->token . '/invoice/' . $invoice->id)->assertOk()->assertViewHas('total', 1200);
-        $this->post('/invoice', ['invoice_date' => now()->toDateString(), 'client' => $this->owner->id, 'service' => $service->id, 'types' => []])->assertRedirect()->assertSessionMissing('error');
+        $this->postInvoice('/invoice', ['invoice_date' => now()->toDateString(), 'client' => $this->owner->id, 'service' => $service->id, 'types' => []])->assertRedirect()->assertSessionMissing('error');
         $this->assertEquals(1200, Invoice::latest('id')->first()->getInvoiceAllTotalAmount());
         DB::table('invoice_payments')->insert(['invoice_id' => $invoice->id, 'parent_id' => $this->owner->id, 'amount' => 1200, 'payment_date' => now()->toDateString()]);
         $this->put('/service/' . $service->id, array_replace($data, ['external_labor_tax_id' => $foreign->id]))->assertSessionHas('error');
@@ -748,23 +749,23 @@ class InventoryAccountingTest extends TestCase
         $service = Service::create(['parent_id' => $this->owner->id, 'client' => $this->owner->id,
             'vehicle' => $vehicle->id, 'external_labor_amount' => '250.50']);
         $data = ['invoice_date' => now()->toDateString(), 'client' => $this->owner->id, 'service' => $service->id, 'types' => [], 'external_labor_amount' => '999'];
-        $this->post('/invoice', $data)->assertRedirect()->assertSessionMissing('error');
+        $this->postInvoice('/invoice', $data)->assertRedirect()->assertSessionMissing('error');
         $invoice = Invoice::firstOrFail();
         $this->assertEquals(250.50, $invoice->getInvoiceAllTotalAmount());
-        $this->put('/invoice/' . encrypt($invoice->id), $data)->assertRedirect()->assertSessionMissing('error');
+        $this->putInvoice('/invoice/' . encrypt($invoice->id), $data)->assertRedirect()->assertSessionMissing('error');
         $this->assertEquals(250.50, $invoice->fresh()->getInvoiceAllTotalAmount());
         $this->assertSame(0, $invoice->payments()->count());
         $this->get('/invoice/' . encrypt($invoice->id) . '/edit')->assertOk()->assertSee('250.50');
         $this->get(route('client.service', $this->owner->id))->assertJsonFragment(['external_labor_amount' => '250.50']);
         $other = Service::create(['parent_id' => $this->owner->id + 100, 'client' => $this->owner->id, 'external_labor_amount' => 777]);
-        $this->post('/invoice', array_merge($data, ['service' => $other->id]))->assertSessionHas('error');
+        $this->postInvoice('/invoice', array_merge($data, ['service' => $other->id]))->assertSessionHas('error');
         $this->assertSame(1, Invoice::count());
         // Reducing labor while adding a more expensive product must not reverse income mid-update.
         $item = $this->purchase();
         $replacement = Service::create(['parent_id' => $this->owner->id, 'client' => $this->owner->id, 'vehicle' => $vehicle->id]);
         DB::table('invoice_payments')->insert(['invoice_id' => $invoice->id, 'parent_id' => $this->owner->id,
             'amount' => 250.50, 'payment_date' => now()->toDateString()]);
-        $this->put('/invoice/' . encrypt($invoice->id), array_merge($data, ['service' => $replacement->id,
+        $this->putInvoice('/invoice/' . encrypt($invoice->id), array_merge($data, ['service' => $replacement->id,
             'item' => [$item->id], 'quantity' => [1]]))->assertRedirect();
         $this->assertEquals(300, $invoice->fresh()->getInvoiceAllTotalAmount());
         $this->assertEquals(250.50, $invoice->payments()->sum('amount'));
@@ -778,7 +779,7 @@ class InventoryAccountingTest extends TestCase
         $service = Service::create(['parent_id' => $this->owner->id, 'vehicle' => $vehicle->id, 'client' => $this->owner->id]);
         $data = ['invoice_date' => '2026-09-23', 'client' => $this->owner->id, 'service' => $service->id,
             'item' => [$item->id], 'quantity' => [2], 'amount' => [1], 'types' => []];
-        $this->post('/invoice', $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->postInvoice('/invoice', $data)->assertRedirect()->assertSessionHasNoErrors();
         $invoice = Invoice::firstOrFail();
         $line = $invoice->items()->firstOrFail();
         $this->assertSame(3, (int) $item->fresh()->quantity);
@@ -788,15 +789,15 @@ class InventoryAccountingTest extends TestCase
         DB::table('invoice_payments')->insert(['invoice_id' => $invoice->id, 'parent_id' => $this->owner->id, 'amount' => 100, 'payment_date' => '2026-09-23']);
         $data['item_id'] = [$line->id];
         $data['quantity'] = [1];
-        $this->put('/invoice/' . encrypt($invoice->id), $data)->assertRedirect()->assertSessionHasNoErrors();
+        $this->putInvoice('/invoice/' . encrypt($invoice->id), $data)->assertRedirect()->assertSessionHasNoErrors();
         $this->assertSame(4, (int) $item->fresh()->quantity);
         $this->assertEquals(100, $invoice->payments()->sum('amount'));
         $this->assertSame(1, (int) $invoice->fresh()->status);
-        $this->post('/invoice/' . $invoice->id . '/item/store', ['item' => $item->id, 'quantity' => 1])->assertRedirect();
+        $this->postInvoice('/invoice/' . $invoice->id . '/item/store', ['item' => $item->id, 'quantity' => 1])->assertRedirect();
         $added = $invoice->items()->latest('id')->first();
-        $this->post('/invoice/' . $invoice->id . '/item/' . $added->id . '/store')->assertRedirect();
+        $this->postInvoice('/invoice/' . $invoice->id . '/item/' . $added->id . '/store')->assertRedirect();
         $this->assertSame(4, (int) $item->fresh()->quantity);
-        $this->post('/invoice/item/destroy', ['id' => $line->id])->assertRedirect();
+        $this->postInvoice('/invoice/item/destroy', ['id' => $line->id])->assertRedirect();
         $this->assertSame(5, (int) $item->fresh()->quantity);
     }
 
@@ -807,7 +808,7 @@ class InventoryAccountingTest extends TestCase
         $service = Service::create(['parent_id' => $this->owner->id, 'vehicle' => $vehicle->id, 'client' => $this->owner->id, 'external_labor_amount' => 100]);
         $data = ['invoice_date' => now()->toDateString(), 'client' => $this->owner->id, 'service' => $service->id,
             'item' => [$item->id], 'quantity' => [2], 'types' => [], 'discount_amount' => '50.25'];
-        $this->post('/invoice', $data)->assertRedirect()->assertSessionMissing('error');
+        $this->postInvoice('/invoice', $data)->assertRedirect()->assertSessionMissing('error');
         $invoice = Invoice::firstOrFail();
         $this->assertEquals(700, $invoice->getInvoiceGrossAmount());
         $this->assertEquals(649.75, $invoice->getInvoiceAllTotalAmount());
@@ -824,20 +825,20 @@ class InventoryAccountingTest extends TestCase
         DB::table('invoice_payments')->insert(['invoice_id' => $invoice->id, 'parent_id' => $this->owner->id, 'amount' => 649.75, 'payment_date' => now()->toDateString()]);
         $data['item_id'] = [$invoice->items()->first()->id];
         $data['discount_amount'] = '100.50';
-        for ($i = 0; $i < 2; $i++) $this->put('/invoice/'.encrypt($invoice->id), $data)->assertRedirect()->assertSessionMissing('error');
+        for ($i = 0; $i < 2; $i++) $this->putInvoice('/invoice/'.encrypt($invoice->id), $data)->assertRedirect()->assertSessionMissing('error');
         $this->assertEquals(599.50, $invoice->fresh()->getInvoiceAllTotalAmount());
         $this->assertEquals(599.50, $invoice->payments()->sum('amount'));
         $this->assertSame(2, $invoice->payments()->count());
         $this->assertSame(3, (int) $item->fresh()->quantity);
         foreach (['-1', 'abc', '1.999'] as $invalid) {
-            $this->put('/invoice/'.encrypt($invoice->id), array_replace($data, ['discount_amount' => $invalid]))->assertSessionHas('error');
+            $this->putInvoice('/invoice/'.encrypt($invoice->id), array_replace($data, ['discount_amount' => $invalid]))->assertSessionHas('error');
             $this->assertEquals(100.50, $invoice->fresh()->discount_amount);
         }
-        $this->put('/invoice/'.encrypt($invoice->id), array_replace($data, ['discount_amount' => '']))->assertRedirect()->assertSessionMissing('error');
+        $this->putInvoice('/invoice/'.encrypt($invoice->id), array_replace($data, ['discount_amount' => '']))->assertRedirect()->assertSessionMissing('error');
         $this->assertEquals(0, $invoice->fresh()->discount_amount);
         $this->assertEquals(100.50, $invoice->fresh()->getInvoiceTotalDueAmount());
         $this->assertEquals(599.50, $invoice->payments()->sum('amount'));
-        $this->put('/invoice/'.encrypt($invoice->id), array_replace($data, ['discount_amount' => '1000']))->assertRedirect()->assertSessionMissing('error');
+        $this->putInvoice('/invoice/'.encrypt($invoice->id), array_replace($data, ['discount_amount' => '1000']))->assertRedirect()->assertSessionMissing('error');
         $this->assertEquals(700, $invoice->fresh()->getInvoiceDiscountAmount());
         $this->assertEquals(0, $invoice->fresh()->getInvoiceAllTotalAmount());
         $this->assertEquals(0, $invoice->payments()->sum('amount'));

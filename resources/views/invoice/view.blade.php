@@ -396,23 +396,16 @@
                                             <td class="text-right action">
                                                 <div class="cart-action">
                                                     @if (\Auth::user()->type == 'owner' && $payment->payment_status == 'pending')
-                                                        <a class="avtar avtar-xs btn-link-success text-success"
-                                                            data-bs-toggle="tooltip"
-                                                            data-bs-original-title="{{ __('Accept') }}"
-                                                            href="{{ route('invoice.bank.transfer.action', [$payment->id, 'accept']) }}">
-                                                            <i data-feather="user-check"></i></a>
+                                                        <form method="post" class="d-inline" action="{{ route('invoice.bank.transfer.action',[$payment->id,'accept']) }}">@csrf @include('invoice.operation-fields')<button class="btn btn-sm btn-outline-secondary">Kabul et</button></form>
 
-                                                        <a class="avtar avtar-xs btn-link-danger text-danger"
-                                                            data-bs-toggle="tooltip"
-                                                            data-bs-original-title="{{ __('Reject') }}"
-                                                            href="{{ route('invoice.bank.transfer.action', [$payment->id, 'reject']) }}">
-                                                            <i data-feather="user-x"></i></a>
+                                                        <form method="post" class="d-inline" action="{{ route('invoice.bank.transfer.action',[$payment->id,'reject']) }}">@csrf @include('invoice.operation-fields')<button class="btn btn-sm btn-outline-secondary">Reddet</button></form>
                                                     @endif
                                                     {!! Form::open([
                                                         'method' => 'POST',
                                                         'class' => 'd-inline',
                                                         'route' => ['invoice.payment.destroy', $invoice->id, $payment->id],
                                                     ]) !!}
+@include('invoice.operation-fields')
                                                     <a class="avtar avtar-xs btn-link-danger d-print-none text-danger confirm_dialog"
                                                         data-bs-toggle="tooltip"
                                                         data-bs-original-title="{{ __('Detete') }}" href="#"> <i

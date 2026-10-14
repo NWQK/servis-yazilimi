@@ -36,6 +36,8 @@ class Kernel extends HttpKernel
             \Illuminate\View\Middleware\ShareErrorsFromSession::class,
             \App\Http\Middleware\PlatformMaintenance::class,
             \App\Http\Middleware\VerifyCsrfToken::class,
+            \App\Http\Middleware\DemoAccess::class,
+            \App\Http\Middleware\InvoiceOperationGuard::class,
             \Illuminate\Routing\Middleware\SubstituteBindings::class,
             \App\Http\Middleware\Verify2FA::class,
             \App\Http\Middleware\ValidateTurkishPhones::class,

@@ -5,6 +5,7 @@
     <h5>Müşteri bilgileri ekle</h5>
     <p>Tüm alanlar isteğe bağlıdır. Bu işlem fatura tutarını, stokları ve tahsilatları değiştirmez.</p>
     <form method="post" action="{{ route('invoice.billing.update', $invoice->id) }}">
+@include('invoice.operation-fields')
         @csrf @method('PUT')
         @include('invoice.billing_fields', ['business' => false])
         <a class="btn btn-secondary" href="{{ route('invoice.show', encrypt($invoice->id)) }}">Vazgeç</a>
