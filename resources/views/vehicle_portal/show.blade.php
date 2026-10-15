@@ -10,4 +10,19 @@
         @empty <p class="card muted">Bu araç için henüz fatura bulunmuyor.</p> @endforelse
         @include('vehicle_portal.pagination', ['paginator' => $invoices, 'anchor' => 'invoices'])
     </section>
+    <section id="acceptance-photos" class="sr-photos">
+        <h2>Araç kabul fotoğrafları ({{ $photos->total() }})</h2>
+        <p class="sr-photo-caption">Aracınızın servise kabulü sırasında işletme tarafından eklenen fotoğraflar. Fotoğraflar servis tamamlandıktan sonra {{ \App\Services\PhotoRetention::days() }} gün saklanır. Saklamak istediklerinizi süre dolmadan indirebilirsiniz.</p>
+        <div class="sr-photo-grid">
+            @forelse($photos as $photo)
+                <figure class="sr-photo">
+                    <a href="{{ route('vehicle-portal.photo',[$code->token,$photo->id]) }}" target="_blank" rel="noopener noreferrer" aria-label="Araç kabul fotoğrafını büyüt">
+                        <img src="{{ route('vehicle-portal.photo',[$code->token,$photo->id]) }}" width="320" height="240" loading="lazy" alt="Aracınızın kabul fotoğrafı {{ $loop->iteration }}">
+                    </a>
+                    <figcaption><span>Servis {{ $settings['service_number_prefix'] . $photo->service->service_id }} · {{ $photo->created_at->format('d.m.Y') }}</span><a href="{{ route('vehicle-portal.photo',[$code->token,$photo->id]) }}" download="arac-kabul.jpg">İndir</a></figcaption>
+                </figure>
+            @empty <p class="card muted">Henüz kabul fotoğrafı bulunmuyor.</p> @endforelse
+        </div>
+        @include('vehicle_portal.pagination',['paginator'=>$photos,'anchor'=>'acceptance-photos'])
+    </section>
 @endsection

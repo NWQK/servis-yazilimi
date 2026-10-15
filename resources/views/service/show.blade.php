@@ -228,6 +228,9 @@
         </div>
     </div>
 
+    @if(auth()->user()->type!=='client')
+        @include('service.photos')
+    @endif
 @endsection
 @push('script-page')
     <script>

@@ -9,6 +9,7 @@ class DemoCleanup
     public function candidates()
     {
         return User::where('type','owner')->whereNull('paid_subscription_at')
+            ->when(Schema::hasTable('business_recovery_locks'),fn($q)=>$q->whereNotExists(fn($q)=>$q->selectRaw('1')->from('business_recovery_locks')->whereColumn('owner_id','users.id')))
             ->whereIn('subscription',DB::table('subscriptions')->where('vehicle_limit',50)->select('id'))
             ->whereNotNull('demo_expires_at')->where('demo_expires_at','<=',now())
             ->whereNotNull('last_business_login_at')->where('last_business_login_at','<=',now()->subDays(30))
@@ -35,8 +36,13 @@ class DemoCleanup
             $tickets=DB::table('support_tickets')->where('owner_id',$ownerId)->pluck('id');
             DB::table('support_ticket_messages')->whereIn('ticket_id',$tickets)->delete();
             // Explicit tenant table list, children first. Global catalogs/settings are never truncated.
+            $photoFiles=DB::table('service_photos')->where('parent_id',$ownerId)->pluck('filename');
+            DB::afterCommit(function()use($photoFiles){
+                foreach($photoFiles as $filename)if(preg_match('/\A[0-9]+_[0-9]+_[a-f0-9-]{36}\.jpg\z/',$filename))
+                    \Illuminate\Support\Facades\Storage::disk('service_photos')->delete('photo/'.$filename);
+            });
             foreach (['vehicle_history_index','invoice_changes','invoice_payments','invoice_services','invoice_items','invoices',
-                'service_items','services','quotation_items','quotation_services','quotations',
+                'service_photos','service_items','services','quotation_items','quotation_services','quotations',
                 'vehicle_sms_messages','vehicle_qr_codes','vehicles','item_purchases','stock_movements','counter_sales',
                 'items','item_categories','suppliers','expenses','clients','employees','vehicle_catalog_imports',
                 'vehicle_brands','vehicle_types','service_types','taxes','units','contacts','notice_boards',

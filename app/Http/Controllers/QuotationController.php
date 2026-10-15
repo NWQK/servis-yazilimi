@@ -18,6 +18,23 @@ use Illuminate\Support\Facades\Crypt;
 
 class QuotationController extends Controller
 {
+    private function validateTenantInput(Request $request,?int $quotationId=null): void
+    {
+        $clientField=$request->routeIs('quotation.update')?'client_id':'client';
+        $request->validate([
+            $clientField=>\App\Services\ServiceInput::client(),
+            'vehicle'=>['required','integer',\Illuminate\Validation\Rule::exists('vehicles','id')->where(fn($q)=>
+                $q->where('parent_id',parentId())->where('client',$request->input($clientField))->whereNull('deleted_at'))],
+            'types'=>'sometimes|array|max:100',
+            'types.*.service_type'=>\App\Services\ServiceInput::type(),
+            'types.*.tax'=>'nullable|array','types.*.tax.*'=>\App\Services\ServiceInput::tax(),
+            'types.*.id'=>['nullable','integer',\Illuminate\Validation\Rule::exists('quotation_services','id')->where('parent_id',parentId())->where('quotation_id',$quotationId??0)],
+            'items'=>'sometimes|array|max:100',
+            'items.*.item'=>['required','integer',\Illuminate\Validation\Rule::exists('items','id')->where('parent_id',parentId())],
+            'items.*.tax'=>'nullable|array','items.*.tax.*'=>\App\Services\ServiceInput::tax(),
+            'items.*.id'=>['nullable','integer',\Illuminate\Validation\Rule::exists('quotation_items','id')->where('parent_id',parentId())->where('quotation_id',$quotationId??0)],
+        ]);
+    }
     public function index()
     {
         if (Auth::user()->can('manage quotation')) {
@@ -58,6 +75,7 @@ class QuotationController extends Controller
     public function store(Request $request)
     {
         if (\Auth::user()->can('create quotation')) {
+            $this->validateTenantInput($request);
             $validator = \Validator::make(
                 $request->all(),
                 [
@@ -120,7 +138,7 @@ class QuotationController extends Controller
     public function show($ids)
     {
         $id = Crypt::decrypt($ids);
-        $quotation = Quotation::find($id);
+        $quotation = Quotation::where('parent_id',parentId())->findOrFail($id);
         $settings = settings();
         $status = Quotation::statues();
         return view('quotation.show', compact('quotation', 'settings', 'status'));
@@ -131,7 +149,7 @@ class QuotationController extends Controller
     {
 
         $id = Crypt::decrypt($id);
-        $quotation = Quotation::where('id', $id)->first();
+        $quotation = Quotation::where('parent_id',parentId())->findOrFail($id);
         $clients = User::where('parent_id', parentId())->where('type', 'client')->get()->pluck('name', 'id');
         $clients->prepend(__('Select Client'), '');
 
@@ -148,6 +166,8 @@ class QuotationController extends Controller
     public function update(Request $request, $id)
     {
         if (\Auth::user()->can('edit quotation')) {
+            Quotation::where('parent_id',parentId())->findOrFail($id);
+            $this->validateTenantInput($request,(int)$id);
             $validator = \Validator::make(
                 $request->all(),
                 [
@@ -161,7 +181,7 @@ class QuotationController extends Controller
                 return redirect()->back()->with('error', $messages->first());
             }
 
-            $quotation = Quotation::find($id);
+            $quotation = Quotation::where('parent_id',parentId())->findOrFail($id);
             $quotation->quotation_date = $request->quotation_date;
             $quotation->client_id = $request->client_id;
             $quotation->vehicle_id = $request->vehicle;
@@ -240,7 +260,7 @@ class QuotationController extends Controller
     {
         if (\Auth::user()->can('delete quotation')) {
 
-            $quotation = Quotation::find($id);
+            $quotation = Quotation::where('parent_id',parentId())->findOrFail($id);
             $quotation->delete();
             QuotationItem::where('quotation_id', '=', $quotation->id)->delete();
             QuotationService::where('quotation_id', '=', $quotation->id)->delete();
@@ -264,7 +284,7 @@ class QuotationController extends Controller
     public function convert($id)
     {
         if (\Auth::user()->can('convert quotation')) {
-            $quotation = Quotation::findOrFail($id);
+            $quotation = Quotation::where('parent_id',parentId())->findOrFail($id);
 
             $employees = User::where('parent_id', parentId())->where('type', 'employee')->get()->pluck('name', 'id');
             $employees->prepend(__('Select Employee'), '');
@@ -285,7 +305,11 @@ class QuotationController extends Controller
 
     public function convertInServiceData(Request $request, $id)
     {
-
+        abort_unless(auth()->user()->type!=='client' && auth()->user()->can('convert quotation'),403);
+        Quotation::where('parent_id',parentId())->findOrFail($id);
+        $request->validate(['assign'=>\App\Services\ServiceInput::assignee(),'types'=>'sometimes|array|max:100',
+            'types.*.service_type'=>\App\Services\ServiceInput::type(),
+            'types.*.tax'=>'nullable|array','types.*.tax.*'=>\App\Services\ServiceInput::tax()]);
         $validator = \Validator::make(
             $request->all(),
             [
@@ -303,7 +327,7 @@ class QuotationController extends Controller
             return redirect()->back()->with('error', $messages->first());
         }
 
-        $quotation = Quotation::find($id);
+        $quotation = Quotation::where('parent_id',parentId())->findOrFail($id);
         $quotation->convert_service = 1;
         $quotation->save();
 
@@ -442,7 +466,8 @@ class QuotationController extends Controller
 
     public function quotationItem(Request $request)
     {
-        $itemData = Item::find($request->item_id);
+        abort_unless(auth()->user()->can('manage quotation'),403);
+        $itemData = Item::where('parent_id',parentId())->findOrFail($request->item_id);
         return json_encode($itemData);
     }
 }

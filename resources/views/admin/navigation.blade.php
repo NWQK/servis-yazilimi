@@ -104,6 +104,8 @@
                 $entry('İki aşamalı doğrulama', 'two-factor-admin.index', null, ['two-factor-admin.*'], $isSuperAdmin),
                 $entry('İşletme giriş geçmişi', 'owner-logins.index', null, ['owner-logins.*'], $isSuperAdmin),
                 $entry('Yedekler', 'backups.index', null, ['backups.*'], $isSuperAdmin),
+                $entry('Fotoğraf saklama ve kullanım', 'photo-retention.index', null, ['photo-retention.*'], $isSuperAdmin),
+                $entry('İşletme veri kurtarma', 'recoveries.index', null, ['recoveries.*'], $isSuperAdmin),
                 $entry('Bakım modu', 'maintenance.index', null, ['maintenance.*'], $isSuperAdmin),
                 $entry('Sistem sağlığı', 'system-health.index', null, ['system-health.*'], $isSuperAdmin),
             ]),

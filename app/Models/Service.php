@@ -9,7 +9,7 @@ class Service extends Model
 {
     use HasFactory;
 
-    protected $casts = ['external_labor_tax_rate' => 'decimal:4', 'external_labor_amount' => 'decimal:2'];
+    protected $casts = ['external_labor_tax_rate' => 'decimal:4', 'external_labor_amount' => 'decimal:2','completed_at'=>'datetime'];
 
     protected $fillable = [
         'mileage_at_service',
@@ -32,11 +32,28 @@ class Service extends Model
 
     protected static function booted(): void
     {
+        static::saving(function(self $service){
+            if($service->exists && $service->isDirty('status') && $service->getOriginal('status')==='completed')
+                \App\Services\PhotoRetention::markExpired((int)$service->parent_id,(int)$service->id);
+            if(($service->getAttributes()['status']??null)==='completed' && (!$service->exists || $service->isDirty('status')))
+                $service->completed_at=now();
+        });
         static::creating(function(self $service){
             if (\Illuminate\Support\Facades\Schema::hasColumn('services','mileage_at_service') && $service->mileage_at_service===null)
                 $service->mileage_at_service=Vehicle::where('parent_id',$service->parent_id)->whereKey($service->vehicle)->value('mileage');
         });
+        static::deleting(fn(self $service)=>\App\Services\PhotoRetention::markExpired((int)$service->parent_id,(int)$service->id));
+        static::deleted(function(self $service){
+            $photos=ServicePhoto::where('parent_id',$service->parent_id)->where('service_id',$service->id)->get();
+            ServicePhoto::where('parent_id',$service->parent_id)->where('service_id',$service->id)->delete();
+            \Illuminate\Support\Facades\DB::afterCommit(function()use($photos){
+                foreach($photos as $photo) if(preg_match('/\A[0-9]+_[0-9]+_[a-f0-9-]{36}\.jpg\z/',$photo->filename))
+                    \Illuminate\Support\Facades\Storage::disk('service_photos')->delete('photo/'.$photo->filename);
+            });
+        });
     }
+
+    public function photos() { return $this->hasMany(ServicePhoto::class)->visible(); }
 
     public function getExternalLaborTaxAmount(): float
     {

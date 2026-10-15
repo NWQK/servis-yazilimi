@@ -58,13 +58,18 @@ class ServiceController extends Controller
                 [
                     'vehicle' => ['required', 'integer', \Illuminate\Validation\Rule::exists('vehicles', 'id')->where(fn ($query) => $query->where('parent_id', parentId())->where('client', $request->client)->whereNull('deleted_at'))],
                     'mileage' => 'nullable|integer|min:0|max:2147483647',
-                    'client' => 'required',
+                    'client' => \App\Services\ServiceInput::client(),
                     'service_date' => 'nullable|date_format:Y-m-d',
                     'service_time' => 'nullable|date_format:H:i,H:i:s',
                     'due_date' => 'nullable|date_format:Y-m-d',
                     'due_time' => 'nullable|date_format:H:i,H:i:s',
-                    'assign' => 'required',
-                    'status' => 'required',
+                    'assign' => \App\Services\ServiceInput::assignee(),
+                    'status' => ['required',\Illuminate\Validation\Rule::in(array_keys(Service::status()))],
+                    'types'=>'sometimes|array|max:100',
+                    'types.*.service_type'=>\App\Services\ServiceInput::type(),
+                    'types.*.rate'=>'required|numeric|min:0',
+                    'types.*.tax'=>'nullable|array',
+                    'types.*.tax.*'=>\App\Services\ServiceInput::tax(),
                     'external_labor_amount' => \App\Services\ExternalLabor::RULE,
                     'external_labor_tax_id' => \App\Services\ExternalLabor::taxRules(),
 
@@ -91,7 +96,7 @@ class ServiceController extends Controller
             \App\Services\ExternalLabor::selectTax($service, $request->external_labor_tax_id);
             if ($request->filled('mileage')) $service->mileage_at_service=(int)$request->mileage;
             $service->save();
-            $serviceTypes = $request->types;
+            $serviceTypes = $request->input('types',[]);
 
 
             for ($i = 0; $i < count($serviceTypes); $i++) {
@@ -117,7 +122,7 @@ class ServiceController extends Controller
             $invoice->parent_id = parentId();
             $invoice->save();
 
-            $serviceType = $request->types;
+            $serviceType = $request->input('types',[]);
             for ($i = 0; $i < count($serviceType); $i++) {
                 $invoiceService = new InvoiceService();
                 $invoiceService->invoice_id = $invoice->id;
@@ -236,7 +241,11 @@ class ServiceController extends Controller
     public function show($ids)
     {
         $id = Crypt::decrypt($ids);
-        $service = Service::find($id);
+        abort_unless(auth()->user()->can('show service'),403);
+        $service = Service::where('parent_id',parentId())->findOrFail($id);
+        abort_if(auth()->user()->type==='employee' && (int)$service->assign!==(int)auth()->id(),403);
+        abort_if(auth()->user()->type==='client' && (int)$service->client!==(int)auth()->id(),403);
+        $service->load(['photos'=>fn($q)=>$q->where('parent_id',parentId())]);
         $settings = settings();
         $status = Service::status();
         return view('service.show', compact('service', 'settings', 'status'));
@@ -280,14 +289,20 @@ class ServiceController extends Controller
                 [
                     'vehicle' => ['required', 'integer', \Illuminate\Validation\Rule::exists('vehicles', 'id')->where(fn ($query) => $query->where('parent_id', parentId())->where('client', $request->client)->whereNull('deleted_at'))],
                     'mileage' => 'nullable|integer|min:0|max:2147483647',
-                    'client' => 'required',
+                    'client' => \App\Services\ServiceInput::client(),
                     'service_date' => 'nullable|date_format:Y-m-d',
                     'service_time' => 'nullable|date_format:H:i,H:i:s',
                     'due_date' => 'nullable|date_format:Y-m-d',
                     'due_time' => 'nullable|date_format:H:i,H:i:s',
-                    'assign' => 'required',
-                    'status' => 'required',
+                    'assign' => \App\Services\ServiceInput::assignee(),
+                    'status' => ['required',\Illuminate\Validation\Rule::in(array_keys(Service::status()))],
+                    'types.*.rate'=>'required|numeric|min:0',
+                    'types.*.tax'=>'nullable|array',
+                    'types.*.tax.*'=>\App\Services\ServiceInput::tax(),
                     'external_labor_amount' => \App\Services\ExternalLabor::RULE, 'external_labor_tax_id' => \App\Services\ExternalLabor::taxRules(),
+                    'types' => 'sometimes|array|max:100',
+                    'types.*.id' => ['nullable','integer',\Illuminate\Validation\Rule::exists('service_items','id')->where(fn($q)=>$q->where('parent_id',parentId())->where('service_id',$service->id))],
+                    'types.*.service_type' => ['required','integer',\Illuminate\Validation\Rule::exists('service_types','id')->where('parent_id',parentId())],
                 ]
             );
             if ($validator->fails()) {
@@ -310,9 +325,9 @@ class ServiceController extends Controller
             }
             $service->save();
             if ($request->exists('external_labor_amount') || $request->exists('external_labor_tax_id')) app(\App\Services\ExternalLabor::class)->update($service, $request->exists('external_labor_amount') ? $request->external_labor_amount : $service->external_labor_amount, $request->external_labor_tax_id, $request->exists('external_labor_tax_id'));
-            $serviceTypes = $request->types;
+            $serviceTypes = $request->input('types',[]);
             for ($i = 0; $i < count($serviceTypes); $i++) {
-                $serviceItem = ServiceItem::find($serviceTypes[$i]['id']);
+                $serviceItem = ServiceItem::where('parent_id',parentId())->where('service_id',$service->id)->find($serviceTypes[$i]['id']??null);
                 if ($serviceItem == null) {
                     $serviceItem = new serviceItem();
                     $serviceItem->service_id = $service->id;
@@ -343,6 +358,7 @@ class ServiceController extends Controller
 
     public function destroy(Service $service)
     {
+        abort_unless((int)$service->parent_id===(int)parentId()&&auth()->user()->type!=='client',403);
         if (\Auth::user()->can('delete service')) {
             $service->delete();
             return redirect()->route('service.index')->with('success', __('Service successfully deleted.'));
@@ -371,7 +387,8 @@ class ServiceController extends Controller
 
     public function type(Request $request)
     {
-        $itemData = ServiceType::find($request->type_id);
+        abort_unless(auth()->user()->can('manage service'),403);
+        $itemData = ServiceType::where('parent_id',parentId())->findOrFail($request->type_id);
         return json_encode($itemData);
     }
 
@@ -379,14 +396,14 @@ class ServiceController extends Controller
     {
         if (\Auth::user()->can('delete service type')) {
             if (empty($request->type)) {
-                $serviceType = ServiceItem::find($request->id);
+                $serviceType = ServiceItem::where('parent_id',parentId())->findOrFail($request->id);
                 $serviceType->delete();
             } else {
                 if ($request->type == 'qtype') {
-                    $serviceType = QuotationService::find($request->id);
+                    $serviceType = QuotationService::where('parent_id',parentId())->findOrFail($request->id);
                     $serviceType->delete();
                 } elseif ($request->type == 'qitem') {
-                    $serviceType = QuotationItem::find($request->id);
+                    $serviceType = QuotationItem::where('parent_id',parentId())->findOrFail($request->id);
                     $serviceType->delete();
                 }
             }
@@ -453,7 +470,10 @@ class ServiceController extends Controller
 
     public function changeStatus(Request $request)
     {
-        $woRequest = Service::findOrFail($request->applicantId);
+        abort_unless(auth()->user()->type!=='client' && auth()->user()->can('edit service'),403);
+        $request->validate(['applicantId'=>'required|integer','stageId'=>['required',\Illuminate\Validation\Rule::in(array_keys(Service::status()))]]);
+        $woRequest = Service::where('parent_id',parentId())->findOrFail($request->applicantId);
+        abort_if(auth()->user()->type==='employee' && (int)$woRequest->assign!==(int)auth()->id(),403);
         $woRequest->status = $request->stageId;
         $woRequest->save();
         return response()->json([

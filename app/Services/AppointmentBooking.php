@@ -16,6 +16,7 @@ class AppointmentBooking
     {
         // Conditional update prevents a concurrently approved record from being expired.
         return Appointment::where('status', 'pending')
+            ->when(\Illuminate\Support\Facades\Schema::hasTable('business_recovery_locks'),fn($q)=>$q->whereNotIn('appointment_profile_id',\Illuminate\Support\Facades\DB::table('appointment_profiles')->whereIn('owner_id',\Illuminate\Support\Facades\DB::table('business_recovery_locks')->select('owner_id'))->select('id')))
             ->when($profileId !== null, fn ($query) => $query->where('appointment_profile_id', $profileId))
             ->where(fn ($query) => $query->where('pending_expires_at', '<=', now())->orWhere('starts_at', '<=', now()))
             ->update(['status' => 'expired', 'occupied_at' => null, 'updated_at' => now()]);
@@ -59,6 +60,7 @@ class AppointmentBooking
 
     public function availableHours(AppointmentProfile $profile, string $date): array
     {
+        if(\Illuminate\Support\Facades\Schema::hasTable('business_recovery_locks')&&DB::table('business_recovery_locks')->where('owner_id',$profile->owner_id)->exists())return [];
         $this->expirePending($profile->id);
         $day = CarbonImmutable::createFromFormat('!Y-m-d', $date, 'Europe/Istanbul');
         if (!$profile->is_active || $profile->owner?->hasSuspendedSubscription() || ($profile->owner && app(DemoLifecycle::class)->expired($profile->owner)) || $day->lt(today()) || $day->gt(today()->addDays(self::BOOKING_WINDOW_DAYS))) return [];

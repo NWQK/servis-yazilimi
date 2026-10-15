@@ -12,7 +12,9 @@ class PurgeOperationHistory extends Command
             if(!Schema::hasTable($table)) continue;
             $deadline=microtime(true)+30;
             while(microtime(true)<$deadline){
-                $ids=DB::table($table)->where($column,'<',$cutoff)->orderBy('id')->limit(500)->pluck('id');
+                $ids=DB::table($table)->where($column,'<',$cutoff)
+                    ->when($table!=='system_health_errors'&&Schema::hasTable('business_recovery_locks'),fn($q)=>$q->whereNotIn('parent_id',DB::table('business_recovery_locks')->select('owner_id')))
+                    ->orderBy('id')->limit(500)->pluck('id');
                 if($ids->isEmpty()) break;
                 DB::table($table)->whereIn('id',$ids)->delete();
             }

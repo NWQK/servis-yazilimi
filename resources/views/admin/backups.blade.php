@@ -10,6 +10,7 @@
     @if($settings->last_error)<div class="alert alert-danger">{{ $settings->last_error }}</div>@endif
     @if($problems)<div class="alert alert-warning"><strong>Kurulum tamamlanmalı</strong><ul class="mb-0">@foreach($problems as $problem)<li>{{ $problem }}</li>@endforeach</ul></div>@endif
     <div class="alert alert-light border">Her gece <strong>23.55 (Türkiye saati)</strong> yedek alınır. VDS ve Google Drive’da <strong>son 3 günlük + ayın 1’indeki 1 aylık</strong> yedek korunur. Örneğin ayın 31’inde gece yedeği alınmadan önce: 1, 28, 29 ve 30. Yeni kopya doğrulanmadan ilgili hedefteki eski yedek silinmez.</div>
+    <p><a class="btn btn-outline-primary" href="{{ route('recoveries.index') }}">İşletme bazında veri kurtarma</a></p>
     <div class="row g-3 mb-4">
         <div class="col-md-4"><div class="border rounded p-3 h-100"><small class="text-muted">Son çalışma başlangıcı</small><div>{{ $settings->last_started_at?->format('d.m.Y H:i:s') ?? 'Henüz çalışmadı' }}</div></div></div>
         <div class="col-md-4"><div class="border rounded p-3 h-100"><small class="text-muted">Son çalışma bitişi</small><div>{{ $settings->last_finished_at?->format('d.m.Y H:i:s') ?? '—' }}</div></div></div>

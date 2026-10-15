@@ -71,6 +71,7 @@ Route::middleware(['auth', 'XSS'])->prefix('vehicle-qr')->name('vehicle-qr.')->g
 Route::prefix('q/{token}')->where(['token' => '[a-f0-9]{64}'])->middleware('throttle:60,1')
     ->withoutMiddleware(\App\Http\Middleware\Verify2FA::class)->name('vehicle-portal.')->group(function () {
         Route::get('/', [VehiclePortalController::class, 'show'])->name('show');
+        Route::get('/photos/{photo}', [\App\Http\Controllers\ServicePhotoController::class, 'customer'])->whereNumber('photo')->name('photo');
         Route::get('/invoice/{invoiceId}', [VehiclePortalController::class, 'invoice'])->whereNumber('invoiceId')->name('invoice');
     });
 
@@ -98,6 +99,8 @@ Route::middleware(['auth', 'XSS'])->group(function () {
     Route::get('admin/maintenance', [\App\Http\Controllers\PlatformMaintenanceController::class,'index'])->name('maintenance.index');
     Route::post('admin/maintenance', [\App\Http\Controllers\PlatformMaintenanceController::class,'save'])->name('maintenance.save');
     Route::get('admin/backups', [\App\Http\Controllers\PlatformBackupController::class,'index'])->name('backups.index');
+    Route::get('admin/photo-retention', [\App\Http\Controllers\PhotoRetentionController::class,'index'])->name('photo-retention.index');
+    Route::post('admin/photo-retention', [\App\Http\Controllers\PhotoRetentionController::class,'save'])->name('photo-retention.save');
     Route::post('admin/backups/settings', [\App\Http\Controllers\PlatformBackupController::class,'save'])->name('backups.save');
     Route::post('admin/backups/request', [\App\Http\Controllers\PlatformBackupController::class,'requestBackup'])->middleware('throttle:3,5')->name('backups.request');
     Route::get('support', [\App\Http\Controllers\SupportTicketController::class,'index'])->name('support.index');
@@ -397,6 +400,9 @@ Route::group(
     ],
     function () {
         Route::get('service/today', [ServiceController::class, 'todayService'])->name('service.today');
+        Route::post('service/{service}/photos', [\App\Http\Controllers\ServicePhotoController::class,'store'])->whereNumber('service')->name('service.photos.store');
+        Route::get('service/{service}/photos/{photo}', [\App\Http\Controllers\ServicePhotoController::class,'show'])->whereNumber('service')->whereNumber('photo')->name('service.photos.show');
+        Route::delete('service/{service}/photos/{photo}', [\App\Http\Controllers\ServicePhotoController::class,'destroy'])->whereNumber('service')->whereNumber('photo')->name('service.photos.destroy');
         Route::resource('service', ServiceController::class);
         Route::post('service/type', [ServiceController::class, 'type'])->name('service.type');
         Route::delete('service/type/destroy', [ServiceController::class, 'serviceTypeDestroy'])->name('service.type.destroy');
@@ -602,3 +608,13 @@ Route::post('/arac-gecmisi',[\App\Http\Controllers\PublicVehicleHistoryControlle
     ->withoutMiddleware(\App\Http\Middleware\Verify2FA::class)->middleware('throttle:10,1,vehicle-history-search')->name('vehicle-history.search');
 Route::post('/vehicle/{vehicle}/history-sharing',[VehicleController::class,'historySharing'])
     ->middleware(['auth','XSS'])->name('vehicle.history-sharing');
+
+Route::middleware(['auth','XSS'])->prefix('admin/recoveries')->name('recoveries.')->group(function(){
+    Route::get('/',[\App\Http\Controllers\BusinessRecoveryController::class,'index'])->name('index');
+    Route::get('/create',[\App\Http\Controllers\BusinessRecoveryController::class,'create'])->name('create');
+    Route::post('/',[\App\Http\Controllers\BusinessRecoveryController::class,'store'])->middleware('throttle:5,1')->name('store');
+    Route::get('/{recovery}',[\App\Http\Controllers\BusinessRecoveryController::class,'show'])->name('show');
+    Route::post('/{recovery}/apply',[\App\Http\Controllers\BusinessRecoveryController::class,'apply'])->middleware('throttle:3,1')->name('apply');
+    Route::post('/{recovery}/undo',[\App\Http\Controllers\BusinessRecoveryController::class,'undo'])->middleware('throttle:3,1')->name('undo');
+    Route::post('/{recovery}/cancel',[\App\Http\Controllers\BusinessRecoveryController::class,'cancel'])->name('cancel');
+});

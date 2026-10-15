@@ -23,4 +23,9 @@ class BackupDrive
     {
         $this->command(['deletefile', $remote]);
     }
+    public function download(string $remote,string $local): void
+    {
+        if(!str_starts_with($remote,rtrim(config('backups.remote'),'/').'/'))throw new BackupFailure('Drive yedek yolu geçersiz.');
+        $this->command(['copyto',$remote,$local]);
+    }
 }

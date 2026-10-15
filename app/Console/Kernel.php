@@ -16,11 +16,13 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->command('platform:heartbeat')->everyMinute()->withoutOverlapping();
+        $schedule->command('platform:recover')->everyMinute()->withoutOverlapping(180);
         $schedule->command('platform:purge-history')->hourlyAt(20)->between('03:00','06:59')->withoutOverlapping();
         $schedule->command('platform:backup')->dailyAt('23:55')->timezone('Europe/Istanbul')->withoutOverlapping(180);
         $schedule->command('platform:backup --requested')->everyMinute()->withoutOverlapping(180);
         $schedule->command('subscriptions:purge-demos --execute')->dailyAt('04:40')->timezone('Europe/Istanbul')->withoutOverlapping();
         $schedule->command('inventory:purge-purchases')->daily()->withoutOverlapping();
+        $schedule->command('photos:purge')->dailyAt('03:30')->timezone('Europe/Istanbul')->withoutOverlapping(180);
         $schedule->command('security:purge-owner-logins')->hourly()->withoutOverlapping();
         $schedule->command('appointments:expire')->everyMinute()->withoutOverlapping();
     }

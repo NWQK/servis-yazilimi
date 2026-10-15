@@ -67,6 +67,8 @@ class VehicleQrPool
         // One stable row serializes initialization, assignment and stock replenishment,
         // including when there are no QR rows yet. Requires transactional InnoDB tables.
         User::whereKey($parentId)->lockForUpdate()->firstOrFail();
+        if(\Illuminate\Support\Facades\Schema::hasTable('business_recovery_locks')&&DB::table('business_recovery_locks')->where('owner_id',$parentId)->exists())
+            throw ValidationException::withMessages(['vehicle'=>'İşletmenin veri kurtarma işlemi tamamlanınca yeniden deneyin.']);
     }
 
     private function readyCode(int $parentId, int $qrId): VehicleQrCode

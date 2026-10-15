@@ -39,6 +39,8 @@ class InventoryAccounting
         return DB::transaction(function () use ($tenant, $work) {
             // All stock mutations for one business use the same lock order.
             User::whereKey($tenant)->lockForUpdate()->firstOrFail();
+            if(\Illuminate\Support\Facades\Schema::hasTable('business_recovery_locks')&&DB::table('business_recovery_locks')->where('owner_id',$tenant)->exists())
+                throw ValidationException::withMessages(['recovery'=>'İşletmenin veri kurtarma işlemi devam ediyor. Lütfen daha sonra tekrar deneyin.']);
             return $work();
         });
     }

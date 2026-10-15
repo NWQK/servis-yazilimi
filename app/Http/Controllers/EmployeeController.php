@@ -155,7 +155,7 @@ class EmployeeController extends Controller
     {
         $id = decrypt($id);
         $employee = Employee::where('user_id', $id)->where('parent_id', parentId())->first();
-        $user = User::find($id);
+        $user = User::where('parent_id',parentId())->where('type','employee')->findOrFail($id);
         $employee = $user->employees;
         $services = \App\Models\Service::where('assign', $id)->where('parent_id', parentId())->orderBy('service_date', 'desc')->get();
         return view('employee.show', compact('employee', 'user','services'));
@@ -164,7 +164,7 @@ class EmployeeController extends Controller
 
     public function edit($id)
     {
-        $user = User::find($id);
+        $user = User::where('parent_id',parentId())->where('type','employee')->findOrFail($id);
         $employee = $user->employees;
         $gender = User::genderList();
         return view('employee.edit', compact('employee', 'user', 'gender'));
@@ -192,7 +192,7 @@ class EmployeeController extends Controller
                 return redirect()->back()->with('error', $messages->first());
             }
 
-            $user = User::find($id);
+            $user = User::where('parent_id',parentId())->where('type','employee')->findOrFail($id);
             $user->name = $request->name;
             $user->email = $request->email;
             $user->phone_number = $request->phone_number;
@@ -235,9 +235,9 @@ class EmployeeController extends Controller
     public function destroy($id)
     {
         if (\Auth::user()->can('delete employee')) {
-            $user = User::find($id);
+            $user = User::where('parent_id',parentId())->where('type','employee')->findOrFail($id);
             $user->delete();
-            Employee::where('user_id', $id)->delete();
+            Employee::where('parent_id',parentId())->where('user_id', $id)->delete();
 
             return redirect()->route('employee.index')->with('success', __('Employee successfully deleted.'));
         } else {

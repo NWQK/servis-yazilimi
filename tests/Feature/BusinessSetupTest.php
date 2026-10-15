@@ -31,7 +31,7 @@ class BusinessSetupTest extends TestCase {
  }
  public function test_logos_use_existing_upload_rules_and_do_not_change_shared_environment() {
   Storage::fake(config('filesystems.default'));$before=file_get_contents(base_path('.env'));
-  $temp=tempnam(sys_get_temp_dir(),'setup-logo-');file_put_contents($temp,base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/lS8AAAAASUVORK5CYII='));
+  $temp=tempnam(sys_get_temp_dir(),'setup-logo-');file_put_contents($temp,base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAADElEQVQImWNgYGAAAAAEAAGjChXjAAAAAElFTkSuQmCC'));
   $logo=new UploadedFile($temp,'invoice.png','image/png',null,true);
   $this->post($this->url('logos'),['action'=>'logos','continue'=>1,'invoice_logo'=>$logo])->assertRedirect(route('business-setup.index',['step'=>'vehicles']));
   $filename=DB::table('settings')->where('parent_id',$this->owner->id)->where('name','invoice_logo')->value('value');

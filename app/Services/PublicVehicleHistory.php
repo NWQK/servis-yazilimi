@@ -10,12 +10,18 @@ class PublicVehicleHistory
     public function sync(Vehicle $vehicle): void
     {
         if (!Schema::hasTable('vehicle_history_index')) return;
-        $number=ChassisNumber::normalize($vehicle->chassis_no);
-        $hash=ChassisNumber::valid($number) ? hash('sha256',$number) : null;
-        $previous=DB::table('vehicle_history_index')->where('vehicle_id',$vehicle->id)->first();
-        $public=$previous && $previous->vin_hash===$hash && $hash!==null && !$vehicle->trashed() ? (bool)$previous->is_public : false;
-        DB::table('vehicle_history_index')->updateOrInsert(['vehicle_id'=>$vehicle->id],
-            ['parent_id'=>$vehicle->parent_id,'vin_hash'=>$hash,'is_public'=>$public,'updated_at'=>now()]);
+        DB::transaction(function()use($vehicle){
+            // A stale model saving another field must not put an old VIN back into the index.
+            $current=DB::table('vehicles')->where('id',$vehicle->id)->lockForUpdate()->first();
+            if(!$current)return;
+            $number=ChassisNumber::normalize($current->chassis_no);
+            $hash=ChassisNumber::valid($number) ? hash('sha256',$number) : null;
+            $previous=DB::table('vehicle_history_index')->where('vehicle_id',$vehicle->id)->first();
+            $public=$previous && (int)$previous->parent_id===(int)$current->parent_id
+                && $previous->vin_hash===$hash && $hash!==null && !$current->deleted_at ? (bool)$previous->is_public : false;
+            DB::table('vehicle_history_index')->updateOrInsert(['vehicle_id'=>$vehicle->id],
+                ['parent_id'=>$current->parent_id,'vin_hash'=>$hash,'is_public'=>$public,'updated_at'=>now()]);
+        });
     }
     public function share(Vehicle $vehicle,bool $public): void
     {
@@ -39,6 +45,7 @@ class PublicVehicleHistory
             ->join('services as s',function($j){$j->on('s.vehicle','=','v.id')->on('s.parent_id','=','h.parent_id');})
             ->join('users as owner',fn($j)=>$j->on('owner.id','=','h.parent_id')->where('owner.type','owner'))
             ->where('h.vin_hash',$hash)->where('h.is_public',true)->whereNull('v.deleted_at')->where('s.status','completed')
+            ->when(Schema::hasTable('business_recovery_locks'),fn($q)=>$q->whereNotExists(fn($q)=>$q->selectRaw('1')->from('business_recovery_locks')->whereColumn('owner_id','h.parent_id')))
             ->select(['s.id','s.parent_id','s.service_date','s.mileage_at_service'])
             ->selectSub(DB::table('settings')->select('value')->whereColumn('parent_id','h.parent_id')->where('name','company_name')->limit(1),'business_name')
             ->selectSub(DB::table('appointment_profiles')->select('display_name')->whereColumn('owner_id','h.parent_id')->limit(1),'profile_name')

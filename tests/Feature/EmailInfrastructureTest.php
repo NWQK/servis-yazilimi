@@ -45,16 +45,16 @@ class EmailInfrastructureTest extends TestCase
         \Illuminate\Support\Facades\Storage::fake('local');
         $envBefore = hash_file('sha256', app()->environmentFilePath());
         $this->post(route('setting.general'),[
-            'logo'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('logo.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==')),
-            'light_logo'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('dark.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==')),
-            'favicon'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('favicon.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==')),
+            'logo'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('logo.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAADElEQVQImWNgYGAAAAAEAAGjChXjAAAAAElFTkSuQmCC')),
+            'light_logo'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('dark.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAADElEQVQImWNgYGAAAAAEAAGjChXjAAAAAElFTkSuQmCC')),
+            'favicon'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('favicon.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAADElEQVQImWNgYGAAAAAEAAGjChXjAAAAAElFTkSuQmCC')),
         ])->assertSessionHasNoErrors()->assertSessionHas('success');
         \Illuminate\Support\Facades\Storage::disk('local')->assertExists('upload/logo/'.$this->owner->id.'_logo.png');
         $this->assertSame('sanayirandevu.com',getSettingsValByName('app_name'));
         $this->assertSame('© sanayirandevu.com. Tüm hakları saklıdır.',getSettingsValByName('copyright'));
         $this->post(route('setting.general'),[
             'application_name'=>'Hatalı ad','copyright'=>'Değiştirilemez','landing_page'=>'off',
-            'logo'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('new.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==')),
+            'logo'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('new.png',base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAADElEQVQImWNgYGAAAAAEAAGjChXjAAAAAElFTkSuQmCC')),
         ])->assertSessionHasNoErrors()->assertSessionHas('success');
         $this->assertSame('sanayirandevu.com',getSettingsValByName('app_name'));
         $this->assertSame($envBefore,hash_file('sha256',app()->environmentFilePath()));
@@ -83,7 +83,7 @@ class EmailInfrastructureTest extends TestCase
     {
         \Illuminate\Support\Facades\Storage::fake('local');
         $this->assertStringContainsString('/upload/logo/logo.png',invoiceLogoUrl($this->owner->id));
-        $png=base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+aWQAAAABJRU5ErkJggg==');
+        $png=base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAADElEQVQImWNgYGAAAAAEAAGjChXjAAAAAElFTkSuQmCC');
         $this->post(route('setting.general'),['invoice_logo'=>\Illuminate\Http\UploadedFile::fake()->createWithContent('invoice.png',$png)])->assertSessionHasNoErrors()->assertSessionHas('success')->assertSessionHas('tab','user_profile_settings');
         $filename=DB::table('settings')->where('parent_id',$this->owner->id)->where('name','invoice_logo')->value('value');
         $this->assertNotEmpty($filename);

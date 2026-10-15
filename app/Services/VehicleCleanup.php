@@ -78,6 +78,7 @@ class VehicleCleanup
             if ($vehicles->count()!==count($ids)) { throw ValidationException::withMessages(['ids'=>'Silinen araç listesi değişti. Listeyi yenileyin.']); }
             foreach ($vehicles as $vehicle) {
                 app(VehicleCapacity::class)->assertAvailable($ownerId);
+                ChassisNumber::assertUnique($vehicle);
                 $vehicle->restore();
                 $client=User::where('type','client')->where('parent_id',$ownerId)->whereKey($vehicle->client)->lockForUpdate()->first();
                 if ($client && $client->client_archived_at!==null) {

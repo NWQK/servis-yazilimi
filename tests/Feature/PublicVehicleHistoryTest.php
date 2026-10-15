@@ -102,6 +102,41 @@ class PublicVehicleHistoryTest extends TestCase
         for($i=0;$i<9;$i++)$this->post(route('vehicle-history.search'),['chassis_no'=>'WVWZZZ1JZXW000001'])->assertRedirect(route('vehicle-history.index'));
         $this->post(route('vehicle-history.search'),['chassis_no'=>'WVWZZZ1JZXW000001'])->assertStatus(429);
     }
+    public function test_audit_stale_model_save_cannot_revert_the_search_index(): void
+    {
+        $v=$this->vehicle('ShopA');$stale=Vehicle::find($v->id);
+        $v->update(['chassis_no'=>'WVWZZZ1JZXW000002']);app(PublicVehicleHistory::class)->share($v,true);
+        $stale->update(['mileage'=>130000]);
+        $this->assertSame(hash('sha256','WVWZZZ1JZXW000002'),DB::table('vehicle_history_index')->where('vehicle_id',$v->id)->value('vin_hash'));
+        $this->assertTrue(app(PublicVehicleHistory::class)->isPublic($v->fresh()));
+    }
+    public function test_audit_moving_a_vehicle_between_owners_revokes_sharing(): void
+    {
+        $v=$this->vehicle('ShopA');$b=$this->vehicle('ShopB','WVWZZZ1JZXW000002');
+        app(PublicVehicleHistory::class)->share($v,true);$v->update(['parent_id'=>$b->parent_id]);
+        $this->assertFalse(app(PublicVehicleHistory::class)->isPublic($v));
+    }
+    public function test_audit_trash_restore_rejects_a_reused_chassis_number(): void
+    {
+        $v=$this->vehicle('ShopA');$v->delete();
+        Vehicle::create(['parent_id'=>$v->parent_id,'chassis_no'=>$v->chassis_no]);
+        $this->expectException(ValidationException::class);
+        app(\App\Services\VehicleCleanup::class)->restore($v->parent_id,[$v->id]);
+    }
+    public function test_audit_other_shop_cannot_delete_a_service_or_change_its_operation_line(): void
+    {
+        $a=$this->vehicle('ShopA');$b=$this->vehicle('ShopB');$own=$this->service($a);$foreign=$this->service($b);
+        $this->actingAs(User::find($a->parent_id))->delete(route('service.destroy',$foreign))->assertForbidden();
+        $this->assertNotNull($foreign->fresh());
+        $a->update(['client'=>$a->parent_id]);
+        $line=DB::table('service_items')->where('service_id',$foreign->id)->first();
+        $ownType=DB::table('service_types')->where('parent_id',$a->parent_id)->value('id');
+        $this->put(route('service.update',$own),['vehicle'=>$a->id,'client'=>$a->parent_id,'assign'=>$a->parent_id,
+            'status'=>'completed','types'=>[['id'=>$line->id,'service_type'=>$ownType,'rate'=>1,'note'=>'changed']]])
+            ->assertSessionHas('error');
+        $this->assertEquals($b->parent_id,DB::table('service_items')->find($line->id)->parent_id);
+        $this->assertSame('PRIVATE-LINE-NOTE',DB::table('service_items')->find($line->id)->note);
+    }
     public function test_public_results_are_paginated_and_search_session_expires(): void
     {
         $v=$this->vehicle('ShopA');app(PublicVehicleHistory::class)->share($v,true);

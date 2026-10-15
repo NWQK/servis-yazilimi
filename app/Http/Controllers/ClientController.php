@@ -94,14 +94,16 @@ class ClientController extends Controller
             'next_service_due_date' => 'nullable|date',
             'insurance_details' => 'nullable|string',
             'vehicle_notes' => 'nullable|string',
-            'assign'       => 'required',
+            'assign'       => \App\Services\ServiceInput::assignee(),
             'service_date' => 'nullable|date_format:Y-m-d',
             'service_time' => 'nullable|date_format:H:i,H:i:s',
             'due_date'     => 'nullable|date_format:Y-m-d',
             'due_time'     => 'nullable|date_format:H:i,H:i:s',
             'status'       => 'required',
             'types'              => 'required|array|min:1',
-            'types.*.service_type' => 'required',
+            'types.*.service_type' => \App\Services\ServiceInput::type(),
+            'types.*.tax' => 'nullable|array',
+            'types.*.tax.*' => \App\Services\ServiceInput::tax(),
             'types.*.rate'         => 'required|numeric',
         ]);
 
@@ -330,12 +332,13 @@ class ClientController extends Controller
     public function show($id)
     {
         $id = decrypt($id);
-        $user = User::with('clients', 'clients.vehicles', 'clients.services', 'clients.quotations', 'clients.invoices')->findOrFail($id);
+        abort_unless(auth()->user()->can('show client') && auth()->user()->type!=='client',403);
+        $user = User::where('parent_id',parentId())->where('type','client')->with('clients')->findOrFail($id);
         $client = $user->clients;
-        $vehicles = Vehicle::where('client', $user->id)->get();
-        $services = Service::with(['vehicles', 'clients'])->where('client', $user->id)->get();
-        $quotations = Quotation::with(['vehicles'])->where('client_id', $user->id)->get();
-        $invoices = Invoice::with(['services'])->where('client', $user->id)->get();
+        $vehicles = Vehicle::where('parent_id',parentId())->where('client', $user->id)->get();
+        $services = Service::with(['vehicles', 'clients'])->where('parent_id',parentId())->where('client', $user->id)->get();
+        $quotations = Quotation::with(['vehicles'])->where('parent_id',parentId())->where('client_id', $user->id)->get();
+        $invoices = Invoice::with(['services'])->where('parent_id',parentId())->where('client', $user->id)->get();
         return view('client.show', compact('user', 'client', 'vehicles', 'services', 'quotations', 'invoices'));
     }
 
@@ -394,7 +397,12 @@ class ClientController extends Controller
                     'next_service_due_date' => 'nullable|date',
                     'insurance_details' => 'nullable|string',
                     'vehicle_notes' => 'nullable|string',
-                    'assign'        => 'required',
+                    'assign'        => \App\Services\ServiceInput::assignee(),
+                    'types'=>'sometimes|array|max:100',
+                    'types.*.service_type'=>\App\Services\ServiceInput::type(),
+                    'types.*.tax'=>'nullable|array',
+                    'types.*.tax.*'=>\App\Services\ServiceInput::tax(),
+                    'types.*.rate'=>'required|numeric|min:0',
                     'service_date'  => 'nullable|date_format:Y-m-d',
                     'service_time'  => 'nullable|date_format:H:i,H:i:s',
                     'due_date'      => 'nullable|date_format:Y-m-d',
@@ -481,9 +489,10 @@ class ClientController extends Controller
     public function destroy($id)
     {
         if (\Auth::user()->can('delete client')) {
-            $user = User::find($id);
+            abort_if(auth()->user()->type==='client',403);
+            $user = User::where('parent_id',parentId())->where('type','client')->findOrFail($id);
             $user->delete();
-            $client = Client::where('user_id', $id)->delete();
+            $client = Client::where('parent_id',parentId())->where('user_id', $id)->delete();
 
             return redirect()->route('client.index')->with('success', __('Client successfully deleted.'));
         } else {

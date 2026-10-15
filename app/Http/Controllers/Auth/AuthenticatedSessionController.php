@@ -39,6 +39,10 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
         $request->session()->forget(['owner_login_recorded','2fa_checked','2fa_verified_key','2fa_secret','2fa_setup_user']);
         $loginUser = Auth::user();
+        if(!in_array($loginUser->type,['client','super admin'],true)&&\Illuminate\Support\Facades\Schema::hasColumn('users','recovery_version')){
+            $businessId=$loginUser->type==='owner'?$loginUser->id:$loginUser->parent_id;
+            $request->session()->put('business_recovery_epochs.'.$businessId,(int)\Illuminate\Support\Facades\DB::table('users')->where('id',$businessId)->value('recovery_version'));
+        }
         if ($loginUser->hasSuspendedSubscription()) {
             auth()->logout();
             $request->session()->invalidate();
