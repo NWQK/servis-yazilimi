@@ -9,13 +9,35 @@ $database=$state.'/synthetic.sqlite';
 foreach(['APP_ENV'=>'local','APP_DEBUG'=>'false','APP_KEY'=>trim(file_get_contents($keyFile)),
     'APP_URL'=>'http://127.0.0.1:8787','DB_CONNECTION'=>'sqlite','DB_DATABASE'=>$database,
     'DATABASE_URL'=>'','CACHE_DRIVER'=>'file','SESSION_DRIVER'=>'array','MAIL_MAILER'=>'array',
-    'QUEUE_CONNECTION'=>'sync','COMMUNICATIONS_ASYNC'=>'false','BCRYPT_ROUNDS'=>'4'] as $k=>$v) {
+    'QUEUE_CONNECTION'=>'sync','COMMUNICATIONS_ASYNC'=>'false','MOBILE_PUSH_ENABLED'=>'false','BCRYPT_ROUNDS'=>'4'] as $k=>$v) {
     putenv($k.'='.$v);$_ENV[$k]=$_SERVER[$k]=$v;
 }
 require $base.'/vendor/autoload.php';
 $app=require $base.'/bootstrap/app.php';
 $app->loadEnvironmentFrom('.env.mobile-local-unused');
 if(PHP_SAPI==='cli') {
+    if(in_array($argv[1]??'', ['upgrade','seed-notifications'], true)) {
+        if(!file_exists($database)){fwrite(STDERR,"Synthetic database missing; seed first.\n");exit(1);}
+        $kernel=$app->make(Illuminate\Contracts\Console\Kernel::class);$kernel->bootstrap();
+        Illuminate\Support\Facades\Mail::fake();Illuminate\Support\Facades\Http::preventStrayRequests();
+        $paths=array_values(array_filter(glob($base.'/database/migrations/*.php'),fn($p)=>!str_contains($p,'version_1_7_filled')));
+        $exit=$kernel->call('migrate',['--path'=>$paths,'--realpath'=>true,'--force'=>true]);
+        echo $kernel->output();if($exit!==0)exit($exit);
+        if($argv[1]==='seed-notifications') {
+            $owner=App\Models\User::where('email','esnaf@example.test')->where('type','owner')->firstOrFail();
+            $profile=app(App\Services\AppointmentBooking::class)->profileForOwner($owner->id);
+            foreach(['pending','cancelled'] as $index=>$status) {
+                App\Models\Appointment::firstOrCreate(['appointment_profile_id'=>$profile->id,'request_key'=>'00000000-0000-4000-8000-'.str_pad((string)($index+1),12,'0',STR_PAD_LEFT)],[
+                    'public_token'=>Illuminate\Support\Str::random(64),'customer_name'=>'Sentetik Randevu '.($index+1),
+                    'phone'=>'5550000000','phone_verified_at'=>now(),'starts_at'=>now()->addDay()->addHours($index),
+                    'ends_at'=>now()->addDay()->addHours($index+1),'status'=>$status,'pending_expires_at'=>now()->addHours(24),
+                    'cancelled_by_customer'=>$status==='cancelled','cancelled_at'=>$status==='cancelled'?now():null,
+                ]);
+            }
+            echo "Synthetic appointment notices ready. No external communications.\n";
+        }
+        exit(0);
+    }
     if(($argv[1]??'')!=='seed'){fwrite(STDERR,"Usage: php -d extension=intl tools/mobile-local.php seed\n");exit(1);}
     if(file_exists($database)){fwrite(STDERR,"Synthetic database already exists; preserved without reset.\n");exit(1);}
     touch($database);
@@ -40,4 +62,8 @@ if(PHP_SAPI==='cli') {
 if(!file_exists($database)){http_response_code(503);header('Content-Type: application/json');echo '{"message":"Önce sentetik test verisini hazırlayın."}';exit;}
 if(!str_starts_with(parse_url($_SERVER['REQUEST_URI'],PHP_URL_PATH),'/api/v1/')){http_response_code(404);exit;}
 $kernel=$app->make(Illuminate\Contracts\Http\Kernel::class);
-$response=$kernel->handle($request=Illuminate\Http\Request::capture());$response->send();$kernel->terminate($request,$response);
+$request=Illuminate\Http\Request::capture();
+$app->instance('request',$request);
+$kernel->bootstrap();
+Illuminate\Support\Facades\Mail::fake();Illuminate\Support\Facades\Http::preventStrayRequests();
+$response=$kernel->handle($request);$response->send();$kernel->terminate($request,$response);

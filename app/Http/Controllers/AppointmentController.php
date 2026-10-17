@@ -33,9 +33,7 @@ class AppointmentController extends Controller
         if (!$isAdmin) {
             $profile = AppointmentProfile::where('owner_id', parentId())->first();
             if ($profile) $booking->expirePending($profile->id);
-            $query = Appointment::whereHas('profile', fn ($query) => $query->where('owner_id', parentId()))
-                ->where(fn ($query) => $query->where('status', 'pending')->orWhere(fn ($cancelled) => $cancelled
-                    ->where('status', 'cancelled')->where('cancelled_by_customer', true)->whereNull('cancellation_read_at')));
+            $query = app(\App\Services\AppointmentAttention::class)->query(parentId());
             $count = (clone $query)->count();
             $items = $query->orderByDesc('updated_at')->orderByDesc('id')->limit(10)->get()->map(fn ($appointment) => [
                 'id' => $appointment->id,

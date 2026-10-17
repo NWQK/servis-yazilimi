@@ -29,6 +29,113 @@ class MobileApiTest extends TestCase {
         auth()->forgetGuards();
         return $this->json($method,'/api/v1/'.$url,$data,['Authorization'=>'Bearer '.$token]+$headers);
     }
+    private function appointment(User $owner, string $status = 'pending') {
+        $profile = app(\App\Services\AppointmentBooking::class)->profileForOwner($owner->id);
+        return \App\Models\Appointment::create([
+            'appointment_profile_id'=>$profile->id, 'public_token'=>\Illuminate\Support\Str::random(64),
+            'request_key'=>(string) \Illuminate\Support\Str::uuid(), 'customer_name'=>'Sentetik Randevu',
+            'phone'=>'5550000000', 'phone_verified_at'=>now(), 'starts_at'=>now()->addDay(),
+            'ends_at'=>now()->addDay()->addHour(), 'status'=>$status,
+            'pending_expires_at'=>now()->addHours(2), 'cancelled_by_customer'=>$status === 'cancelled',
+            'cancelled_at'=>$status === 'cancelled' ? now() : null,
+        ]);
+    }
+    public function test_notification_isolation_unread_count_and_idempotent_read(): void {
+        $mine=$this->appointment($this->owner);
+        $cancelled=$this->appointment($this->owner,'cancelled');
+        $foreign=$this->appointment($this->account('owner'));
+        $expired=$this->appointment($this->owner);$expired->update(['pending_expires_at'=>now()->subMinute()]);
+        $this->appointment($this->owner,'approved');
+        $token=$this->login();
+        $this->callApi('GET','notifications',$token)->assertOk()->assertJsonCount(2,'data')->assertJsonPath('meta.unread_count',2);
+        $this->callApi('GET','notifications?per_page=1',$token)->assertJsonCount(1,'data')->assertJsonPath('meta.has_more',true);
+        $this->callApi('GET','appointments/'.$foreign->id,$token)->assertNotFound();
+        $this->callApi('POST','notifications/'.$foreign->id.'/read',$token,['event'=>'pending'])->assertNotFound();
+        $this->callApi('POST','notifications/'.$mine->id.'/read',$token,['event'=>'cancelled'])->assertConflict();
+        for($i=0;$i<2;$i++) $this->callApi('POST','notifications/'.$mine->id.'/read',$token,['event'=>'pending'])->assertNoContent();
+        $this->callApi('GET','notifications',$token)->assertJsonPath('meta.unread_count',1);
+        $this->assertSame(1,DB::table('mobile_notification_reads')->count());
+        $this->assertSame('pending',$mine->fresh()->status);
+        $this->assertNull($cancelled->fresh()->cancellation_read_at);
+        $this->callApi('GET','appointments/'.$mine->id,$token)->assertOk()->assertJsonMissingPath('data.public_token');
+        $this->owner->recovery_version++;$this->owner->save();
+        $token=$this->login();
+        $this->callApi('GET','notifications',$token)->assertJsonPath('meta.unread_count',2);
+        Mail::assertNothingSent();
+    }
+    public function test_staff_cannot_read_appointment_notifications(): void {
+        $mine=$this->appointment($this->owner);
+        $employee=$this->account('employee',$this->owner->id);$token=$this->login($employee);
+        $this->callApi('GET','notifications',$token)->assertOk()->assertJsonPath('meta.available',false)->assertJsonCount(0,'data');
+        $this->callApi('GET','appointments/'.$mine->id,$token)->assertForbidden();
+        $this->callApi('POST','notifications/'.$mine->id.'/read',$token,['event'=>'pending'])->assertForbidden();
+    }
+    public function test_device_registration_outbox_disabled_delivery_and_logout_revocation(): void {
+        $token=$this->login();$registration=['fid'=>str_repeat('synthetic-device-',8),'platform'=>'android'];
+        for($i=0;$i<2;$i++) $this->callApi('PUT','push-device',$token,$registration)->assertNoContent();
+        $this->assertSame(1,DB::table('mobile_push_devices')->count());
+        $this->assertNotSame($registration['fid'],DB::table('mobile_push_devices')->value('encrypted_token'));
+        $appointment=$this->appointment($this->owner);
+        $id=DB::table('mobile_push_outbox')->value('id');$this->assertNotNull($id);
+        config(['mobile_push.enabled'=>false]);
+        app(\App\Services\MobilePushDelivery::class)->deliver($id);
+        $this->assertSame('pending',DB::table('mobile_push_outbox')->value('status'));Http::assertNothingSent();
+        config(['mobile_push.enabled'=>true]);
+        $mock=\Mockery::mock(\App\Services\FirebasePush::class);
+        $mock->shouldReceive('send')->once()->with($registration['fid'],$appointment->id,'pending')->andReturn('sent');
+        $this->app->instance(\App\Services\FirebasePush::class,$mock);
+        app(\App\Services\MobilePushDelivery::class)->deliver($id);
+        app(\App\Services\MobilePushDelivery::class)->deliver($id);
+        $this->assertSame('sent',DB::table('mobile_push_outbox')->value('status'));
+        $this->callApi('POST','auth/logout',$token)->assertNoContent();
+        $this->assertSame(0,DB::table('mobile_push_devices')->count());
+        $this->assertSame(0,DB::table('mobile_push_outbox')->count());
+    }
+    public function test_revoked_access_blocks_queued_push_and_other_session_replaces_installation(): void {
+        $one=$this->login();$two=$this->login();$data=['fid'=>str_repeat('synthetic-installation',8),'platform'=>'android'];
+        $this->callApi('PUT','push-device',$one,$data)->assertNoContent();
+        $this->callApi('PUT','push-device',$two,$data)->assertNoContent();
+        $this->assertSame(1,DB::table('mobile_push_devices')->count());
+        $this->appointment($this->owner);$id=DB::table('mobile_push_outbox')->value('id');
+        $this->owner->session_epoch++;$this->owner->save();
+        config(['mobile_push.enabled'=>true]);
+        $mock=\Mockery::mock(\App\Services\FirebasePush::class);$mock->shouldNotReceive('send');
+        $this->app->instance(\App\Services\FirebasePush::class,$mock);
+        app(\App\Services\MobilePushDelivery::class)->deliver($id);
+        $this->assertSame('cancelled',DB::table('mobile_push_outbox')->value('status'));
+        $this->callApi('GET','notifications',$two)->assertUnauthorized();
+    }
+    public function test_fcm_http_payload_uses_fid_and_contains_no_customer_information(): void {
+        $credentials=['project_id'=>'synthetic-fcm-project','client_email'=>'synthetic@example.test','private_key'=>'synthetic-not-a-private-key'];
+        $path=tempnam(sys_get_temp_dir(),'mobile-fcm-test-');file_put_contents($path,json_encode($credentials));
+        try {
+            config(['mobile_push.enabled'=>true,'mobile_push.project_id'=>$credentials['project_id'],'mobile_push.credentials_file'=>$path]);
+            // Isolate transport testing from OAuth; no real key or Google request is used.
+            \Illuminate\Support\Facades\Cache::put('mobile-fcm-oauth:'.hash('sha256',json_encode($credentials)),\Illuminate\Support\Facades\Crypt::encryptString('synthetic-oauth-token'),60);
+            Http::fake(['https://fcm.googleapis.com/*'=>Http::response(['name'=>'projects/synthetic/messages/1'],200)]);
+            $this->assertSame('sent',app(\App\Services\FirebasePush::class)->send('synthetic-fid-identifier',42,'pending'));
+            Http::assertSent(fn($r)=>$r['message']['fid']==='synthetic-fid-identifier'
+                && $r['message']['data']===['appointment_id'=>'42','event'=>'pending']
+                && !isset($r['message']['token']) && count($r['message']['data'])===2
+                && $r['message']['android']['notification']['tag']==='appointment-42-pending');
+            Http::assertSentCount(1);
+        } finally { unlink($path); }
+    }
+    public function test_pending_push_waits_for_maintenance_and_recovery_without_network_calls(): void {
+        $token=$this->login();$this->callApi('PUT','push-device',$token,['fid'=>str_repeat('synthetic-waiting',4),'platform'=>'android'])->assertNoContent();
+        $this->appointment($this->owner);$id=DB::table('mobile_push_outbox')->value('id');
+        config(['mobile_push.enabled'=>true]);
+        $mock=\Mockery::mock(\App\Services\FirebasePush::class);$mock->shouldNotReceive('send');
+        $this->app->instance(\App\Services\FirebasePush::class,$mock);
+        \App\Services\PlatformMaintenance::set(true);
+        app(\App\Services\MobilePushDelivery::class)->deliver($id);
+        $this->assertSame('pending',DB::table('mobile_push_outbox')->value('status'));
+        \App\Services\PlatformMaintenance::set(false);
+        DB::table('business_recovery_locks')->insert(['owner_id'=>$this->owner->id,'recovery_id'=>(string)\Illuminate\Support\Str::uuid(),'created_at'=>now()]);
+        app(\App\Services\MobilePushDelivery::class)->deliver($id);
+        $this->assertSame('pending',DB::table('mobile_push_outbox')->value('status'));
+        Http::assertNothingSent();
+    }
     public function test_login_session_expiration_and_device_revocation(): void {
         $one=$this->login();$two=$this->login();
         $this->callApi('GET','session',$one)->assertOk()->assertJsonPath('data.business.id',$this->owner->id)->assertJsonMissingPath('data.user.password');
@@ -41,7 +148,8 @@ class MobileApiTest extends TestCase {
     public function test_pending_two_factor_cannot_access_data_and_code_is_single_use(): void {
         $this->owner->twofa_secret='JBSWY3DPEHPK3PXP';$this->owner->save();
         $pending=$this->login();
-        foreach(['session','dashboard','customers','vehicles','services'] as $path)$this->callApi('GET',$path,$pending)->assertForbidden();
+        foreach(['session','dashboard','customers','vehicles','services','notifications'] as $path)$this->callApi('GET',$path,$pending)->assertForbidden();
+        $this->callApi('PUT','push-device',$pending,['fid'=>str_repeat('synthetic-2fa',4),'platform'=>'android'])->assertForbidden();
         $this->callApi('POST','auth/2fa',$pending,['code'=>'invalid'])->assertUnprocessable();
         $otp=(new \PragmaRX\Google2FA\Google2FA)->getCurrentOtp($this->owner->twofa_secret);
         $full=$this->callApi('POST','auth/2fa',$pending,['code'=>$otp])->assertOk()->json('token');

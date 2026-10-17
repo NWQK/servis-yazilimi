@@ -24,6 +24,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+            \App\Models\Appointment::observe(\App\Observers\MobileAppointmentObserver::class);
             \Illuminate\Support\Facades\Validator::resolver(fn($translator,$data,$rules,$messages,$attributes)=>
                 new \App\Validation\SafeValidator($translator,$data,$rules,$messages,$attributes));
             if($this->app->environment('production'))config(['app.debug'=>false]);

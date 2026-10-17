@@ -27,6 +27,7 @@ class Kernel extends ConsoleKernel
         $schedule->command('photos:purge')->dailyAt('03:30')->timezone('Europe/Istanbul')->withoutOverlapping(180);
         $schedule->command('security:purge-owner-logins')->hourly()->withoutOverlapping();
         $schedule->command('appointments:expire')->everyMinute()->withoutOverlapping();
+        $schedule->command('mobile:push-work')->everyMinute()->withoutOverlapping();
     }
 
     /**
