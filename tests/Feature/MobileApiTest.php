@@ -13,7 +13,7 @@ class MobileApiTest extends TestCase {
         $paths=array_values(array_filter(glob(database_path('migrations/*.php')),fn($p)=>!str_contains($p,'version_1_7_filled')));
         $this->artisan('migrate',['--path'=>$paths,'--realpath'=>true,'--force'=>true])->assertExitCode(0);
         $this->owner=$this->account('owner');
-        foreach(['manage client','show client','create client','manage vehicle','show vehicle','manage service','show service'] as $permission){
+        foreach(['manage client','show client','create client','manage vehicle','show vehicle','create vehicle','manage service','show service'] as $permission){
             Permission::firstOrCreate(['name'=>$permission,'guard_name'=>'web']);$this->owner->givePermissionTo($permission);
         }
     }
@@ -136,6 +136,98 @@ class MobileApiTest extends TestCase {
         $this->assertSame('pending',DB::table('mobile_push_outbox')->value('status'));
         Http::assertNothingSent();
     }
+    public function test_appointment_list_filters_virtual_expiry_and_tenant_isolation(): void {
+        $mine=$this->appointment($this->owner);$mine->update(['license_plate'=>'34 API 18']);
+        $expired=$this->appointment($this->owner);$expired->update(['starts_at'=>now()->subMinute()]);
+        $this->appointment($this->owner,'approved');$foreign=$this->appointment($this->account('owner'));
+        $token=$this->login();
+        $this->callApi('GET','appointments?per_page=1',$token)->assertOk()->assertJsonCount(1,'data')->assertJsonPath('meta.has_more',true);
+        $this->callApi('GET','appointments?status=pending',$token)->assertJsonCount(1,'data')->assertJsonPath('data.0.id',$mine->id);
+        $this->callApi('GET','appointments?status=expired',$token)->assertJsonCount(1,'data')->assertJsonPath('data.0.id',$expired->id)->assertJsonPath('data.0.status','expired');
+        $this->assertSame('pending',$expired->fresh()->status);
+        $this->callApi('GET','notifications',$token)->assertJsonPath('meta.unread_count',1);
+        $this->callApi('GET','appointments?q=API',$token)->assertJsonCount(1,'data')->assertJsonPath('data.0.id',$mine->id);
+        $this->callApi('GET','appointments?date='.now()->addDays(10)->toDateString(),$token)->assertJsonCount(0,'data');
+        $this->callApi('GET','appointments?status=forged',$token)->assertUnprocessable();
+        $this->callApi('GET','appointments?date=invalid',$token)->assertUnprocessable();
+        $this->callApi('GET','appointments?per_page=500',$token)->assertUnprocessable();
+        $this->callApi('GET','appointments/'.$foreign->id,$token)->assertNotFound();
+        $staff=$this->login($this->account('employee',$this->owner->id));
+        $this->callApi('GET','appointments',$staff)->assertForbidden();
+    }
+    public function test_appointment_status_idempotency_stale_version_and_time_rules(): void {
+        $mine=$this->appointment($this->owner);$token=$this->login();
+        $original=$this->callApi('GET','appointments/'.$mine->id,$token)->assertOk()->json('data');
+        $this->assertContains('approved',$original['actions']);
+        $key=['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()];
+        $payload=['status'=>'approved','expected_version'=>$original['version']];
+        $approved=$this->callApi('POST','appointments/'.$mine->id.'/status',$token,$payload,$key)->assertOk()->assertJsonPath('meta.replayed',false)->json('data');
+        $this->assertSame(['cancelled'],$approved['actions']);
+        $this->callApi('POST','appointments/'.$mine->id.'/status',$token,$payload,$key)->assertOk()->assertJsonPath('meta.replayed',true);
+        $this->callApi('POST','appointments/'.$mine->id.'/status',$token,['status'=>'rejected','expected_version'=>$original['version']],$key)->assertConflict();
+        $this->callApi('POST','appointments/'.$mine->id.'/status',$token,['status'=>'cancelled','expected_version'=>$original['version']],['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertConflict();
+        $this->callApi('POST','appointments/'.$mine->id.'/status',$token,['status'=>'completed','expected_version'=>$approved['version']],['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertUnprocessable();
+        $this->callApi('POST','appointments/'.$mine->id.'/status',$token,['status'=>'cancelled','expected_version'=>$approved['version']],['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertOk()->assertJsonPath('data.status','cancelled');
+        // An old approval retry must never resurrect a subsequently cancelled booking.
+        $this->callApi('POST','appointments/'.$mine->id.'/status',$token,$payload,$key)->assertOk()->assertJsonPath('data.status','cancelled')->assertJsonPath('meta.replayed',true);
+        $this->assertSame(2,DB::table('mobile_appointment_operations')->count());
+        Mail::assertNothingSent();Http::assertNothingSent();
+    }
+    public function test_appointment_completion_and_status_permission_guards(): void {
+        $past=$this->appointment($this->owner,'approved');$past->update(['starts_at'=>now()->subHour(),'ends_at'=>now()]);
+        $token=$this->login();$path='appointments/'.$past->id;
+        $view=$this->callApi('GET',$path,$token)->assertOk()->json('data');
+        $this->assertContains('completed',$view['actions']);$this->assertContains('no_show',$view['actions']);
+        $payload=['status'=>'completed','expected_version'=>$view['version']];
+        $this->callApi('POST',$path.'/status',$token,$payload)->assertUnprocessable();
+        $staff=$this->login($this->account('employee',$this->owner->id));
+        $this->callApi('POST',$path.'/status',$staff,$payload,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertForbidden();
+        $foreign=$this->appointment($this->account('owner'));
+        $this->callApi('POST','appointments/'.$foreign->id.'/status',$token,$payload,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertNotFound();
+        $this->callApi('POST',$path.'/status',$token,$payload,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertOk()->assertJsonPath('data.status','completed')->assertJsonCount(0,'data.actions');
+    }
+    private function vehiclePayload(User $owner): array {
+        $customer=$this->account('client',$owner->id);
+        $type=\App\Models\VehicleType::create(['parent_id'=>$owner->id,'type'=>'Sentetik Otomobil']);
+        $brand=\App\Models\VehicleBrand::create(['parent_id'=>$owner->id,'type'=>$type->id,'name'=>'Örnek Marka']);
+        return ['client'=>$customer->id,'type'=>$type->id,'brand'=>$brand->id,'license_plate'=>'34 API 2026','chassis_no'=>'TESTVN12345678901','mileage'=>'15000'];
+    }
+    public function test_vehicle_creation_uses_shared_qr_rules_and_replays_before_duplicate_vin_validation(): void {
+        $data=$this->vehiclePayload($this->owner);$token=$this->login();$key=['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()];
+        $id=$this->callApi('POST','vehicles',$token,$data+['parent_id'=>9999,'status'=>'forged'],$key)->assertCreated()->json('data.id');
+        $this->assertSame($this->owner->id,Vehicle::findOrFail($id)->parent_id);
+        $this->assertNotSame('forged',Vehicle::findOrFail($id)->status);
+        $qrCount=\App\Models\VehicleQrCode::count();
+        $this->callApi('POST','vehicles',$token,$data,$key)->assertOk()->assertJsonPath('data.id',$id)->assertJsonPath('meta.replayed',true);
+        $this->assertSame(1,Vehicle::count());$this->assertSame($qrCount,\App\Models\VehicleQrCode::count());
+        $this->assertSame(1,\App\Models\VehicleQrCode::where('vehicle_id',$id)->count());
+        $this->assertSame(0,Service::count());$this->assertSame(0,Invoice::count());
+        $changed=$data;$changed['license_plate']='34 CHANGED';
+        $this->callApi('POST','vehicles',$token,$changed,$key)->assertConflict();
+        $this->callApi('POST','vehicles',$token,$data,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertUnprocessable();
+        Vehicle::find($id)->delete();
+        $this->callApi('POST','vehicles',$token,$data,$key)->assertConflict();
+        $this->assertSame(1,Vehicle::withTrashed()->count());Mail::assertNothingSent();Http::assertNothingSent();
+    }
+    public function test_vehicle_lookups_and_writes_are_permission_and_tenant_scoped(): void {
+        $mine=$this->vehiclePayload($this->owner);$foreign=$this->vehiclePayload($this->account('owner'));$token=$this->login();
+        $this->callApi('GET','lookups/vehicle-customers',$token)->assertOk()->assertJsonCount(1,'data')->assertJsonPath('data.0.id',$mine['client']);
+        $this->callApi('GET','lookups/vehicle-types',$token)->assertJsonCount(1,'data')->assertJsonPath('data.0.id',$mine['type']);
+        $this->callApi('GET','lookups/vehicle-brands?type='.$foreign['type'],$token)->assertUnprocessable();
+        $this->callApi('GET','lookups/vehicle-brands?type='.$mine['type'],$token)->assertJsonCount(1,'data')->assertJsonPath('data.0.id',$mine['brand']);
+        $this->callApi('POST','vehicles',$token,$foreign,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertUnprocessable();
+        $staff=$this->login($this->account('employee',$this->owner->id));
+        $this->callApi('GET','lookups/vehicle-types',$staff)->assertForbidden();
+        $this->callApi('POST','vehicles',$staff,$mine,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertForbidden();
+        $this->assertSame(0,Vehicle::count());
+    }
+    public function test_vehicle_capacity_blocks_creation_before_allocating_qr(): void {
+        $plan=\App\Models\Subscription::whereNotNull('vehicle_limit')->firstOrFail();$plan->vehicle_limit=0;$plan->save();
+        $this->owner->subscription=$plan->id;$this->owner->save();
+        $data=$this->vehiclePayload($this->owner);$token=$this->login();
+        $this->callApi('POST','vehicles',$token,$data,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertUnprocessable();
+        $this->assertSame(0,Vehicle::count());$this->assertSame(0,\App\Models\VehicleQrCode::count());
+    }
     public function test_login_session_expiration_and_device_revocation(): void {
         $one=$this->login();$two=$this->login();
         $this->callApi('GET','session',$one)->assertOk()->assertJsonPath('data.business.id',$this->owner->id)->assertJsonMissingPath('data.user.password');
@@ -148,7 +240,7 @@ class MobileApiTest extends TestCase {
     public function test_pending_two_factor_cannot_access_data_and_code_is_single_use(): void {
         $this->owner->twofa_secret='JBSWY3DPEHPK3PXP';$this->owner->save();
         $pending=$this->login();
-        foreach(['session','dashboard','customers','vehicles','services','notifications'] as $path)$this->callApi('GET',$path,$pending)->assertForbidden();
+        foreach(['session','dashboard','customers','vehicles','services','notifications','appointments'] as $path)$this->callApi('GET',$path,$pending)->assertForbidden();
         $this->callApi('PUT','push-device',$pending,['fid'=>str_repeat('synthetic-2fa',4),'platform'=>'android'])->assertForbidden();
         $this->callApi('POST','auth/2fa',$pending,['code'=>'invalid'])->assertUnprocessable();
         $otp=(new \PragmaRX\Google2FA\Google2FA)->getCurrentOtp($this->owner->twofa_secret);

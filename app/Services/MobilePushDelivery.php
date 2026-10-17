@@ -27,7 +27,7 @@ class MobilePushDelivery
             && !$owner->subscription_suspended_at && !app(DemoLifecycle::class)->expired($owner)
             && (!$owner->subscription_expire_date || $owner->subscription_expire_date>=now()->toDateString())
             && $appointment && (int)$appointment->profile?->owner_id===$owner->id && $appointment->status===$row->event
-            && ($row->event!=='pending' || !$appointment->pending_expires_at || $appointment->pending_expires_at->isFuture())
+            && ($row->event!=='pending' || ($appointment->starts_at->isFuture() && (!$appointment->pending_expires_at || $appointment->pending_expires_at->isFuture())))
             && ($row->event!=='cancelled' || $appointment->cancelled_by_customer);
         if (!$valid) { DB::table('mobile_push_outbox')->where('id',$id)->where('status','pending')->update(['status'=>'cancelled','updated_at'=>now()]); return; }
         if (PlatformMaintenance::enabled() || DB::table('business_recovery_locks')->where('owner_id',$owner->id)->exists()) return;

@@ -48,7 +48,7 @@ class AuthController extends Controller {
         $user=$request->user(); $owner=User::findOrFail($request->attributes->get('mobile_owner'));
         return response()->json(['data'=>['user'=>['id'=>$user->id,'name'=>$user->name,'type'=>$user->type],
             'business'=>['id'=>$owner->id,'name'=>$owner->name],
-            'permissions'=>collect(['manage client','show client','create client','manage vehicle','show vehicle','manage service','show service'])->filter(fn($p)=>$user->can($p))->values(),
+            'permissions'=>collect(['manage client','show client','create client','manage vehicle','show vehicle','create vehicle','manage service','show service'])->filter(fn($p)=>$user->can($p))->values(),
             'capabilities'=>['branch_switch'=>false,'financial_writes'=>false]]]);
     }
     public function devices(Request $request) {

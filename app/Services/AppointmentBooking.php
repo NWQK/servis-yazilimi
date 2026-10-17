@@ -11,6 +11,22 @@ use Illuminate\Validation\ValidationException;
 class AppointmentBooking
 {
     public const BOOKING_WINDOW_DAYS = 7;
+    public const TRANSITIONS = ['pending' => ['approved', 'rejected', 'cancelled'],
+        'approved' => ['cancelled', 'completed', 'no_show']];
+
+    public function effectiveStatus(Appointment $appointment): string
+    {
+        if ($appointment->status === 'pending' && (!$appointment->starts_at->isFuture()
+            || ($appointment->pending_expires_at && !$appointment->pending_expires_at->isFuture()))) return 'expired';
+        return $appointment->status;
+    }
+
+    public function availableActions(Appointment $appointment): array
+    {
+        $actions = self::TRANSITIONS[$this->effectiveStatus($appointment)] ?? [];
+        return array_values(array_filter($actions, fn ($action) =>
+            !in_array($action, ['completed', 'no_show'], true) || !$appointment->starts_at->isFuture()));
+    }
 
     public function expirePending(?int $profileId = null): int
     {
@@ -104,8 +120,7 @@ class AppointmentBooking
             $appointment->refresh();
             if ($appointment->status === 'expired') return 'Bu talebin yanıt süresi doldu. Yeni bir randevu talebi oluşturulmalıdır.';
             if ($appointment->status === $status) return $appointment;
-            $allowed = ['pending' => ['approved', 'rejected', 'cancelled'],
-                'approved' => ['cancelled', 'completed', 'no_show']];
+            $allowed = self::TRANSITIONS;
             if (!in_array($status, $allowed[$appointment->status] ?? [], true)) {
                 throw ValidationException::withMessages(['status' => 'Bu randevu için seçilen işlem yapılamaz.']);
             }

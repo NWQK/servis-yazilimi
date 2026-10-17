@@ -16,8 +16,12 @@ Route::prefix('v1')->name('mobile.')->group(function(){
             Route::put('push-device',[\App\Http\Controllers\Api\V1\PushDeviceController::class,'store']);
             Route::delete('push-device',[\App\Http\Controllers\Api\V1\PushDeviceController::class,'destroy']);
             Route::post('notifications/{id}/read',[\App\Http\Controllers\Api\V1\NotificationController::class,'read'])->whereNumber('id');
-            Route::get('appointments/{id}',[\App\Http\Controllers\Api\V1\NotificationController::class,'appointment'])->whereNumber('id');
+            Route::get('appointments',[\App\Http\Controllers\Api\V1\AppointmentController::class,'index']);
+            Route::get('appointments/{id}',[\App\Http\Controllers\Api\V1\AppointmentController::class,'show'])->whereNumber('id');
+            Route::post('appointments/{id}/status',[\App\Http\Controllers\Api\V1\AppointmentController::class,'status'])->whereNumber('id');
             Route::post('customers',[BusinessController::class,'storeCustomer']);
+            Route::get('lookups/{kind}',[\App\Http\Controllers\Api\V1\VehicleRegistrationController::class,'lookup'])->whereIn('kind',['vehicle-customers','vehicle-types','vehicle-brands']);
+            Route::post('vehicles',[\App\Http\Controllers\Api\V1\VehicleRegistrationController::class,'store']);
             Route::get('{kind}',[BusinessController::class,'index'])->whereIn('kind',['customers','vehicles','services']);
             Route::get('{kind}/{id}',[BusinessController::class,'show'])->whereIn('kind',['customers','vehicles','services'])->whereNumber('id');
         });

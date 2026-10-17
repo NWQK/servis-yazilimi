@@ -13,6 +13,7 @@ class AppointmentAttention
         return Appointment::whereHas('profile', fn ($q) => $q->where('owner_id', $owner))
             ->where(function ($q) use ($includeAcknowledgedCancellations) {
                 $q->where(fn ($pending) => $pending->where('status', 'pending')
+                    ->where('starts_at', '>', now())
                     ->where(fn ($expiry) => $expiry->whereNull('pending_expires_at')->orWhere('pending_expires_at', '>', now())))
                     ->orWhere(function ($cancelled) use ($includeAcknowledgedCancellations) {
                         $cancelled->where('status', 'cancelled')->where('cancelled_by_customer', true);

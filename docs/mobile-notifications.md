@@ -11,7 +11,8 @@ Yerel harness `MOBILE_PUSH_ENABLED=false`, mail fake ve dış HTTP engeli uygula
 - `GET /api/v1/notifications?summary=1`: yalnız sayaç.
 - `POST /api/v1/notifications/{appointment}/read` JSON `{ "event": "pending" }`
   veya `cancelled`: idempotent okundu kaydı. Eski olay için 409; başka işletme 404.
-- `GET /api/v1/appointments/{id}`: izinli detay. Onay/durum yazma uçları henüz yok.
+- `GET /api/v1/appointments/{id}`: izinli detay. 18 Ekim güncellemesiyle
+  liste/filtre/durum yazma uçları eklendi; `mobile-appointments-vehicles.md` belgesine bakın.
 - `PUT /api/v1/push-device` JSON `{ "fid": "...", "platform": "android" }`:
   FID şifrelenir; bir kurulum tek Sanctum oturumuna bağlıdır. Yeni oturumla aynı
   kurulum kaydedilirse önceki bağ kaldırılır. Token silinince FK cascade cihazı

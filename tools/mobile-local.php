@@ -16,13 +16,21 @@ require $base.'/vendor/autoload.php';
 $app=require $base.'/bootstrap/app.php';
 $app->loadEnvironmentFrom('.env.mobile-local-unused');
 if(PHP_SAPI==='cli') {
-    if(in_array($argv[1]??'', ['upgrade','seed-notifications'], true)) {
+    if(in_array($argv[1]??'', ['upgrade','seed-notifications','seed-vehicle-form'], true)) {
         if(!file_exists($database)){fwrite(STDERR,"Synthetic database missing; seed first.\n");exit(1);}
         $kernel=$app->make(Illuminate\Contracts\Console\Kernel::class);$kernel->bootstrap();
         Illuminate\Support\Facades\Mail::fake();Illuminate\Support\Facades\Http::preventStrayRequests();
         $paths=array_values(array_filter(glob($base.'/database/migrations/*.php'),fn($p)=>!str_contains($p,'version_1_7_filled')));
         $exit=$kernel->call('migrate',['--path'=>$paths,'--realpath'=>true,'--force'=>true]);
         echo $kernel->output();if($exit!==0)exit($exit);
+        if($argv[1]==='seed-vehicle-form') {
+            $owner=App\Models\User::where('email','esnaf@example.test')->where('type','owner')->firstOrFail();
+            Spatie\Permission\Models\Permission::firstOrCreate(['name'=>'create vehicle','guard_name'=>'web']);
+            $owner->givePermissionTo('create vehicle');
+            $type=App\Models\VehicleType::firstOrCreate(['parent_id'=>$owner->id,'type'=>'Örnek Otomobil']);
+            App\Models\VehicleBrand::firstOrCreate(['parent_id'=>$owner->id,'type'=>$type->id,'name'=>'Örnek Marka']);
+            echo "Synthetic vehicle form lookups and permission ready.\n";
+        }
         if($argv[1]==='seed-notifications') {
             $owner=App\Models\User::where('email','esnaf@example.test')->where('type','owner')->firstOrFail();
             $profile=app(App\Services\AppointmentBooking::class)->profileForOwner($owner->id);
