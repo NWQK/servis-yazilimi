@@ -9,7 +9,7 @@ class PlatformMaintenance
     public function handle(Request $request, Closure $next)
     {
         // Public information and account recovery stay reachable. No request parameter bypass.
-        if ($request->routeIs('marketing.index','page','login','password.*','logout','otp.*')
+        if ($request->routeIs('marketing.index','page','login','password.*','logout','mobile.logout','otp.*')
             || $request->is('login')
             || $request->user()?->type === 'super admin'
             || $request->is('install','install/*')

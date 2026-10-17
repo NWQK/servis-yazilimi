@@ -45,6 +45,14 @@ class Handler extends ExceptionHandler
      *
      * @return void
      */
+    public function render($request, Throwable $e)
+    {
+        if ($request->is('api/*')) $request->headers->set('Accept','application/json');
+        $response=parent::render($request,$e);
+        if ($request->is('api/*')) $response->headers->set('Cache-Control','private, no-store');
+        return $response;
+    }
+
     public function register()
     {
         $this->reportable(function (Throwable $e) {

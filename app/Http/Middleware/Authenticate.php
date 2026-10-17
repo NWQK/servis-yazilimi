@@ -15,8 +15,8 @@ class Authenticate extends Middleware
     public function handle($request, \Closure $next, ...$guards)
     {
         $this->authenticate($request, $guards);
-        if (!$request->routeIs('logout','impersonate.leave') && $request->user()->client_archived_at !== null) { abort(403, 'Müşteri kaydı silinenlere taşınmış.'); }
-        if (!$request->routeIs('logout','impersonate.leave') && $request->user()->hasSuspendedSubscription()) {
+        if (!$request->routeIs('logout','mobile.logout','impersonate.leave') && $request->user()->client_archived_at !== null) { abort(403, 'Müşteri kaydı silinenlere taşınmış.'); }
+        if (!$request->routeIs('logout','mobile.logout','impersonate.leave') && $request->user()->hasSuspendedSubscription()) {
             if ($request->expectsJson()) { return response()->json(['message'=>'İşletmenizin aboneliği askıya alındı.'],403); }
             return response()->view('subscription.suspended',[],403);
         }

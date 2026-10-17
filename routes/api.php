@@ -1,19 +1,20 @@
 <?php
-
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
-/*
-|--------------------------------------------------------------------------
-| API Routes
-|--------------------------------------------------------------------------
-|
-| Here is where you can register API routes for your application. These
-| routes are loaded by the RouteServiceProvider within a group which
-| is assigned the "api" middleware group. Enjoy building your API!
-|
-*/
-
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
-    return $request->user();
+use App\Http\Controllers\Api\V1\{AuthController,BusinessController};
+use App\Http\Middleware\MobileSession;
+Route::prefix('v1')->name('mobile.')->group(function(){
+    Route::post('auth/login',[AuthController::class,'login'])->middleware('throttle:10,1');
+    Route::middleware('auth:sanctum')->group(function(){
+        Route::post('auth/logout',[AuthController::class,'logout'])->name('logout');
+        Route::post('auth/2fa',[AuthController::class,'verify'])->middleware([MobileSession::class.':pending','throttle:10,1']);
+        Route::middleware(MobileSession::class)->group(function(){
+            Route::get('session',[AuthController::class,'session']);
+            Route::get('devices',[AuthController::class,'devices']);
+            Route::delete('devices/{id}',[AuthController::class,'revoke'])->whereNumber('id');
+            Route::get('dashboard',[BusinessController::class,'dashboard']);
+            Route::post('customers',[BusinessController::class,'storeCustomer']);
+            Route::get('{kind}',[BusinessController::class,'index'])->whereIn('kind',['customers','vehicles','services']);
+            Route::get('{kind}/{id}',[BusinessController::class,'show'])->whereIn('kind',['customers','vehicles','services'])->whereNumber('id');
+        });
+    });
 });

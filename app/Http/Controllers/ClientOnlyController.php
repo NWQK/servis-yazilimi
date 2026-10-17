@@ -30,20 +30,7 @@ class ClientOnlyController extends Controller
     {
         abort_unless(auth()->user()->type !== 'client' && auth()->user()->can('create client'),403);
         $data=$this->validated($request);
-        DB::transaction(function () use ($data) {
-            $owner=User::where('type','owner')->lockForUpdate()->findOrFail(parentId());
-            $plan=Subscription::find($owner->subscription);
-            if (getSettingsValByIdName(1,'pricing_feature') === 'on' && $plan && $plan->client_limit > 0 && $owner->totalCLient() >= $plan->client_limit) {
-                throw \Illuminate\Validation\ValidationException::withMessages(['name'=>'Paketinizin müşteri kayıt sınırına ulaştınız.']);
-            }
-            $customer=User::create(['name'=>$data['name'],'email'=>$data['email'] ?? null,'phone_number'=>$data['phone_number'],
-                'password'=>Hash::make(Str::random(40)), 'type'=>'client','lang'=>'tr','parent_id'=>$owner->id]);
-            $role=Role::firstOrCreate(['name'=>'client','parent_id'=>$owner->id,'guard_name'=>'web']);
-            $customer->assignRole($role);
-            Client::create(['user_id'=>$customer->id,'parent_id'=>$owner->id,
-                'client_id'=>(int)Client::where('parent_id',$owner->id)->max('client_id')+1]
-                + array_intersect_key($data,array_flip(['city','state','zip_code','address','notes'])));
-        });
+        app(\App\Services\ClientRegistration::class)->create((int) parentId(), $data);
         return redirect()->route('client.index')->with('success','Müşteri kaydı oluşturuldu.');
     }
 

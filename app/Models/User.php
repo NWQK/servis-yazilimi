@@ -11,6 +11,8 @@ use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
+    use \Laravel\Sanctum\HasApiTokens;
+    protected $guard_name = 'web';
     use HasRoles;
     use Notifiable;
     use Impersonate;
