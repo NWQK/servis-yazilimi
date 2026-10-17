@@ -8,12 +8,14 @@ class InvoiceJournal
     public static function display(string $field,$value): string
     {
         if($value===null || $value==='') return '—';
+        if(str_ends_with($field,'.cash_channel'))return CashRegister::CHANNELS[$value]??'Belirtilmemiş';
         if($field==='status') return ['Ödenmedi','Kısmi ödendi','Ödendi'][(int)$value] ?? (string)$value;
         if(str_ends_with($field,'.payment_status')) return ['pending'=>'Onay bekliyor','success'=>'Onaylı','succeeded'=>'Onaylı','reject'=>'Reddedildi'][$value] ?? (string)$value;
         return (string)$value;
     }
     public static function label(string $field): string
     {
+        if(str_ends_with($field,'.cash_channel'))return 'Ödeme yöntemi';
         $labels=['status'=>'Ödeme durumu','client'=>'Müşteri','service'=>'Servis','invoice_date'=>'Fatura tarihi','discount_amount'=>'İndirim','external_labor_amount'=>'Harici işçilik','external_labor_tax_rate'=>'İşçilik vergisi','customer_details'=>'Müşteri bilgileri','items'=>'Ürün','types'=>'Hizmet','payments'=>'Ödeme','item'=>'Ürün kimliği','item_title'=>'Ürün adı','quantity'=>'Adet','amount'=>'Tutar / birim fiyat','tax'=>'Vergi','description'=>'Açıklama','payment_date'=>'Ödeme tarihi','payment_status'=>'Ödeme sonucu','rate'=>'Hizmet tutarı','note'=>'Not','name'=>'Ad / unvan','phone'=>'Telefon','email'=>'E-posta','address'=>'Adres','service_type'=>'Hizmet türü','tax_number'=>'Vergi / kimlik numarası','tax_office'=>'Vergi dairesi','city'=>'İl','state'=>'İlçe','country'=>'Ülke','zip_code'=>'Posta kodu'];
         return implode(' · ',array_map(fn($part)=>$labels[$part]??$part,explode('.',$field)));
     }
@@ -25,7 +27,7 @@ class InvoiceJournal
     {
         if (!$invoice) return [];
         $data=$invoice->only(['status','client','service','invoice_date','discount_amount','external_labor_amount','external_labor_tax_rate','customer_details']);
-        foreach(['items'=>['item','item_title','quantity','amount','tax','description'],'types'=>['service_type','rate','tax','note'],'payments'=>['amount','payment_date','description','payment_status']] as $relation=>$columns) {
+        foreach(['items'=>['item','item_title','quantity','amount','tax','description'],'types'=>['service_type','rate','tax','note'],'payments'=>['amount','payment_date','description','payment_status','cash_channel']] as $relation=>$columns) {
             $data[$relation]=$invoice->$relation()->orderBy('id')->get()->mapWithKeys(fn($row)=>[$row->id=>$row->only($columns)])->all();
         }
         return $data;

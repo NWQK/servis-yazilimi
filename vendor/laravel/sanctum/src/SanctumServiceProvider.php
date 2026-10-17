@@ -40,9 +40,7 @@ class SanctumServiceProvider extends ServiceProvider
     public function boot()
     {
         if (app()->runningInConsole()) {
-            $this->registerMigrations();
-
-            $this->publishes([
+            $this->publishesMigrations([
                 __DIR__.'/../database/migrations' => database_path('migrations'),
             ], 'sanctum-migrations');
 
@@ -61,18 +59,6 @@ class SanctumServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register Sanctum's migration files.
-     *
-     * @return void
-     */
-    protected function registerMigrations()
-    {
-        if (Sanctum::shouldRunMigrations()) {
-            return $this->loadMigrationsFrom(__DIR__.'/../database/migrations');
-        }
-    }
-
-    /**
      * Define the Sanctum routes.
      *
      * @return void
@@ -87,7 +73,7 @@ class SanctumServiceProvider extends ServiceProvider
             Route::get(
                 '/csrf-cookie',
                 CsrfCookieController::class.'@show'
-            )->middleware('web');
+            )->middleware('web')->name('sanctum.csrf-cookie');
         });
     }
 
@@ -99,8 +85,10 @@ class SanctumServiceProvider extends ServiceProvider
     protected function configureGuard()
     {
         Auth::resolved(function ($auth) {
-            $auth->extend('sanctum', function ($app, $name, array $config) use ($auth) {
-                return tap($this->createGuard($auth, $config), function ($guard) {
+            $requestGuardCreator = fn ($config) => $this->createGuard($auth, $config);
+
+            $auth->extend('sanctum', function ($app, $name, array $config) use ($requestGuardCreator) {
+                return tap($requestGuardCreator($config), function ($guard) {
                     app()->refresh('request', $guard, 'setRequest');
                 });
             });
@@ -117,7 +105,12 @@ class SanctumServiceProvider extends ServiceProvider
     protected function createGuard($auth, $config)
     {
         return new RequestGuard(
-            new Guard($auth, config('sanctum.expiration'), $config['provider']),
+            new Guard(
+                $auth,
+                config('sanctum.expiration'),
+                $config['provider'],
+                config('sanctum.last_used_at', true)
+            ),
             request(),
             $auth->createUserProvider($config['provider'] ?? null)
         );

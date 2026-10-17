@@ -5,6 +5,22 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use App\Http\Controllers\AuthPageController;
 use App\Http\Controllers\N8nController;
 use Illuminate\Support\Facades\Route;
+Route::middleware(['auth','XSS'])->group(function(){
+    Route::get('branch-referrals',[\App\Http\Controllers\BranchReferralController::class,'index'])->name('branch-referrals.index');
+    Route::post('branch-referrals',[\App\Http\Controllers\BranchReferralController::class,'send'])->middleware('throttle:20,1')->name('branch-referrals.send');
+    Route::get('branch-referrals/{id}',[\App\Http\Controllers\BranchReferralController::class,'show'])->whereNumber('id')->name('branch-referrals.show');
+    Route::post('branch-referrals/{id}',[\App\Http\Controllers\BranchReferralController::class,'resolve'])->whereNumber('id')->middleware('throttle:20,1')->name('branch-referrals.resolve');
+    Route::get('employee-departures/{id}',[\App\Http\Controllers\EmployeeDepartureController::class,'show'])->whereNumber('id')->name('employee-departures.show');
+    Route::post('employee-departures/{id}',[\App\Http\Controllers\EmployeeDepartureController::class,'depart'])->whereNumber('id')->middleware('throttle:10,1')->name('employee-departures.store');
+    Route::post('invoice/{id}/preview/{action}',[\App\Http\Controllers\InvoicePreviewController::class,'preview'])->whereNumber('id')->where('action','update|delete')->middleware('throttle:30,1')->name('invoice.preview');
+});
+Route::middleware(['auth','XSS'])->group(function(){
+    Route::get('invoice-product-sale',[\App\Http\Controllers\InvoiceController::class,'create'])->name('invoice.product-sale');
+    Route::get('report/cash',[\App\Http\Controllers\CashRegisterController::class,'index'])->name('report.cash');
+    Route::post('report/cash/close',[\App\Http\Controllers\CashRegisterController::class,'close'])->middleware('throttle:20,1')->name('report.cash.close');
+    Route::get('admin/integrity',[\App\Http\Controllers\IntegrityController::class,'index'])->name('integrity.index');
+    Route::post('admin/integrity',[\App\Http\Controllers\IntegrityController::class,'run'])->middleware('throttle:5,1')->name('integrity.run');
+});
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SubscriptionController;
@@ -92,6 +108,21 @@ use GuzzleHttp\Psr7\Query;
 */
 
 require __DIR__ . '/auth.php';
+Route::middleware(['auth', 'XSS'])->group(function () {
+    Route::get('admin/branches', [\App\Http\Controllers\BusinessGroupController::class,'index'])->name('branches.index');
+    Route::post('admin/branches', [\App\Http\Controllers\BusinessGroupController::class,'store'])->name('branches.store');
+    Route::post('admin/branches/{group}/membership', [\App\Http\Controllers\BusinessGroupController::class,'membership'])->whereNumber('group')->name('branches.membership');
+    Route::post('admin/branches/{group}/status', [\App\Http\Controllers\BusinessGroupController::class,'status'])->whereNumber('group')->name('branches.status');
+    Route::get('branches', [\App\Http\Controllers\BusinessGroupController::class,'portal'])->name('branches.portal');
+    Route::get('branches/staff', [\App\Http\Controllers\BranchOperationsController::class,'staff'])->name('branches.staff');
+    Route::post('branches/{group}/staff', [\App\Http\Controllers\BranchOperationsController::class,'saveStaff'])->whereNumber('group')->name('branches.staff.save');
+    Route::get('branches/report', [\App\Http\Controllers\BranchOperationsController::class,'report'])->name('branches.report');
+    Route::get('branches/history', [\App\Http\Controllers\BranchOperationsController::class,'history'])->name('branches.history');
+    Route::get('branch-transfers', [\App\Http\Controllers\BranchTransferController::class,'index'])->name('branch-transfers.index');
+    Route::post('branch-transfers', [\App\Http\Controllers\BranchTransferController::class,'send'])->middleware('throttle:20,1')->name('branch-transfers.send');
+    Route::get('branch-transfers/{transfer}/receipt', [\App\Http\Controllers\BranchTransferController::class,'receipt'])->whereNumber('transfer')->name('branch-transfers.receipt');
+    Route::post('branch-transfers/{transfer}', [\App\Http\Controllers\BranchTransferController::class,'resolve'])->whereNumber('transfer')->middleware('throttle:30,1')->name('branch-transfers.resolve');
+});
 Route::middleware(['auth', 'XSS'])->group(function () {
     Route::get('history/invoices', [\App\Http\Controllers\OperationHistoryController::class,'invoices'])->name('history.invoices');
     Route::get('history/stock', [\App\Http\Controllers\OperationHistoryController::class,'stock'])->name('history.stock');
@@ -303,8 +334,8 @@ Route::group(
         ],
     ],
     function () {
-        Route::post('subscription/{id}/bank-transfer', [PaymentController::class, 'subscriptionBankTransfer'])->name('subscription.bank.transfer');
-        Route::get('subscription/{id}/bank-transfer/action/{status}', [PaymentController::class, 'subscriptionBankTransferAction'])->name('subscription.bank.transfer.action');
+        Route::post('subscription/{id}/bank-transfer', [PaymentController::class, 'subscriptionBankTransfer'])->middleware('throttle:5,10,package-payment')->name('subscription.bank.transfer');
+        Route::post('subscription/{id}/bank-transfer/action/{status}', [PaymentController::class, 'subscriptionBankTransferAction'])->name('subscription.bank.transfer.action');
         Route::post('subscription/{id}/{user_id}/manual-assign-package', [PaymentController::class, 'subscriptionManualAssignPackage'])->name('subscription.manual_assign_package');
 
     }

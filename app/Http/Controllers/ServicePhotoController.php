@@ -15,7 +15,7 @@ class ServicePhotoController extends Controller
         $user=auth()->user();
         abort_unless($user && $user->type!=='client' && (int)$service->parent_id===(int)parentId()
             && $user->can($write?'edit service':'show service'),403);
-        abort_if($user->type==='employee' && (int)$service->assign!==(int)$user->id,403);
+        abort_if(isAssignedEmployee() && (int)$service->assign!==(int)$user->id,403);
     }
     public function store(Request $request,Service $service)
     {

@@ -5,7 +5,7 @@
         <span id="appointment-notifications-count" class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger" hidden></span>
     </a>
     <div class="dropdown-menu dropdown-menu-end pc-h-dropdown" aria-labelledby="appointment-notifications-toggle" style="width:350px;max-width:calc(100vw - 24px)">
-        <div class="px-3 py-2 border-bottom"><strong>Bildirimler</strong><small class="d-block text-muted">{{ auth()->user()->type === 'super admin' ? 'Yeni destek biletleri ve yanıtlar' : 'Randevu, destek, duyuru ve stok uyarıları' }}</small></div>
+        <div class="px-3 py-2 border-bottom"><strong>Bildirimler</strong><small class="d-block text-muted">{{ auth()->user()->type === 'super admin' ? 'Destek, stok / finans kontrolleri ve mesaj uyarıları' : 'Randevu, destek, duyuru ve stok uyarıları' }}</small></div>
         <div id="appointment-notifications-list" style="max-height:340px;overflow-y:auto" aria-live="polite"><p class="p-3 mb-0 text-muted">Bildirimler yükleniyor…</p></div>
         @if (auth()->user()->type === 'owner')
             <a class="dropdown-item border-top text-center" href="{{ route('appointments.index', ['status' => 'pending']) }}">Randevu taleplerini görüntüle</a>

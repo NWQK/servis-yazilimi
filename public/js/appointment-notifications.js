@@ -40,7 +40,7 @@
                 date.textContent = item.date;
                 const category = document.createElement('small');
                 category.className = 'd-block text-muted';
-                category.textContent = item.type === 'stock' ? 'Stok uyarısı' : item.type === 'announcement' ? 'Yönetici duyurusu' : (item.type === 'support' ? 'Destek bileti' : 'Randevu');
+                category.textContent = ({stock:'Stok uyarısı',announcement:'Yönetici duyurusu',support:'Destek bileti',integrity:'Tutarlılık kontrolü',communication:'Mesaj gönderimi'})[item.type] || 'Randevu';
                 link.append(category, title, date);
                 if (item.type === 'stock') {
                     const actions = document.createElement('div');

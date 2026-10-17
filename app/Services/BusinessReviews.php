@@ -37,6 +37,7 @@ class BusinessReviews
         return (DB::table('settings')->where('parent_id',$ownerId)->where('name','company_name')->value('value')) ?: (User::find($ownerId)?->name ?? 'İşletme');
     }
     public function registered(int $customerId): void {
+        if(CommunicationOutbox::asynchronous() && DB::transactionLevel()===0){DB::transaction(fn()=>$this->registered($customerId));return;}
         try {
             if (!Schema::hasTable('business_reviews')) return;
             $customer=User::where('type','client')->whereNull('client_archived_at')->find($customerId);
@@ -60,7 +61,7 @@ class BusinessReviews
             $phone=TurkishPhone::mobile($customer->phone_number);
             if (!$phone || !$this->claim($review,'sms')) return;
             $body=$settings->renderMessage($settings->review_template,['{isletme}'=>$values['{company_name}'],'{link}'=>$review->publicUrl()]);
-            $result=app(AppointmentSmsGateway::class)->send($phone,$body);
+            $result=app(AppointmentSmsGateway::class)->send($phone,$body,['kind'=>'review_sms','id'=>$review->id,'owner'=>$review->owner_id]);
             $review->update(['sms_status'=>$result['status'],'sms_error'=>$result['error_code'] ?? null,
                 'provider_sid'=>$result['provider_sid'] ?? null,'sms_sent_at'=>$result['status']==='accepted' ? now() : null]);
         } catch (\Throwable $e) {
@@ -73,6 +74,13 @@ class BusinessReviews
             if (!CentralEmail::enabled() || !filter_var($customer->email,FILTER_VALIDATE_EMAIL) || !($admin=CentralEmail::administrator())) return;
             $template=self::template($admin);
             if (!$template->enabled_email || !$this->claim($review,'email')) return;
+            if(CommunicationOutbox::asynchronous()) {
+                app(CommunicationOutbox::class)->email($customer->email,['module'=>self::MODULE,
+                    'subject'=>str_replace(["\r","\n"],'',strtr($template->subject,$values)),
+                    'message'=>strtr($template->message,array_map(fn($v)=>e($v),$values))],'common',$review->owner_id,null,
+                    ['kind'=>'review_email','id'=>$review->id,'owner'=>$review->owner_id]);
+                $review->update(['email_status'=>'queued']);return;
+            }
             $smtp=app(TenantMailSettings::class)->apply($admin->id);
             $smtp['FROM_NAME']='sanayirandevu.com';
             Mail::to($customer->email)->send(new Common(['module'=>self::MODULE,

@@ -25,7 +25,7 @@ class ServiceController extends Controller
             $user = Auth::user();
             if ($user->type == 'client') {
                 $services = Service::where('parent_id', '=', parentId())->where('client', $user->id)->orderBy('id', 'desc')->get();
-            } elseif ($user->type == 'employee') {
+            } elseif (isAssignedEmployee()) {
                 $services = Service::where('parent_id', '=', parentId())->where('assign', $user->id)->orderBy('id', 'desc')->get();
             } else {
                 $services = Service::where('parent_id', '=', parentId())->orderBy('id', 'desc')->get();
@@ -40,7 +40,7 @@ class ServiceController extends Controller
     {
         $clients = User::where('parent_id', parentId())->where('type', 'client')->whereNull('client_archived_at')->get()->pluck('name', 'id');
         $clients->prepend(__('Select Client'), '');
-        $employees = User::where('parent_id', parentId())->where('type', 'employee')->get()->pluck('name', 'id');
+        $employees = User::where('parent_id', parentId())->where('type', 'employee')->where('is_active',1)->get()->pluck('name', 'id');
         $employees->prepend(__('Select Employee'), '');
         $types = ServiceType::where('parent_id', parentId())->get()->pluck('type', 'id');
         $types->prepend(__('Select Service type'), '');
@@ -243,7 +243,7 @@ class ServiceController extends Controller
         $id = Crypt::decrypt($ids);
         abort_unless(auth()->user()->can('show service'),403);
         $service = Service::where('parent_id',parentId())->findOrFail($id);
-        abort_if(auth()->user()->type==='employee' && (int)$service->assign!==(int)auth()->id(),403);
+        abort_if(isAssignedEmployee() && (int)$service->assign!==(int)auth()->id(),403);
         abort_if(auth()->user()->type==='client' && (int)$service->client!==(int)auth()->id(),403);
         $service->load(['photos'=>fn($q)=>$q->where('parent_id',parentId())]);
         $settings = settings();
@@ -254,9 +254,11 @@ class ServiceController extends Controller
 
     public function edit($id)
     {
+        abort_unless(auth()->user()->can('edit service'),403);
         $id = Crypt::decrypt($id);
 
         $service = Service::with('types')->where('parent_id', parentId())->findOrFail($id);
+        abort_if(isAssignedEmployee() && (int)$service->assign!==(int)auth()->id(),403);
 
         // convert tax string to array
         if ($service->types) {
@@ -268,7 +270,7 @@ class ServiceController extends Controller
         $clients = User::where('parent_id', parentId())->where('type', 'client')->get()->pluck('name', 'id');
         $clients->prepend(__('Select Client'), '');
 
-        $employees = User::where('parent_id', parentId())->where('type', 'employee')->get()->pluck('name', 'id');
+        $employees = User::where('parent_id', parentId())->where('type', 'employee')->where(fn($q)=>$q->where('is_active',1)->when(in_array($service->status,['completed','cancelled'],true),fn($q)=>$q->orWhere('id',$service->assign)))->get()->pluck('name', 'id');
         $employees->prepend(__('Select Employee'), '');
 
         $types = ServiceType::where('parent_id', parentId())->get()->pluck('type', 'id');
@@ -283,6 +285,8 @@ class ServiceController extends Controller
     public function update(Request $request, Service $service)
     {
         if (\Auth::user()->can('edit service')) {
+            $service->refresh();
+            abort_if(isAssignedEmployee() && (int)$service->assign!==(int)auth()->id(),403);
             abort_unless((int) $service->parent_id === (int) parentId(), 403);
             $validator = \Validator::make(
                 $request->all(),
@@ -294,7 +298,7 @@ class ServiceController extends Controller
                     'service_time' => 'nullable|date_format:H:i,H:i:s',
                     'due_date' => 'nullable|date_format:Y-m-d',
                     'due_time' => 'nullable|date_format:H:i,H:i:s',
-                    'assign' => \App\Services\ServiceInput::assignee(),
+                    'assign' => \App\Services\ServiceInput::assignee($service),
                     'status' => ['required',\Illuminate\Validation\Rule::in(array_keys(Service::status()))],
                     'types.*.rate'=>'required|numeric|min:0',
                     'types.*.tax'=>'nullable|array',
@@ -358,6 +362,8 @@ class ServiceController extends Controller
 
     public function destroy(Service $service)
     {
+        $service->refresh();
+        abort_if(isAssignedEmployee() && (int)$service->assign!==(int)auth()->id(),403);
         abort_unless((int)$service->parent_id===(int)parentId()&&auth()->user()->type!=='client',403);
         if (\Auth::user()->can('delete service')) {
             $service->delete();
@@ -378,7 +384,7 @@ class ServiceController extends Controller
     public function todayService()
     {
         if (\Auth::user()->can('manage service')) {
-            $services = Service::where('parent_id', '=', parentId())->where('service_date', date('Y-m-d'))->get();
+            $services = Service::where('parent_id', '=', parentId())->when(isAssignedEmployee(),fn($q)=>$q->where('assign',auth()->id()))->where('service_date', date('Y-m-d'))->get();
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
         }
@@ -397,6 +403,9 @@ class ServiceController extends Controller
         if (\Auth::user()->can('delete service type')) {
             if (empty($request->type)) {
                 $serviceType = ServiceItem::where('parent_id',parentId())->findOrFail($request->id);
+                abort_unless(auth()->user()->can('edit service'),403);
+                $service=Service::where('parent_id',parentId())->findOrFail($serviceType->service_id);
+                abort_if(isAssignedEmployee() && (int)$service->assign!==(int)auth()->id(),403);
                 $serviceType->delete();
             } else {
                 if ($request->type == 'qtype') {
@@ -430,7 +439,7 @@ class ServiceController extends Controller
         if (\Auth::user()->can('manage service')) {
             if (Auth::user()->type == 'client') {
                 $services = Service::where('parent_id', parentId())->where('client', Auth::user()->id)->get();
-            } else if (Auth::user()->type == 'employee') {
+            } else if (isAssignedEmployee()) {
                 $services = Service::where('parent_id', parentId())->where('assign', Auth::user()->id)->get();
             } else {
                 $services = Service::where('parent_id', parentId())->get();
@@ -457,12 +466,13 @@ class ServiceController extends Controller
 
      public function serviceKanban()
     {
+        abort_unless(auth()->user()->can('manage service'),403);
         $stages = collect();
         foreach (Service::status() as $key => $label) {
             $stage = new \stdClass();
             $stage->id = $key;
             $stage->title = $label;
-            $stage->requests = Service::where('parent_id', parentId())->where('status', $key)->with(['clients', 'assigns'])->get();
+            $stage->requests = Service::where('parent_id', parentId())->when(isAssignedEmployee(),fn($q)=>$q->where('assign',auth()->id()))->where('status', $key)->with(['clients', 'assigns'])->get();
             $stages->push($stage);
         }
         return view('service.kanban', compact('stages'));
@@ -473,7 +483,7 @@ class ServiceController extends Controller
         abort_unless(auth()->user()->type!=='client' && auth()->user()->can('edit service'),403);
         $request->validate(['applicantId'=>'required|integer','stageId'=>['required',\Illuminate\Validation\Rule::in(array_keys(Service::status()))]]);
         $woRequest = Service::where('parent_id',parentId())->findOrFail($request->applicantId);
-        abort_if(auth()->user()->type==='employee' && (int)$woRequest->assign!==(int)auth()->id(),403);
+        abort_if(isAssignedEmployee() && (int)$woRequest->assign!==(int)auth()->id(),403);
         $woRequest->status = $request->stageId;
         $woRequest->save();
         return response()->json([

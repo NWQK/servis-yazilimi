@@ -28,6 +28,7 @@ class ExpenseController extends Controller
 
     public function store(Request $request)
     {
+        $request->validate(['cash_channel'=>'nullable|in:cash,card,transfer,unclassified','amount'=>'required|numeric|min:0.01|max:999999999.99','date'=>'required|date_format:Y-m-d']);
         if (\Auth::user()->can('create expense')) {
             $validator = \Validator::make(
                 $request->all(), [
@@ -47,6 +48,7 @@ class ExpenseController extends Controller
             $expense->amount = $request->amount;
             $expense->notes = $request->notes;
             $expense->parent_id = parentId();
+            $expense->cash_channel=$request->input('cash_channel','unclassified');
 
             if (!empty($request->receipt)) {
 
@@ -88,6 +90,7 @@ class ExpenseController extends Controller
 
     public function update(Request $request, Expense $expense)
     {
+        $request->validate(['cash_channel'=>'nullable|in:cash,card,transfer,unclassified','amount'=>'required|numeric|min:0.01|max:999999999.99','date'=>'required|date_format:Y-m-d']);
         if (\Auth::user()->can('edit expense')) {
             $validator = \Validator::make(
                 $request->all(), [
@@ -105,6 +108,7 @@ class ExpenseController extends Controller
             $expense->date = $request->date;
             $expense->amount = $request->amount;
             $expense->notes = $request->notes;
+            $expense->cash_channel=$request->input('cash_channel',$expense->cash_channel??'unclassified');
             if (!empty($request->receipt)) {
                 $expenseFilenameWithExt = $request->file('receipt')->getClientOriginalName();
                 $expenseFilename = pathinfo($expenseFilenameWithExt, PATHINFO_FILENAME);

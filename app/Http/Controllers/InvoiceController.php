@@ -56,6 +56,7 @@ class InvoiceController extends Controller
 
     public function create()
     {
+        abort_unless(auth()->user()->can('create invoice'),403);
 
         $clients = User::where('type', 'client')->whereNull('client_archived_at')->where('parent_id', parentId())->get()->pluck('name', 'id');
         $clients->prepend(__('Select Client'), '');
@@ -69,20 +70,30 @@ class InvoiceController extends Controller
         $types = ServiceType::where('parent_id', parentId())->pluck('type', 'id');
         $types->prepend(__('Select service type'), '');
 
-        return view('invoice.create', compact('clients', 'invoiceId', 'items', 'taxs', 'types') + $this->itemSelectionData());
+        $productSale=request()->routeIs('invoice.product-sale');
+        return view('invoice.create', compact('clients', 'invoiceId', 'items', 'taxs', 'types','productSale') + $this->itemSelectionData());
     }
 
 
     public function store(Request $request)
     {
+        $productSale=$request->input('invoice_kind')==='product';
         if (\Auth::user()->can('create invoice')) {
             $validator = \Validator::make(
                 $request->all(),
                 [
-                    'invoice_date' => 'required',
+                    'invoice_date' => 'required|date_format:Y-m-d',
+                    'invoice_kind'=>'nullable|in:service,product',
+                    'item'=>$productSale?'required|array|min:1':'nullable|array',
+                    'item.*'=>$productSale?'required|integer|min:1':'nullable|integer',
+                    'types'=>$productSale?'prohibited':'nullable|array',
+                    'types.*.service_type'=>\App\Services\ServiceInput::type(),
+                    'types.*.rate'=>'required|numeric|min:0|max:999999999.99',
+                    'types.*.tax'=>'nullable|array',
+                    'types.*.tax.*'=>\App\Services\ServiceInput::tax(),
                     'discount_amount' => Invoice::DISCOUNT_RULE,
-                    'client' => 'required',
-                    'service' => ['required', \Illuminate\Validation\Rule::exists('services', 'id')->where('parent_id', parentId())->where('client', $request->client)],
+                    'client' => $productSale ? ['required',\Illuminate\Validation\Rule::exists('users','id')->where('parent_id',parentId())->where('type','client')->whereNull('client_archived_at')] : ['required','integer'],
+                    'service' => $productSale ? ['prohibited'] : ['required', \Illuminate\Validation\Rule::exists('services', 'id')->where('parent_id', parentId())->where('client', $request->client)],
                 ]
             );
             if ($validator->fails()) {
@@ -91,17 +102,20 @@ class InvoiceController extends Controller
             }
 
             $billing = \App\Services\InvoiceBilling::validated($request);
-            $invoice = app(InventoryAccounting::class)->transaction(parentId(), function () use ($request, $billing) {
+            $invoice = app(InventoryAccounting::class)->transaction(parentId(), function () use ($request, $billing, $productSale) {
             $invoice = new Invoice();
             $invoice->customer_details = $request->exists('billing') ? $billing : null;
             $invoice->invoice_id = $this->invoiceNumber();
             $invoice->invoice_date = $request->invoice_date;
             if ($request->exists('discount_amount')) $invoice->discount_amount = $request->discount_amount ?? 0;
             $invoice->client = $request->client;
-            $invoice->service = $request->service;
+            $invoice->invoice_kind=$productSale?'product':'service';
+            $invoice->service = $productSale?0:$request->service;
+            if(!$productSale){
             $laborService = Service::where('parent_id', parentId())->findOrFail($request->service);
             $invoice->external_labor_amount = $laborService->external_labor_amount;
             \App\Services\ExternalLabor::copyTax($laborService, $invoice);
+            }
             $invoice->status = 0;
             $invoice->parent_id = parentId();
             $invoice->save();
@@ -217,6 +231,7 @@ class InvoiceController extends Controller
     public function update(Request $request, $id)
     {
         $id = decrypt($id);
+        $productSale=Invoice::where('parent_id',parentId())->findOrFail($id)->invoice_kind==='product';
 
         if (\Auth::user()->can('edit invoice')) {
             $validator = \Validator::make(
@@ -224,8 +239,15 @@ class InvoiceController extends Controller
                 [
                     'invoice_date' => 'required',
                     'discount_amount' => Invoice::DISCOUNT_RULE,
-                    'client' => 'required',
-                    'service' => ['required', \Illuminate\Validation\Rule::exists('services', 'id')->where('parent_id', parentId())->where('client', $request->client)],
+                    'client' => $productSale ? ['required',\Illuminate\Validation\Rule::exists('users','id')->where('parent_id',parentId())->where('type','client')] : ['required','integer'],
+                    'types'=>$productSale?'prohibited':'nullable|array',
+                    'types.*.service_type'=>\App\Services\ServiceInput::type(),
+                    'types.*.rate'=>'required|numeric|min:0|max:999999999.99',
+                    'types.*.tax'=>'nullable|array',
+                    'types.*.tax.*'=>\App\Services\ServiceInput::tax(),
+                    'item'=>$productSale?'required|array|min:1':'nullable|array',
+                    'item.*'=>$productSale?'required|integer|min:1':'nullable|integer',
+                    'service' => $productSale ? ['prohibited'] : ['required', \Illuminate\Validation\Rule::exists('services', 'id')->where('parent_id', parentId())->where('client', $request->client)],
                 ]
             );
 
@@ -235,7 +257,7 @@ class InvoiceController extends Controller
             }
 
             $billing = \App\Services\InvoiceBilling::validated($request);
-            $invoice = app(InventoryAccounting::class)->transaction(parentId(), function () use ($request, $id, $billing) {
+            $invoice = app(InventoryAccounting::class)->transaction(parentId(), function () use ($request, $id, $billing, $productSale) {
                 $invoice = Invoice::where('parent_id', parentId())->lockForUpdate()->findOrFail($id);
                 if ((int) $invoice->client !== (int) $request->client) {
                     $invoice->customer_details = array_replace(
@@ -247,10 +269,12 @@ class InvoiceController extends Controller
                 }
                 $previousTotal = $invoice->getInvoiceAllTotalAmount();
                 $invoice->client = $request->client;
-                $invoice->service = $request->service;
+                $invoice->service = $productSale?0:$request->service;
+                if(!$productSale){
                 $laborService = Service::where('parent_id', parentId())->findOrFail($request->service);
             $invoice->external_labor_amount = $laborService->external_labor_amount;
             \App\Services\ExternalLabor::copyTax($laborService, $invoice);
+                }
                 $invoice->invoice_date = $request->invoice_date;
             if ($request->exists('discount_amount')) $invoice->discount_amount = $request->discount_amount ?? 0;
                 $invoice->save();
@@ -336,8 +360,10 @@ class InvoiceController extends Controller
 
     public function item(Request $request)
     {
+        abort_unless(auth()->user()->can('create invoice') || auth()->user()->can('edit invoice'),403);
 
-        $itemData['item'] = $itemDetails = Item::where('parent_id', parentId())->findOrFail($request->item_id);
+        $itemDetails = Item::where('parent_id', parentId())->findOrFail($request->item_id);
+        $itemData['item'] = $itemDetails->only(['id','title','sales_price','taxs','notes','quantity','units']);
         $itemData['unit'] = (!empty($itemDetails->unit)) ? $itemDetails->unit->name : '';
         $itemData['taxRate'] = $itemDetails->taxRate($itemDetails->taxs);
         $itemData['taxes'] = $itemDetails->taxes($itemDetails->taxs);
@@ -349,8 +375,9 @@ class InvoiceController extends Controller
 
     public function product(Request $request)
     {
+        abort_unless(auth()->user()->can('edit invoice') || auth()->user()->can('show invoice'),403);
         $itemDetails = InvoiceItem::where('parent_id', parentId())->where('invoice_id', $request->invoice_id)->where('item', $request->item_id)->first();
-        return json_encode($itemDetails);
+        return json_encode($itemDetails?->only(['id','invoice_id','item','quantity','amount','tax','description']));
     }
 
     public function itemDestroy(Request $request)
@@ -391,12 +418,13 @@ class InvoiceController extends Controller
         abort_unless(auth()->user()->can('create invoice payment'),403);
         $invoice=Invoice::where('parent_id',parentId())->lockForUpdate()->findOrFail($invoice_id);
         $due=round($invoice->getInvoiceTotalDueAmount(),2);
-        $data=$request->validate(['payment_date'=>'required|date','amount'=>['required','numeric','min:0.01','max:'.$due,'regex:/^\d+(\.\d{1,2})?$/'],'description'=>'nullable|string|max:2000']);
+        $data=$request->validate(['payment_date'=>'required|date','cash_channel'=>'nullable|in:cash,card,transfer','amount'=>['required','numeric','min:0.01','max:'.$due,'regex:/^\d+(\.\d{1,2})?$/'],'description'=>'nullable|string|max:2000']);
         $payment=new InvoicePayment();
         $payment->transaction_id=(string)\Illuminate\Support\Str::uuid();
         $payment->invoice_id=$invoice->id; $payment->parent_id=parentId();
         $payment->payment_date=$data['payment_date']; $payment->amount=$data['amount'];
         $payment->payment_type='Manual'; $payment->payment_status='success'; $payment->description=$data['description']??null;
+        $payment->cash_channel=$data['cash_channel']??'unclassified';
         $payment->save();
         app(InventoryAccounting::class)->refreshStatus($invoice);
         $notification=\App\Services\CentralEmail::template('payment_create');
@@ -490,7 +518,7 @@ class InvoiceController extends Controller
         $request->file('receipt')->storeAs('upload/receipt/',$name);
         $payment=new InvoicePayment(); $payment->invoice_id=$invoice->id; $payment->parent_id=parentId();
         $payment->transaction_id=(string)\Illuminate\Support\Str::uuid(); $payment->receipt=$name;
-        $payment->payment_type='Bank Transfer'; $payment->amount=$data['amount']; $payment->description=$data['notes']??null;
+        $payment->payment_type='Bank Transfer'; $payment->cash_channel='transfer'; $payment->amount=$data['amount']; $payment->description=$data['notes']??null;
         $payment->payment_status='pending'; $payment->payment_date=now()->toDateString(); $payment->save();
         return back()->with('success','Ödeme onay bekliyor. Henüz tahsilat olarak sayılmadı.');
     }
@@ -510,14 +538,17 @@ class InvoiceController extends Controller
 
     public function getServiceType(Request $request, $id)
     {
+        abort_unless(auth()->user()->can('create invoice') || auth()->user()->can('edit invoice'),403);
+        $service=Service::where('parent_id',parentId())->findOrFail($id);
+        abort_if(isAssignedEmployee() && (int)$service->assign!==(int)auth()->id(),403);
         // Step 1: Get all service items for this service
-        $serviceItems = ServiceItem::where('service_id', $id)->get();
+        $serviceItems = ServiceItem::where('parent_id',parentId())->where('service_id', $id)->get();
 
         // Step 2: Extract all type_ids from those service items
         $typeIds = $serviceItems->pluck('type_id');
 
         // Step 3: Get all service types where id is in those type_ids
-        $serviceTypes = ServiceType::whereIn('id', $typeIds)->get();
+        $serviceTypes = ServiceType::where('parent_id',parentId())->whereIn('id', $typeIds)->get();
 
         return response()->json($serviceTypes);
     }

@@ -17,7 +17,25 @@ class User extends Authenticatable
 
     protected static function booted(): void
     {
+        static::deleting(function (self $user) {
+            if($user->type==='employee')throw \Illuminate\Validation\ValidationException::withMessages(['employee'=>'Personeli silmek yerine Personel ayrılış ekranından erişimini kapatın. Geçmiş kayıtlar korunur.']);
+            if (\Illuminate\Support\Facades\Schema::hasTable('business_groups')
+                && (DB::table('business_groups')->where('manager_user_id',$user->id)->exists()
+                    || DB::table('business_branches')->where('owner_id',$user->id)->exists())) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['user'=>'Bu hesap şube merkezine bağlı. Önce şube bağlantıları yönetilmelidir.']);
+            }
+        });
         static::saving(function (self $user) {
+            if ($user->type === 'branch_manager' && (!$user->exists || $user->isDirty('type'))
+                && auth()->user()?->type !== 'super admin') {
+                throw \Illuminate\Validation\ValidationException::withMessages(['type'=>'Şube merkez hesabını yalnızca süper yönetici oluşturabilir.']);
+            }
+            if ($user->exists && ($user->isDirty('type') || $user->isDirty('parent_id'))
+                && \Illuminate\Support\Facades\Schema::hasTable('business_groups')
+                && (DB::table('business_groups')->where('manager_user_id',$user->id)->exists()
+                    || DB::table('business_branches')->where('owner_id',$user->id)->exists())) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['type'=>'Şubeye bağlı hesabın türü veya işletme kimliği değiştirilemez.']);
+            }
             app(\App\Services\DemoLifecycle::class)->prepare($user);
             // Creation forms sometimes assign email before type; move it once type is known.
             if ($user->type === 'client' && !empty($user->attributes['email'])) {
@@ -49,6 +67,13 @@ class User extends Authenticatable
     public function sendPasswordResetNotification($token)
     {
         app(\App\Services\SecurityEmail::class)->passwordReset($this,$token);
+    }
+
+    public function sendEmailVerificationNotification()
+    {
+        if(!\App\Services\CommunicationOutbox::asynchronous()) { $this->notify(new \Illuminate\Auth\Notifications\VerifyEmail);return; }
+        $url=\Illuminate\Support\Facades\URL::temporarySignedRoute('verification.verify',now()->addMinutes(60),['id'=>$this->getKey(),'hash'=>sha1($this->getEmailForVerification())]);
+        sendEmailVerification($this->email,['name'=>$this->name,'url'=>$url,'subject'=>'E-posta adresinizi doğrulayın — sanayirandevu.com']);
     }
 
     protected $fillable = [

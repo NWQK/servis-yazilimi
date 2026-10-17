@@ -153,6 +153,7 @@ class EmployeeController extends Controller
 
     public function show($id)
     {
+        abort_unless(auth()->user()->can('show employee'), 403);
         $id = decrypt($id);
         $employee = Employee::where('user_id', $id)->where('parent_id', parentId())->first();
         $user = User::where('parent_id',parentId())->where('type','employee')->findOrFail($id);
@@ -164,6 +165,7 @@ class EmployeeController extends Controller
 
     public function edit($id)
     {
+        abort_unless(auth()->user()->can('edit employee'), 403);
         $user = User::where('parent_id',parentId())->where('type','employee')->findOrFail($id);
         $employee = $user->employees;
         $gender = User::genderList();
@@ -199,7 +201,7 @@ class EmployeeController extends Controller
             $user->save();
 
             if (!empty($user)) {
-                $employee = new Employee();
+                $employee = Employee::firstOrNew(['user_id'=>$user->id,'parent_id'=>parentId()]);
                 $employee->gender = $request->gender;
                 $employee->age = $request->age;
                 $employee->joining_date = $request->joining_date;
@@ -236,10 +238,7 @@ class EmployeeController extends Controller
     {
         if (\Auth::user()->can('delete employee')) {
             $user = User::where('parent_id',parentId())->where('type','employee')->findOrFail($id);
-            $user->delete();
-            Employee::where('parent_id',parentId())->where('user_id', $id)->delete();
-
-            return redirect()->route('employee.index')->with('success', __('Employee successfully deleted.'));
+            return redirect()->route('employee-departures.show',$user->id);
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
         }

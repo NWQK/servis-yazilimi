@@ -39,6 +39,7 @@ class InvoiceCustomerEmail
             DB::transaction(function () use ($invoice) {
                 $invoice = Invoice::where('parent_id', $invoice->parent_id)->lockForUpdate()->findOrFail($invoice->id);
                 if ($invoice->customer_email_sent_at) return;
+                if(CommunicationOutbox::asynchronous() && $invoice->customer_email_queued_at)return;
                 $client = User::where('parent_id', $invoice->parent_id)->find($invoice->client);
                 if (!$client) return;
                 $recipient = $invoice->customer_details['email'] ?? $client->email;
@@ -56,6 +57,14 @@ class InvoiceCustomerEmail
                     '{total_amount}' => number_format($invoice->getInvoiceAllTotalAmount(), 2, ',', '.'), '{vehicle_link}' => $code->publicUrl()];
                 $subject = str_replace(["\r", "\n"], '', strtr($template->subject, $values));
                 $message = strtr($template->message, array_map(fn ($value) => e($value ?? ''), $values));
+                if(CommunicationOutbox::asynchronous()) {
+                    // Stable per-invoice identity survives duplicate creation callbacks.
+                    $key=\Ramsey\Uuid\Uuid::uuid5(\Ramsey\Uuid\Uuid::NAMESPACE_URL,'invoice-email:'.$invoice->parent_id.':'.$invoice->id)->toString();
+                    app(CommunicationOutbox::class)->email($recipient,['module'=>self::MODULE,'subject'=>$subject,'message'=>$message],
+                        'common',$invoice->parent_id,$key,['kind'=>'invoice','id'=>$invoice->id,'owner'=>$invoice->parent_id,'client'=>$invoice->client,'service'=>$invoice->service]);
+                    DB::table('invoices')->where('id',$invoice->id)->where('parent_id',$invoice->parent_id)->update(['customer_email_queued_at'=>now()]);
+                    return;
+                }
                 $smtp = app(TenantMailSettings::class)->apply($admin->id);
                 $smtp['FROM_NAME'] = 'sanayirandevu.com';
                 Mail::to($recipient)->send(new Common(['module' => self::MODULE, 'subject' => $subject,

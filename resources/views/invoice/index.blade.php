@@ -24,6 +24,7 @@
                         </div>
                         @if (Gate::check('create invoice'))
                             <div class="col-auto">
+                                <a class="btn btn-outline-secondary" href="{{ route('invoice.product-sale') }}">Ürün satışı</a>
                                 <a class="btn btn-secondary" href="{{ route('invoice.create') }}" data-size="lg"
                                     data-url="" data-title="{{ __('Create Invoice') }}"> <i
                                         class="ti ti-circle-plus align-text-bottom"></i>
@@ -55,7 +56,7 @@
                                         <td>{{ invoicePrefix() . $invoice->invoice_id }}</td>
                                         <td>{{ !empty($invoice->clients) ? $invoice->clients->name : '-' }}</td>
                                         <td>
-                                            {{ servicePrefix() }}{{ !empty($invoice->services) ? $invoice->services->service_id : '' }}
+                                            {{ $invoice->invoice_kind==='product'?'Ürün satışı':servicePrefix().($invoice->services?->service_id??'') }}
                                         </td>
                                         <td>{{ dateFormat($invoice->invoice_date) }}</td>
                                         <td>{{ priceFormat($invoice->getInvoiceAllTotalAmount()) }}</td>

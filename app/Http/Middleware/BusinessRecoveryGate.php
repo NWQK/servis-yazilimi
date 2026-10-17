@@ -9,6 +9,7 @@ class BusinessRecoveryGate
         if(!Schema::hasTable('business_recovery_locks')||$request->routeIs('recoveries.*','logout','login','password.*','marketing.index','page','directory.*','vehicle-history.*'))return $next($request);
         $user=$request->user();$owner=null;
         $accountOwner=$user&&$user->type!=='super admin'?($user->type==='owner'?$user->id:$user->parent_id):null;
+        if ($context = \App\Services\BranchContext::current()) $accountOwner = $context['owner']->id;
         // Public links belong to their target business, even when another shop is signed in.
         if($request->route('publicId'))$owner=DB::table('appointment_profiles')->where('public_id',$request->route('publicId'))->value('owner_id');
         if(!$owner&&$request->route('token')){
@@ -28,7 +29,7 @@ class BusinessRecoveryGate
                 return $request->expectsJson()?response()->json(['message'=>$message],503,['Retry-After'=>'60'])
                     :response()->view('errors.business-recovery',compact('message'),503)->header('Retry-After','60')->header('Cache-Control','no-store');
             }
-            if($request->user()&&!in_array($request->user()->type,['client','super admin'],true)){
+            if($request->user()&&!in_array($request->user()->type,['client','super admin','branch_manager'],true) && !\App\Services\BranchContext::current()){
                 $version=(int)DB::table('users')->where('id',$accountOwner)->value('recovery_version');$key='business_recovery_epochs.'.$accountOwner;
                 if(($request->session()->has($key)&&(int)$request->session()->get($key)!==$version)
                     ||(!$request->session()->has($key)&&$version>0)){

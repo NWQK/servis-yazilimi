@@ -23,10 +23,10 @@ class BusinessReviewController extends Controller
         return redirect()->route('reviews.show',$token)->with($saved ? 'success' : 'info', $saved ? 'Değerlendirmeniz kaydedildi. Teşekkür ederiz.' : 'Bu işletme için değerlendirmeniz zaten kayıtlı.');
     }
     public function index(Request $request) {
-        abort_unless(in_array(auth()->user()->type,['owner','super admin'],true),403);
+        abort_unless(isBusinessOwner() || auth()->user()->type==='super admin',403);
         $isAdmin=auth()->user()->type==='super admin';
         $data=$request->validate(['owner_id'=>'nullable|integer|min:1']);
-        $query=BusinessReview::query()->when(!$isAdmin,fn($q)=>$q->where('owner_id',auth()->id()))
+        $query=BusinessReview::query()->when(!$isAdmin,fn($q)=>$q->where('owner_id',parentId()))
             ->when($isAdmin && !empty($data['owner_id']),fn($q)=>$q->where('owner_id',$data['owner_id']));
         $count=(clone $query)->whereNotNull('rating')->count();
         $average=(clone $query)->avg('rating');

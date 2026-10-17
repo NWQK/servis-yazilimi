@@ -9,15 +9,15 @@ class RecoveryTables
         'vehicle_types','vehicle_brands','taxes','units','service_types','suppliers','item_categories',
         'users','clients','employees','items','vehicles','vehicle_qr_codes','services','service_items','service_photos',
         'quotations','quotation_items','quotation_services','invoices','invoice_items','invoice_services','invoice_payments',
-        'stock_movements','expenses','counter_sales','item_purchases','invoice_business_profiles','settings',
+        'stock_movements','expenses','counter_sales','item_purchases','inventory_checkpoints','cash_closings','invoice_business_profiles','settings',
         'vehicle_catalog_imports','contacts','notice_boards',
     ];
     public const OWNER=['business_locations','appointment_profiles','business_reviews'];
     public const CHILD=['appointments'=>'appointment_profile_id','booking_offerings'=>'appointment_profile_id'];
-    public const FINANCIAL=['items','invoices','invoice_items','invoice_services','invoice_payments','stock_movements','expenses','counter_sales','item_purchases'];
+    public const FINANCIAL=['items','invoices','invoice_items','invoice_services','invoice_payments','stock_movements','expenses','counter_sales','item_purchases','inventory_checkpoints','cash_closings'];
     public const PROTECTED_USER=['email','password','remember_token','email_verified_at','email_verification_token',
         'twofa_secret','twofa_recovery_codes','twofa_last_used_at','twofa_required','subscription','subscription_expire_date',
-        'subscription_suspended_at','subscription_suspension_reason','paid_subscription_at','demo_started_at','demo_expires_at','last_business_login_at','recovery_version'];
+        'subscription_suspended_at','subscription_suspension_reason','paid_subscription_at','demo_started_at','demo_expires_at','last_business_login_at','recovery_version','session_epoch','departed_at'];
     public static function all(): array{return array_merge(self::PARENT,self::OWNER,array_keys(self::CHILD));}
     public static function key(string $table): string{return $table==='invoice_business_profiles'?'parent_id':'id';}
     public static function setting(string $name): bool

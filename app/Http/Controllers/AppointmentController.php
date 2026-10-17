@@ -12,8 +12,8 @@ class AppointmentController extends Controller
 {
     private function profile(AppointmentBooking $booking): AppointmentProfile
     {
-        abort_unless(auth()->user()->type === 'owner', 403);
-        return $booking->profileForOwner(auth()->id());
+        abort_unless(isBusinessOwner(), 403);
+        return $booking->profileForOwner(parentId());
     }
 
     public function settings(AppointmentBooking $booking)
@@ -26,14 +26,14 @@ class AppointmentController extends Controller
 
     public function notifications(AppointmentBooking $booking)
     {
-        abort_unless(in_array(auth()->user()->type, ['owner', 'super admin'], true), 403);
+        abort_unless((isBusinessOwner() || auth()->user()->type === 'super admin'), 403);
         $isAdmin = auth()->user()->type === 'super admin';
         $count = 0;
         $items = collect();
         if (!$isAdmin) {
-            $profile = AppointmentProfile::where('owner_id', auth()->id())->first();
+            $profile = AppointmentProfile::where('owner_id', parentId())->first();
             if ($profile) $booking->expirePending($profile->id);
-            $query = Appointment::whereHas('profile', fn ($query) => $query->where('owner_id', auth()->id()))
+            $query = Appointment::whereHas('profile', fn ($query) => $query->where('owner_id', parentId()))
                 ->where(fn ($query) => $query->where('status', 'pending')->orWhere(fn ($cancelled) => $cancelled
                     ->where('status', 'cancelled')->where('cancelled_by_customer', true)->whereNull('cancellation_read_at')));
             $count = (clone $query)->count();
@@ -48,7 +48,7 @@ class AppointmentController extends Controller
         }
         if (\Illuminate\Support\Facades\Schema::hasTable('support_tickets')) {
             $tickets = SupportTicket::query()
-                ->when(!$isAdmin, fn ($query) => $query->where('owner_id', auth()->id()))
+                ->when(!$isAdmin, fn ($query) => $query->where('owner_id', parentId()))
                 ->where($isAdmin ? 'admin_unread' : 'owner_unread', true);
             $count += (clone $tickets)->count();
             $items = $items->concat($tickets->with('owner')->orderByDesc('last_message_at')->orderByDesc('id')->limit(10)->get()->map(fn ($ticket) => [
@@ -61,7 +61,7 @@ class AppointmentController extends Controller
             ]));
         }
         if (!$isAdmin && \Illuminate\Support\Facades\Schema::hasTable('announcement_recipients')) {
-            $announcements=\App\Models\AnnouncementRecipient::where('owner_id',auth()->id())->whereNull('read_at')->whereHas('announcement',fn($q)=>$q->where('published',true));
+            $announcements=\App\Models\AnnouncementRecipient::where('owner_id',parentId())->whereNull('read_at')->whereHas('announcement',fn($q)=>$q->where('published',true));
             $count+=(clone $announcements)->count();
             $items=$items->concat($announcements->with('announcement')->orderByDesc('id')->limit(10)->get()->map(fn($r)=>[
                 'id'=>$r->announcement_id,'type'=>'announcement','title'=>$r->announcement->title,
@@ -70,7 +70,7 @@ class AppointmentController extends Controller
             ]));
         }
         if (!$isAdmin && auth()->user()->can('manage item') && \Illuminate\Support\Facades\Schema::hasColumn('items', 'stock_alert_quantity')) {
-            $lowStock = \App\Models\Item::where('parent_id', auth()->id())->lowStock();
+            $lowStock = \App\Models\Item::where('parent_id', parentId())->lowStock();
             $count += (clone $lowStock)->count();
             $items = $items->concat($lowStock->with(['supplier', 'unit'])->orderByDesc('updated_at')->limit(10)->get()->map(function ($item) {
                 $actions = [['label'=>'Stokları görüntüle', 'url'=>route('item.index', ['low_stock'=>1])]];
@@ -84,6 +84,12 @@ class AppointmentController extends Controller
             }));
         }
         $items = $items->sortByDesc('sort_at')->take(10)->map(fn ($item) => array_diff_key($item, ['sort_at' => true]))->values();
+        if($isAdmin && \Schema::hasTable('integrity_checks')){
+            $affected=DB::table('integrity_checks')->join('users','users.id','=','integrity_checks.parent_id')->where('users.type','owner')->where('issue_count','>',0)->count();
+            if($affected){$count++;$items->prepend(['id'=>0,'type'=>'integrity','title'=>$affected.' işletmede stok / finans kontrolü gerekli','date'=>'Son kontrol sonuçları','url'=>route('integrity.index')]);}
+            $uncertain=DB::table('communication_outbox')->whereIn('status',['unknown','failed'])->count();
+            if($uncertain){$count++;$items->prepend(['id'=>0,'type'=>'communication','title'=>$uncertain.' mesajın gönderim sonucu kontrol edilmeli','date'=>'Tekrar göndermeden önce sağlayıcı kaydını kontrol edin','url'=>route('integrity.index')]);}
+        }
         return response()->json(['count' => $count, 'items' => $items])->header('Cache-Control', 'private, no-store');
     }
 
@@ -154,7 +160,7 @@ class AppointmentController extends Controller
         $appointment = $booking->changeStatus($profile, $id, $data['status']);
         $message = $data['status'] === 'approved' ? app(\App\Services\AppointmentSms::class)->dispatchApproval($id) : null;
         $text = 'Randevu durumu güncellendi.';
-        if ($message) $text .= $message->status === 'accepted' ? ' Onay SMS’i gönderim için İleti Merkezi’ne iletildi.' : ' Onay SMS’i gönderimi tamamlanamadı; süper admin SMS panelinden kontrol edebilir.';
+        if ($message) $text .= $message->status==='queued' ? ' Onay SMS’i gönderim kuyruğuna alındı.' : ($message->status === 'accepted' ? ' Onay SMS’i gönderim için İleti Merkezi’ne iletildi.' : ' Onay SMS’i gönderimi tamamlanamadı; süper admin SMS panelinden kontrol edebilir.');
         elseif ($data['status'] === 'approved' && !$appointment->phone_verified_at) $text .= ' SMS gönderilmedi. Randevu durumu müşterinin takip sayfasında güncellendi.';
         return back()->with('success', $text);
     }

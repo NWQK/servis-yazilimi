@@ -14,11 +14,6 @@ class AuthenticatedSessionController extends Controller
 {
     public function create()
     {
-        if (!file_exists(setup())) {
-            header('location:install');
-            die;
-        }
-
         \App::setLocale('tr');
 
         return view('auth.login');
@@ -39,6 +34,8 @@ class AuthenticatedSessionController extends Controller
         $request->session()->regenerate();
         $request->session()->forget(['owner_login_recorded','2fa_checked','2fa_verified_key','2fa_secret','2fa_setup_user']);
         $loginUser = Auth::user();
+        if($loginUser->type==='employee')$request->session()->put('employee_epoch',(int)$loginUser->session_epoch);
+        else $request->session()->put('account_epoch',(int)$loginUser->session_epoch);
         if(!in_array($loginUser->type,['client','super admin'],true)&&\Illuminate\Support\Facades\Schema::hasColumn('users','recovery_version')){
             $businessId=$loginUser->type==='owner'?$loginUser->id:$loginUser->parent_id;
             $request->session()->put('business_recovery_epochs.'.$businessId,(int)\Illuminate\Support\Facades\DB::table('users')->where('id',$businessId)->value('recovery_version'));
@@ -55,8 +52,13 @@ class AuthenticatedSessionController extends Controller
             return redirect()->route('login')->with('error', __('Your account is temporarily inactive. Please contact your administrator to reactivate your account.'));
         }
         if(empty($loginUser->email_verified_at)) {
+            $request->session()->put('pending_verification_user',$loginUser->id);
             auth()->logout();
             return redirect()->route('login')->with('error', __('Verification required: Please check your email to verify your account before continuing.'));
+        }
+        $request->session()->forget('pending_verification_user');
+        if ($loginUser->type === 'branch_manager') {
+            return redirect()->route('branches.portal');
         }
         if ($loginUser->type === 'owner' && is_null($loginUser->twofa_secret) && !$loginUser->twofa_required) app(\App\Services\OwnerLoginSecurity::class)->record($request);
         if( $loginUser->type=='owner'){

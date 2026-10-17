@@ -3,7 +3,17 @@
 namespace Spatie\Permission\Contracts;
 
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Spatie\Permission\Exceptions\RoleDoesNotExist;
 
+/**
+ * @property int|string $id
+ * @property string $name
+ * @property string|null $guard_name
+ *
+ * @mixin \Spatie\Permission\Models\Role
+ *
+ * @phpstan-require-extends \Spatie\Permission\Models\Role
+ */
 interface Role
 {
     /**
@@ -14,35 +24,28 @@ interface Role
     /**
      * Find a role by its name and guard name.
      *
-     * @param  string|null  $guardName
-     * @return \Spatie\Permission\Contracts\Role
      *
-     * @throws \Spatie\Permission\Exceptions\RoleDoesNotExist
+     * @throws RoleDoesNotExist
      */
-    public static function findByName(string $name, $guardName): self;
+    public static function findByName(string $name, ?string $guardName): self;
 
     /**
      * Find a role by its id and guard name.
      *
-     * @param  string|null  $guardName
-     * @return \Spatie\Permission\Contracts\Role
      *
-     * @throws \Spatie\Permission\Exceptions\RoleDoesNotExist
+     * @throws RoleDoesNotExist
      */
-    public static function findById(int $id, $guardName): self;
+    public static function findById(int|string $id, ?string $guardName): self;
 
     /**
      * Find or create a role by its name and guard name.
-     *
-     * @param  string|null  $guardName
-     * @return \Spatie\Permission\Contracts\Role
      */
-    public static function findOrCreate(string $name, $guardName): self;
+    public static function findOrCreate(string $name, ?string $guardName): self;
 
     /**
      * Determine if the user may perform the given permission.
      *
-     * @param  string|\Spatie\Permission\Contracts\Permission  $permission
+     * @param  string|int|Permission|\BackedEnum  $permission
      */
-    public function hasPermissionTo($permission): bool;
+    public function hasPermissionTo($permission, ?string $guardName): bool;
 }

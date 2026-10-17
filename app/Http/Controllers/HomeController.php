@@ -29,6 +29,10 @@ class HomeController extends Controller
 {
     public function index()
     {
+        if (($context=\App\Services\BranchContext::current()) && $context['grant']) {
+            $modules=json_decode($context['grant']->modules,true) ?: [];
+            return view('branches.staff-home',compact('context','modules'));
+        }
         if (\Auth::check()) {
             if (\Auth::user()->type == 'super admin') {
                 $result['totalOrganization'] = User::where('type', 'owner')->count();
@@ -138,7 +142,7 @@ class HomeController extends Controller
         $currentdate = $start;
         $organization = [];
         while ($currentdate <= $end) {
-            $organization['label'][] = \Carbon\Carbon::createFromTimestamp($currentdate)->locale('tr')->translatedFormat('M Y');
+            $organization['label'][] = \Carbon\Carbon::createFromTimestamp($currentdate, config('app.timezone'))->locale('tr')->translatedFormat('M Y');
             $month = date('m', $currentdate);
             $year = date('Y', $currentdate);
             $organization['data'][] = User::where('type', 'owner')->whereMonth('created_at', $month)->whereYear('created_at', $year)->count();
@@ -154,7 +158,7 @@ class HomeController extends Controller
         $currentdate = $start;
         $payment = [];
         while ($currentdate <= $end) {
-            $payment['label'][] = \Carbon\Carbon::createFromTimestamp($currentdate)->locale('tr')->translatedFormat('M Y');
+            $payment['label'][] = \Carbon\Carbon::createFromTimestamp($currentdate, config('app.timezone'))->locale('tr')->translatedFormat('M Y');
             $month = date('m', $currentdate);
             $year = date('Y', $currentdate);
             $payment['data'][] = PackageTransaction::whereMonth('created_at', $month)->whereYear('created_at', $year)->sum('amount');
@@ -170,7 +174,7 @@ class HomeController extends Controller
         $currentdate = $start;
         $payment = [];
         while ($currentdate <= $end) {
-            $payment['label'][] = \Carbon\Carbon::createFromTimestamp($currentdate)->locale('tr')->translatedFormat('M Y');
+            $payment['label'][] = \Carbon\Carbon::createFromTimestamp($currentdate, config('app.timezone'))->locale('tr')->translatedFormat('M Y');
             $month = date('m', $currentdate);
             $year = date('Y', $currentdate);
             $payment['income'][] = InvoicePayment::where('parent_id', parentId())->whereMonth('payment_date', $month)->whereYear('payment_date', $year)->sum('amount');
@@ -187,7 +191,7 @@ class HomeController extends Controller
         $currentdate = $start;
         $payment = [];
         while ($currentdate <= $end) {
-            $payment['label'][] = \Carbon\Carbon::createFromTimestamp($currentdate)->locale('tr')->translatedFormat('M Y');
+            $payment['label'][] = \Carbon\Carbon::createFromTimestamp($currentdate, config('app.timezone'))->locale('tr')->translatedFormat('M Y');
             $month = date('m', $currentdate);
             $year = date('Y', $currentdate);
             $payment['income'][] = InvoicePayment::where('parent_id', parentId())->whereMonth('payment_date', $month)->whereYear('payment_date', $year)->sum('amount');

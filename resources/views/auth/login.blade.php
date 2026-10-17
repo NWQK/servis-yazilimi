@@ -43,5 +43,11 @@
         <p class="login-register">Henüz hesabınız yok mu? <a href="{{ route('register') }}">Hesap oluşturun</a></p>
     @endif
 </form>
+@if(session('pending_verification_user'))
+    <form action="{{ route('verification.account.resend') }}" method="post" class="login-form">
+        @csrf
+        <button type="submit" class="login-submit">Doğrulama bağlantısını yeniden gönder</button>
+    </form>
+@endif
 <div class="login-customer"><span>Aracınız için servis mi arıyorsunuz?</span><a href="{{ route('directory.index') }}">Randevu alın <span aria-hidden="true">→</span></a></div>
 @endsection

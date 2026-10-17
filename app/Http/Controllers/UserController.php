@@ -34,7 +34,8 @@ class UserController extends Controller
 
     public function create()
     {
-        $userRoles = Role::where('parent_id', parentId())->whereNotIn('name', ['client', 'employee'])->get()->pluck('name', 'id')->map(fn ($name) => \App\Services\RolePermissions::label($name));
+        abort_unless(auth()->user()->can('create user'), 403);
+        $userRoles = \App\Services\RolePermissions::assignableRoles()->get()->pluck('name', 'id')->map(fn ($name) => \App\Services\RolePermissions::label($name));
         return view('user.create', compact('userRoles'));
     }
 
@@ -140,8 +141,7 @@ class UserController extends Controller
                         return redirect()->back()->with('error', __('Your user limit is over, please upgrade your subscription.'));
                     }
                 }
-                $userRole = Role::where('parent_id', parentId())
-                    ->whereRaw('LOWER(TRIM(name)) != ?', ['client'])->findOrFail($request->role);
+                $userRole = \App\Services\RolePermissions::assignableRoles()->findOrFail($request->role);
                 $user = new User();
                 $user->name = $request->name;
                 $user->email = $request->email;
@@ -229,9 +229,10 @@ class UserController extends Controller
 
     public function edit($id)
     {
+        abort_unless(auth()->user()->can('edit user'), 403);
         $user = User::findOrFail($id);
         abort_if(auth()->user()->type !== 'super admin' && $user->type === 'client', 403);
-        $userRoles = Role::where('parent_id', '=', parentId())->whereNotIn('name', ['client', 'employee'])->get()->pluck('name', 'id')->map(fn ($name) => \App\Services\RolePermissions::label($name));
+        $userRoles = \App\Services\RolePermissions::assignableRoles()->get()->pluck('name', 'id')->map(fn ($name) => \App\Services\RolePermissions::label($name));
         $assignedRoleId = $user->roles->first()?->id;
         return view('user.edit', compact('user', 'userRoles', 'assignedRoleId'));
     }
@@ -257,7 +258,8 @@ class UserController extends Controller
                 }
 
                 $before=$user->only(['name','email','subscription','subscription_expire_date']);
-                $userData = $request->all();
+                // Account identity edits must not alter credentials, 2FA, plans or activation.
+                $userData = $request->only(['name','email','phone_number']);
                 $user->fill($userData)->save();
                 \App\Services\AdminAudit::record('business.updated',$user->id,$before,$user->only(['name','email','subscription','subscription_expire_date']));
 
@@ -293,8 +295,7 @@ class UserController extends Controller
                     return redirect()->back()->with('error', $messages->first());
                 }
 
-                $userRole = Role::where('parent_id', parentId())
-                    ->whereRaw('LOWER(TRIM(name)) != ?', ['client'])->findOrFail($request->role);
+                $userRole = \App\Services\RolePermissions::assignableRoles()->findOrFail($request->role);
                 $user = User::findOrFail($id);
                 abort_if($user->type === 'client', 403);
                 $user->name = $request->name;
@@ -358,7 +359,7 @@ class UserController extends Controller
     public function loggedHistoryShow($id)
     {
         if (\Auth::user()->can('manage logged history')) {
-            $histories = LoggedHistory::find($id);
+            $histories = LoggedHistory::where('parent_id', parentId())->findOrFail($id);
             return view('logged_history.show', compact('histories'));
         } else {
             return redirect()->back()->with('error', __('Permission Denied.'));
@@ -368,7 +369,7 @@ class UserController extends Controller
     public function loggedHistoryDestroy($id)
     {
         if (\Auth::user()->can('delete logged history')) {
-            $histories = LoggedHistory::find($id);
+            $histories = LoggedHistory::where('parent_id', parentId())->findOrFail($id);
             $histories->delete();
             return redirect()->back()->with('success', __('Logged history succefully deleted.'));
         } else {

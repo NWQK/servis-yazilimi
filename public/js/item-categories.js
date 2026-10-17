@@ -7,7 +7,7 @@
         var catalog = JSON.parse(category.attr('data-products') || '[]');
         product.empty().append(new Option(category.val() ? 'Ürün seçin' : 'Önce kategori seçin', ''));
         catalog.filter(function (entry) {
-            return String(entry.category) === category.val() && (entry.available || String(entry.id) === String(selected));
+            return (category.val() === 'all' || String(entry.category) === category.val()) && (entry.available || String(entry.id) === String(selected));
         }).forEach(function (entry) {
             product.append(new Option(entry.title, entry.id));
         });
@@ -21,7 +21,7 @@
             var selected = reset ? '' : category.closest('.location_list').find('.item_name_select').val();
             var catalog = JSON.parse(category.attr('data-products') || '[]');
             var current = catalog.find(function (entry) { return String(entry.id) === String(selected); });
-            category.val(current ? String(current.category) : '').attr('data-initialized', '1');
+            category.val(current ? String(current.category) : (category.attr('data-default') || '')).attr('data-initialized', '1');
             populate(category, selected);
             if (!selected) category.closest('.location_list').find('.quantity, .amount').prop('required', false);
         });

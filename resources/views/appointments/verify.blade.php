@@ -6,6 +6,7 @@
     @if ($errors->any())<div class="booking-alert" role="alert">{{ $errors->first() }}</div>@endif
     @if (session('success'))<p role="status">{{ session('success') }}</p>@endif
     @if ($challenge->send_status === 'failed')<div class="booking-alert">SMS gönderilemedi. Bir dakika sonra yeniden deneyebilirsiniz.</div>
+    @elseif ($challenge->send_status==='queued')<p role="status">SMS gönderim sırasına alındı. Kod kısa süre içinde ulaşacaktır.</p>
     @elseif (in_array($challenge->send_status, ['sending', 'unknown']))<p>SMS gönderimi henüz kesinleşmedi. Kod geldiyse aşağıya girin; gelmediyse bir dakika sonra yeni kod isteyin.</p>@endif
     <p>Kod 5 dakika geçerlidir. Telefon doğrulanana kadar saat ayrılmaz ve işletmeye talep iletilmez.</p>
     <form method="post" action="{{ route('booking.verify.submit', [$profile->public_id, $challenge->token]) }}">@csrf

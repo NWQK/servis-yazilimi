@@ -1,0 +1,19 @@
+@extends('layouts.app')
+@section('page-title','Şubeler arası araç yönlendirme')
+@section('content')
+@include('branches.links')
+<div class="card"><div class="card-body"><h5>Araç yönlendirme</h5><p>Kaynak müşteri, araç, servis ve faturalar yerinde kalır. Alıcı şube onayladığında kendi kayıtlarıyla yeni servis ve fatura açılır. Fatura, ödeme, fotoğraf ve eski servis notları paylaşılmaz.</p>
+<form method="post" action="{{ route('branch-referrals.send') }}">@csrf<input type="hidden" name="group" value="{{ $group->id }}"><input type="hidden" name="request_key" value="{{ \Illuminate\Support\Str::uuid() }}">
+<div class="row g-3"><div class="col-md-6"><label for="referral-source" class="form-label">Gönderen şube</label><select class="form-control referral-source" id="referral-source" name="source_owner_id" required>@foreach($allowed as $owner)<option value="{{ $owner->id }}">{{ $owner->name }}</option>@endforeach</select></div>
+<div class="col-md-6"><label for="referral-target" class="form-label">Alıcı şube</label><select class="form-control" id="referral-target" name="target_owner_id" required><option value="">Şube seçin</option>@foreach($owners as $owner)<option value="{{ $owner->id }}">{{ $owner->name }}</option>@endforeach</select></div>
+<div class="col-12"><label for="referral-vehicle" class="form-label">Yönlendirilecek araç</label><select class="form-control referral-vehicle" id="referral-vehicle" name="vehicle_id" required><option value="">Araç seçin</option>@foreach($vehicles as $vehicle)<option value="{{ $vehicle->id }}" data-owner="{{ $vehicle->parent_id }}">{{ $vehicle->license_plate }} · {{ $vehicle->chassis_no }}</option>@endforeach</select></div>
+<div class="col-12"><fieldset><legend class="h6">Paylaşılacak ek bilgiler</legend><p class="small text-muted">Plaka ve şasi numarası araç eşleşmesi için paylaşılır. Aşağıdaki bilgiler yalnızca seçerseniz eklenir.</p><div class="d-flex flex-wrap gap-3">@foreach(\App\Services\BranchReferrals::SHARE as $field=>$label)<label><input type="checkbox" name="share[]" value="{{ $field }}"> {{ $label }}</label>@endforeach</div></fieldset></div>
+<div class="col-12"><label class="form-label" for="referral-note">Alıcıya iletilecek açıklama (isteğe bağlı)</label><textarea id="referral-note" class="form-control" name="note" maxlength="1000" rows="2"></textarea></div>
+<div class="col-12"><label><input type="checkbox" name="confirm" value="1" required> Seçtiğim bilgilerin alıcı şubeyle paylaşılmasını onaylıyorum.</label></div><div class="col-12"><button class="btn btn-secondary">Yönlendirmeyi gönder</button></div></div></form></div></div>
+@foreach($referrals as $row)<div class="card"><div class="card-body"><div class="d-flex flex-wrap justify-content-between gap-2"><h6>{{ $row->source_name }} → {{ $row->target_name }}</h6><span>{{ ['pending'=>'Kabul bekliyor','accepted'=>'Kabul edildi','rejected'=>'Reddedildi','cancelled'=>'İptal edildi'][$row->status] }}</span></div><p>{{ $row->shared_data['license_plate'] }} · {{ $row->created_at }}</p>
+@if($row->status==='pending')<div class="d-flex flex-wrap gap-2">@if($flow->access($group,$row->target_owner_id))<a class="btn btn-secondary" href="{{ route('branch-referrals.show',$row->id) }}">İncele / kabul et</a>@endif
+@if($flow->access($group,$row->source_owner_id))<form method="post" action="{{ route('branch-referrals.resolve',$row->id) }}">@csrf<input type="hidden" name="action" value="cancel"><input type="hidden" name="version" value="{{ $row->version }}"><label class="small d-block"><input type="checkbox" name="confirm" value="1" required> İptali onayla</label><button class="btn btn-outline-danger">İptal et</button></form>@endif</div>
+@elseif($row->target_service_id)<p class="mb-0">Alıcı şubede açılan servis: #{{ $row->target_service_id }}</p>@endif</div></div>@endforeach
+{{ $referrals->links() }}
+@endsection
+@push('script-page')<script src="{{ asset('js/branch-referrals.js') }}" defer></script>@endpush

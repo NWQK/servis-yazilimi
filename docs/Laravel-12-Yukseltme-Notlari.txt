@@ -1,0 +1,66 @@
+﻿Laravel 12 yükseltmesi — 17 Ekim 2026
+
+Uygulama Laravel 9.52.22'den Laravel 12.70.0 sürümüne geçirildi. Mevcut Kernel, provider ve route yapısı korundu. Yeni proje iskeleti kopyalanmadı; işletme kimlikleri, şube bağlantıları, kullanıcı parolaları, APP_KEY ve dosya konumları değiştirilmedi.
+
+Paketler ve uyumluluk
+
+- PHP alt sınırı 8.2; Composer çözümleme tabanı da 8.2.0. PHP 8.3 gerektiren Laravel 13 bu geçişin parçası değildir. Laravel 12'nin resmi güvenlik desteği 24 Şubat 2027'ye kadar sürer; bu tarihten önce sonraki sürüm geçişi planlanmalıdır.
+- Sanctum 4.3.3, Spatie Permission 6.25.0, Carbon 3.14.2, Symfony 7.4 bileşenleri ve PHPUnit 11.5.57 kuruldu.
+- Bakımı bırakılmış laravelcollective/html, aynı Collective namespace ve Form/Html arayüzünü koruyan konekt/html 6.8.0 ile değiştirildi. Bu paket PHP intl uzantısını gerektirir. Mevcut formların model bağlama, CSRF, HTTP metodu ve HTML kaçış davranışları test edildi.
+- Kullanımdan kaldırılmış OpenAI paketleri ve web kurulum/güncelleme sihirbazının paketi çıkarıldı. XSS middleware'indeki kullanılmayan installer trait'i ve provider kaydı temizlendi. Web kurulumu tekrar açılmadı.
+- Şube URL üreticisinin özel yardımcı metodu, Laravel'in yeni public query() metodu ile çakışmaması için yeniden adlandırıldı. Şube bağlamı mekanizması korundu.
+- Carbon 3'ün timestamp varsayılan saat dilimi değişikliğine karşı aylık raporlar açıkça app.timezone kullanır; ocak/aralık etiketleri İstanbul saatinde doğrulandı.
+- Laravel'in girişte otomatik parola rehash özelliği, eski hash ve aktif hesap koşuluyla atomik güncellenir. Eşzamanlı şifre sıfırlama veya personel ayrılışı eski giriş nesnesi tarafından geri alınamaz; ilgisiz hesap alanları kaydedilmez.
+- Sanctum middleware anahtarları yeni sürüme uyarlandı. Token tablosunun paket tarafından otomatik migrate edilmesi kalktığından uygulama migration'ı eklendi: tablo varsa mevcut kayıtları korur, yoksa oluşturur; eski tabloda eksik expires_at alanını ekler. Rollback mevcut tokenları silmez.
+- Yeni kurulumda MariaDB'nin timestamp varsayılanı ile çakışan system_health.checked_at alanına açık CURRENT_TIMESTAMP varsayılanı verildi. Bu, geçmiş migration'ın yeni kurulum uyumluluğudur; daha önce uygulanmış tabloyu yeniden oluşturmaz.
+- Yeni PHPUnit için dört data provider bildirimi PHP attribute biçimine taşındı. Güvenilmeyen Host için yeni framework'ün 400 cevabı testte açıkça doğrulanır; host kısıtlaması gevşetilmedi.
+
+Doğrulamalar
+
+- Son tam paket: 459 test / 5.508 doğrulama başarılı; ek uyumluluk testleri de bu çalıştırmaya dahildir. PHPUnit uyarı veya deprecation bildirmedi.
+- İlk tam regresyon: 453 test / 5.481 doğrulama başarılı. Test kaldırılmadı; yeni PHPUnit/Laravel çalıştırıcısının bildirdiği assertion sayısı kaydedildi.
+- Ek altı uyumluluk testi: 27 doğrulama başarılı; parola rehash yarışları, form güvenliği, URL query API'si, token migration tekrar/rollback ve aylık rapor etiketleri.
+- Ayrı sentetik MariaDB 10.4.32 üzerinde eşzamanlı şube yönlendirmesi tek araç/servis oluşturdu. Personel ayrılışı erişimi kapatıp açık işi devretti. Aynı faturanın iki cihazdan kaydında biri başarılı, diğeri eski revision nedeniyle reddedildi; stok 9, net ödeme 50 TL ve tek düzeltme kaydı kaldı.
+- Eşzamanlı banka ödeme onayı tek yönetici kaydı oluşturdu. Eşzamanlı teklif dönüşümünde tek servis oluştu, ikinci istek 409 aldı. 1.000.000,99 TL DECIMAL alanda doğru saklandı.
+- Bütün migration'larla sıfırdan MariaDB kurulumu: 92 migration başarılı. Eski Laravel 9 sentetik veritabanının ayrı kopyasında yeni migration tekrar uygulandığında users, vehicles, invoices, invoice_items, invoice_payments, items ve stock_movements satırları birebir aynı kaldı; ödeme toplamı değişmedi.
+- composer audit --locked geliştirme paketleri dahil advisories: [], abandoned: [] döndürdü. Kalıcı ignore veya güvenlik engelini devre dışı bırakma ayarı kullanılmadı. Bu sonuç tarama tarihindeki bilinen paket bildirimlerini kapsar; uygulamanın tüm olası açıkları için garanti değildir.
+- Composer dosyası doğrulandı; PHP ve uzantı gereksinimleri kontrol edildi.
+
+Windows sandbox'ında PHP is_readable/is_writable değerleri gerçek dosya erişimiyle uyuşmadığı için yalnızca yerel test çalıştırıcısında autoload önceden yüklendi ve paket manifestleri mevcut yerel yardımcıyla üretildi. Vendor kaynaklarına veya uygulamaya bu ortam için bypass eklenmedi. Linux'ta normal Composer/Artisan akışı kullanılmalıdır.
+
+VDS'ye geçiş
+
+Bu çalışma henüz canlı sunucuya uygulanmadı. Önce güncel veritabanı ve yüklenen dosya yedeğinin doğruluğunu kontrol edin. PHP CLI ve PHP-FPM aynı uyumlu sürümü ve uzantıları kullanmalıdır. En az PHP 8.2, Composer 2.2+, intl, gd, mbstring, curl, xml, zip ve pdo_mysql gereklidir. Ubuntu 24.04'ün PHP 8.3 kurulumu da uygundur; sunucunun gerçek sürümü php -v ile doğrulanmalıdır.
+
+Proje klasöründe önce PHP sürümünü/uzantıları doğrulayın ve yeni kodu çekmeden önce, eski sürüm çalışırken bakım modunu açın:
+
+php -v
+php -m
+php artisan down
+
+Yeni kodu aldıktan sonra eski paket/provider kayıtları Composer keşfini engellemesin diye yalnızca üretilmiş bootstrap cache dosyalarını temizleyin; ardından kilitli paketleri kurun:
+
+rm -f bootstrap/cache/config.php bootstrap/cache/packages.php bootstrap/cache/services.php bootstrap/cache/events.php bootstrap/cache/routes-v7.php
+composer install --no-dev --prefer-dist --optimize-autoloader --no-interaction
+composer check-platform-reqs --no-dev
+php artisan optimize:clear
+php artisan migrate --force
+php artisan config:cache
+php artisan route:cache
+php artisan view:cache
+php artisan queue:restart
+php artisan up
+
+Komutlar sırayla ve sonuçları kontrol edilerek çalıştırılmalıdır. Başarısız Composer/migration/cache adımından sonra doğrudan up çalıştırmayın. Sunucuda composer update, migrate:fresh veya yeniden key:generate çalıştırmayın. Mevcut .env, APP_KEY, storage ve yüklenen görseller korunmalıdır. Önceki denetimin henüz uygulanmamış parasal alan migration'ı varsa bu da çalışacaktır; büyük tablolarda bakım süresini etkileyebilir.
+
+Eksik uzantıları PHP-FPM sürümüne uygun paketlerle kurun. Örneğin Ubuntu 24.04'te PHP 8.3 kullanılıyorsa sudo apt install php8.3-intl php8.3-gd php8.3-mbstring php8.3-curl php8.3-xml php8.3-zip php8.3-mysql; ardından kullanılan PHP-FPM servisini yeniden başlatın. Farklı PHP sürümünde paket/servis adları o sürüme göre değiştirilmelidir.
+
+Repo vendor dosyalarını da takip ettiği için çok sayıda üçüncü taraf dosya değişikliği vardır; uygulama değişiklikleriyle ayrı incelenmelidir. Üretimde bağımlılıklar her zaman kilit dosyasından kurulmalıdır. Kod geri dönüşünde önceki composer.lock ile bağımlılıklar da geri kurulmalıdır; yeni token migration'ının down adımı veri silmez, önceki parasal migration da alanları daraltmaz.
+
+Resmi kaynaklar
+
+- https://laravel.com/docs/10.x/upgrade
+- https://laravel.com/docs/11.x/upgrade
+- https://laravel.com/docs/12.x/upgrade
+- https://laravel.com/docs/12.x/releases
+- https://github.com/artkonekt/html

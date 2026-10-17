@@ -11,10 +11,11 @@ use App\Http\Controllers\Auth\VerifyEmailController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
+    Route::post('resend-account-verification', [VerifyEmailController::class, 'resend'])->middleware('throttle:3,10,account-verification')->name('verification.account.resend');
     Route::get('register', [RegisteredUserController::class, 'create'])
                 ->name('register');
 
-    Route::post('register', [RegisteredUserController::class, 'store']);
+    Route::post('register', [RegisteredUserController::class, 'store'])->middleware('throttle:5,10,registration');
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
                 ->name('login');
@@ -25,12 +26,14 @@ Route::middleware('guest')->group(function () {
                 ->name('password.request');
 
     Route::post('forgot-password', [PasswordResetLinkController::class, 'store'])
+                ->middleware('throttle:5,10,password-email')
                 ->name('password.email');
 
     Route::get('reset-password/{token}', [NewPasswordController::class, 'create'])
                 ->name('password.reset');
 
     Route::post('reset-password', [NewPasswordController::class, 'store'])
+                ->middleware('throttle:10,10,password-reset')
                 ->name('password.update');
 });
 

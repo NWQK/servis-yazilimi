@@ -79,6 +79,9 @@ class SettingController extends Controller
     public function accountDelete(Request $request)
     {
         $loginUser = \Auth::user();
+        abort_if(\Illuminate\Support\Facades\Schema::hasTable('business_groups') &&
+            (\DB::table('business_groups')->where('manager_user_id',$loginUser->id)->exists()
+            || \DB::table('business_branches')->where('owner_id',$loginUser->id)->exists()),409,'Önce süper yönetici şube bağlantılarını ayırmalıdır.');
         $loginUser->delete();
 
         return redirect()->back()->with('success', __('Your account successfully deleted.'));
@@ -110,10 +113,17 @@ class SettingController extends Controller
             $current_password = $loginUser->password;
             if (Hash::check($data['current_password'], $current_password)) {
                 $user_id = $loginUser->id;
-                $user = User::find($user_id);
-                $user->password = Hash::make($data['new_password']);
-                ;
-                $user->save();
+                \DB::transaction(function () use ($user_id, $data, $request) {
+                    $user = User::whereKey($user_id)->lockForUpdate()->firstOrFail();
+                    if (!Hash::check($data['current_password'], $user->password)) {
+                        throw ValidationException::withMessages(['current_password'=>'Mevcut şifre değişti. Yeniden giriş yapın.']);
+                    }
+                    $user->password = Hash::make($data['new_password']);
+                    $user->remember_token = \Illuminate\Support\Str::random(60);
+                    $user->session_epoch = (int)$user->session_epoch + 1;
+                    $user->save();
+                    $request->session()->put($user->type==='employee'?'employee_epoch':'account_epoch',(int)$user->session_epoch);
+                });
 
                 return redirect()->back()->with('success', __('Password successfully updated.'))->with('tab', 'password_settings');
             } else {
@@ -238,6 +248,7 @@ class SettingController extends Controller
 
     public function companyData(Request $request)
     {
+        abort_unless(auth()->user()->can('manage company settings'), 403);
 
         // dd($request->all());
 
@@ -257,7 +268,8 @@ class SettingController extends Controller
             return redirect()->back()->with('error', $messages->first());
         }
 
-        $settings = array_replace($request->all(), [
+        $settings = array_replace($request->only(['company_name','company_email','company_phone','company_address',
+            'client_number_prefix','employee_number_prefix','vehicle_number_prefix','service_number_prefix','quotation_number_prefix','invoice_number_prefix']), [
             'CURRENCY' => 'TRY', 'CURRENCY_SYMBOL' => '₺', 'timezone' => 'Europe/Istanbul', 'company_date_format' => 'd M Y', 'company_time_format' => 'H:i',
         ]);
         unset($settings['_token']);
@@ -281,22 +293,23 @@ class SettingController extends Controller
     public function themeSettings(Request $request)
     {
 
-        $themeSettings = $request->all();
+        $themeSettings = $request->validate([
+            'theme_mode'=>'sometimes|in:light,dark,default',
+            'layout_font'=>'sometimes|in:Roboto,Inter,Poppins',
+            'accent_color'=>['sometimes','string','regex:/^(?:preset-(?:[1-9]|10)|bike-and-more)$/D'],
+            'sidebar_caption'=>'sometimes|in:true,false',
+            'theme_layout'=>'sometimes|in:ltr,rtl',
+            'layout_width'=>'sometimes|in:true,false',
+            'custom_color'=>'sometimes|nullable|string|max:100|regex:/^--primary-rgb: ?[0-9]{1,3}, ?[0-9]{1,3}, ?[0-9]{1,3}$/D',
+            'custom_color_code'=>'sometimes|nullable|regex:/^#[a-fA-F0-9]{6}$/D',
+            'color_type'=>'sometimes|in:preset,custom',
+        ]);
         $themeSettings['theme_layout'] = 'ltr';
         unset($themeSettings['_token']);
 
         foreach ($themeSettings as $key => $val) {
             if (!empty($val)) {
-
-                \DB::insert(
-                    'insert into settings (`value`, `name`,`type`,`parent_id`) values (?, ?, ?,?) ON DUPLICATE KEY UPDATE `value` = VALUES(`value`) ',
-                    [
-                        $val,
-                        $key,
-                        'common',
-                        parentId(),
-                    ]
-                );
+                \DB::table('settings')->updateOrInsert(['name'=>$key,'parent_id'=>parentId()],['value'=>$val,'type'=>'common']);
             }
         }
 
@@ -309,6 +322,7 @@ class SettingController extends Controller
 
     public function siteSEOData(Request $request)
     {
+        abort_unless(auth()->user()->type === 'super admin' && auth()->user()->can('manage seo settings'), 403);
 
         $validator = \Validator::make(
             $request->all(),
@@ -323,7 +337,7 @@ class SettingController extends Controller
             return redirect()->back()->with('error', $messages->first());
         }
 
-        $settings = $request->all();
+        $settings = $request->only(['meta_seo_title','meta_seo_keyword','meta_seo_description']);
         unset($settings['_token']);
         if ($request->meta_seo_image) {
             $seoFilenameWithExt = $request->file('meta_seo_image')->getClientOriginalName();
@@ -368,6 +382,7 @@ class SettingController extends Controller
     // ---------------------- Google ReCaptcha Settings ---------------------------------------------
     public function googleRecaptchaData(Request $request)
     {
+        abort_unless(auth()->user()->type === 'super admin' && auth()->user()->can('manage google recaptcha settings'), 403);
 
         $validator = \Validator::make(
             $request->all(),
@@ -421,7 +436,8 @@ class SettingController extends Controller
 
     public function footerData(Request $request)
     {
-        $settings = $request->all();
+        abort_unless(auth()->user()->type === 'super admin', 403);
+        $settings = array_filter($request->all(), fn($key)=>preg_match('/^footer_column_[1-4](?:_(?:pages|enabled))?$/D', $key), ARRAY_FILTER_USE_KEY);
         unset($settings['_token']);
         unset($settings['tab']);
         foreach ($settings as $s_key => $s_value) {

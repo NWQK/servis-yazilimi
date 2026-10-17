@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\DB;
 class AnnouncementController extends Controller {
  private function admin():void {abort_unless(auth()->user()?->type==='super admin',403);}
  public function index(Request $r){
-  abort_unless(in_array($r->user()->type,['super admin','owner']),403);
+  abort_unless(isBusinessOwner() || $r->user()->type==='super admin',403);
   $isAdmin=$r->user()->type==='super admin';
-  $announcements=Announcement::query()->when(!$isAdmin,fn($q)=>$q->where('published',true)->whereHas('recipients',fn($q)=>$q->where('owner_id',auth()->id())))->withCount(['recipients','recipients as read_count'=>fn($q)=>$q->whereNotNull('read_at')])->latest('id')->paginate(20);
+  $announcements=Announcement::query()->when(!$isAdmin,fn($q)=>$q->where('published',true)->whereHas('recipients',fn($q)=>$q->where('owner_id',parentId())))->withCount(['recipients','recipients as read_count'=>fn($q)=>$q->whereNotNull('read_at')])->latest('id')->paginate(20);
   $owners=$isAdmin ? User::where('type','owner')->orderBy('name')->get(['id','name','email']) : collect();
   return view('admin.announcements',compact('announcements','isAdmin','owners'));
  }
@@ -24,9 +24,9 @@ class AnnouncementController extends Controller {
   return redirect()->route('announcements.show',$announcement->id)->with('success','Duyuru işletmelerin panel bildirimlerine gönderildi.');
  }
  public function show(int $id){
-  abort_unless(in_array(auth()->user()->type,['super admin','owner']),403);
+  abort_unless(isBusinessOwner() || auth()->user()->type==='super admin',403);
   $announcement=Announcement::findOrFail($id);$isAdmin=auth()->user()->type==='super admin';
-  if(!$isAdmin){abort_unless($announcement->published,404);$recipient=$announcement->recipients()->where('owner_id',auth()->id())->firstOrFail();$announcement->recipients()->whereKey($recipient->id)->whereNull('read_at')->update(['read_at'=>now()]);}
+  if(!$isAdmin){abort_unless($announcement->published,404);$recipient=$announcement->recipients()->where('owner_id',parentId())->firstOrFail();$announcement->recipients()->whereKey($recipient->id)->whereNull('read_at')->update(['read_at'=>now()]);}
   $recipients=$isAdmin ? $announcement->recipients()->with('owner')->paginate(25) : null;
   return view('admin.announcement-show',compact('announcement','isAdmin','recipients'));
  }

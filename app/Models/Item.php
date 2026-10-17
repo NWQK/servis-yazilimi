@@ -8,6 +8,23 @@ use Illuminate\Database\Eloquent\Model;
 class Item extends Model
 {
     use HasFactory;
+    protected static function booted(): void
+    {
+        $pending=function(self $item): bool {
+            return \Schema::hasTable('branch_stock_transfers') && \DB::table('branch_stock_transfers')
+                ->where('source_owner_id',$item->getOriginal('parent_id') ?: $item->parent_id)->where('source_item_id',$item->id)->where('status','pending')->exists();
+        };
+        static::deleting(function(self $item)use($pending){
+            if($pending($item)) throw \Illuminate\Validation\ValidationException::withMessages(['item'=>'Bekleyen transferi olan ürün silinemez. Önce transferi sonuçlandırın.']);
+        });
+        static::deleted(function(self $item){
+            if(\Schema::hasTable('inventory_checkpoints'))\DB::table('inventory_checkpoints')->where('parent_id',$item->parent_id)->where('inventory_key',$item->inventory_key)->delete();
+        });
+        static::updating(function(self $item)use($pending){
+            if(($item->isDirty('units') || $item->isDirty('parent_id') || $item->isDirty('inventory_key')) && $pending($item))
+                throw \Illuminate\Validation\ValidationException::withMessages(['item'=>'Bekleyen transfer varken ürünün birimi veya stok kimliği değiştirilemez.']);
+        });
+    }
     protected $fillable=[
         'title',
         'category_id',

@@ -378,7 +378,7 @@
                                     <tr role="row">
                                         <td>{{ $payment->transaction_id }} </td>
                                         <td>{{ dateFormat($payment->payment_date) }} </td>
-                                        <td>{{ priceFormat($payment->amount) }} </td>
+                                        <td>{{ priceFormat($payment->amount) }}<small class="d-block text-muted">{{ \App\Services\CashRegister::CHANNELS[$payment->cash_channel]??'Belirtilmemiş' }}</small></td>
                                         <td>
                                             @if ($payment->payment_status == 'pending')
                                                 <span
@@ -395,7 +395,7 @@
                                         @can('delete invoice payment')
                                             <td class="text-right action">
                                                 <div class="cart-action">
-                                                    @if (\Auth::user()->type == 'owner' && $payment->payment_status == 'pending')
+                                                    @if (isBusinessOwner() && $payment->payment_status == 'pending')
                                                         <form method="post" class="d-inline" action="{{ route('invoice.bank.transfer.action',[$payment->id,'accept']) }}">@csrf @include('invoice.operation-fields')<button class="btn btn-sm btn-outline-secondary">Kabul et</button></form>
 
                                                         <form method="post" class="d-inline" action="{{ route('invoice.bank.transfer.action',[$payment->id,'reject']) }}">@csrf @include('invoice.operation-fields')<button class="btn btn-sm btn-outline-secondary">Reddet</button></form>

@@ -103,6 +103,7 @@ class FinancialOperationsTest extends TestCase
         $this->assertSame(1,DB::table('system_health_errors')->count());
         $this->assertSame(20,(int)DB::table('system_health_errors')->value('count'));
         DB::table('system_health_errors')->update(['day'=>now()->subDays(40)->toDateString()]);
+        app(\App\Services\IntegrityCheck::class)->run($this->owner->id);
         $this->artisan('platform:purge-history')->assertExitCode(0);
         $this->assertSame(0,DB::table('stock_movements')->count());
         $this->assertSame(0,DB::table('invoice_changes')->count());

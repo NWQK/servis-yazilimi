@@ -6,6 +6,7 @@ class RecoveryPlan
 {
     public function build(RecoveryStore $source,RecoveryStore $live,int $owner,string $mode): array
     {
+        \App\Services\BranchTransfers::guardRecovery($owner);
         $original=$source->get('users',$owner);$present=$live->get('users',$owner);
         if(!$original||!$present||($original['type']??'')!=='owner'||($present['type']??'')!=='owner'
             ||(!empty($original['created_at'])&&!empty($present['created_at'])&&$original['created_at']!==$present['created_at']))
@@ -172,6 +173,7 @@ class RecoveryPlan
             'booking_offerings'=>[['appointment_profile_id','booking_service_id','vehicle_type']],
             'expenses'=>[['stock_movement_id']],'counter_sales'=>[['parent_id','request_key']],
             'item_purchases'=>[['stock_movement_id'],['parent_id','request_key']],
+            'inventory_checkpoints'=>[['parent_id','inventory_key']],'cash_closings'=>[['parent_id','business_date']],
             'business_reviews'=>[['owner_id','identity_hash'],['owner_id','customer_id']],
         ];
         if($table==='users'&&(($row['type']??'')==='client'||$live->get('users',$row['id'])))return;
@@ -201,6 +203,7 @@ class RecoveryPlan
     }
     public function apply(RecoveryStore $source,RecoveryStore $live,int $owner,string $mode): void
     {
+        \App\Services\BranchTransfers::guardRecovery($owner);
         \App\Services\PhotoRetention::lockPolicy();
         \App\Services\PhotoRetention::protectRestore($source,$live,$owner);
         if($mode!=='missing'){

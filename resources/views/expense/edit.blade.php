@@ -1,6 +1,7 @@
 {{ Form::model($expense, array('route' => array('expense.update', $expense->id), 'enctype' => "multipart/form-data", 'method' => 'PUT')) }}
 <div class="modal-body">
     <div class="row">
+        <div class="form-group col-md-12"><label for="expense-channel" class="form-label">Ödeme yöntemi</label>{{ Form::select('cash_channel',\App\Services\CashRegister::CHANNELS,null,['id'=>'expense-channel','class'=>'form-control']) }}<small>Ödeme yöntemi belirtilmemiş giderler nakit kasaya dahil edilmez.</small></div>
         <div class="form-group col-md-6">
             {{Form::label('title',__('Title'),array('class'=>'form-label')) }}
             {{Form::text('title',null,array('class'=>'form-control','placeholder'=>__('Enter expense title'),'required'=>'required'))}}

@@ -15,7 +15,7 @@ class InvoicePayment extends Model
             if(request()->attributes->get('invoice_operation_guard') || !\Schema::hasTable('invoice_changes')) return;
             $invoice=Invoice::where('parent_id',$payment->parent_id)->find($payment->invoice_id);
             if(!$invoice) return;
-            $keys=['amount','payment_date','description','payment_status'];
+            $keys=['amount','payment_date','description','payment_status','cash_channel'];
             $before=$event==='created' ? [] : array_intersect_key($payment->getOriginal(),array_flip($keys));
             $after=$event==='deleted' ? [] : $payment->only($keys);
             $changes=\App\Services\InvoiceJournal::difference($before,$after,'payments.'.$payment->id.'.');

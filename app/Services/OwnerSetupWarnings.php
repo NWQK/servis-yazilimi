@@ -9,6 +9,7 @@ class OwnerSetupWarnings
 {
     public function forUser(User $user, bool $respectPermissions = true): array
     {
+        if ($user->type === 'branch_manager' && ($context = BranchContext::current())) $user = $context['owner'];
         if ($user->type !== 'owner') return [];
         $warnings = [];
         $can = fn($permission) => !$respectPermissions || $user->can($permission);

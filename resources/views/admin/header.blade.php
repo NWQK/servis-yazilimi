@@ -17,7 +17,7 @@
                     </a>
                 </li>
 
-                @if (\Auth::user()->type == 'owner')
+                @if (isBusinessOwner())
                     <li class="dropdown pc-h-item" data-bs-toggle="tooltip" data-bs-original-title="{{ __('Quick Access') }}"
                         data-bs-placement="bottom">
 
@@ -113,7 +113,7 @@
         <div class="ms-auto">
             <ul class="list-unstyled">
 
-                @if (\Auth::user()->type == 'super admin' || \Auth::user()->type == 'owner')
+                @if (\Auth::user()->type == 'super admin' || isBusinessOwner())
                     <li class="dropdown pc-h-item pc-mega-menu" data-bs-toggle="tooltip"
                         data-bs-original-title="{{ __('Theme Settings') }}" data-bs-placement="bottom">
                         <a href="#" class="pc-head-link head-link-secondary dropdown-toggle arrow-none me-0"
@@ -122,10 +122,10 @@
                         </a>
                     </li>
                 @endif
-                @if (in_array(\Auth::user()->type, ['owner', 'super admin'], true))
+                @if ((isBusinessOwner() || \Auth::user()->type === 'super admin'))
                     @include('appointments.notifications')
                 @endif
-                @if (\Auth::user()->type === 'owner')
+                @if (isBusinessOwner())
                     @include('admin.setup-warnings')
                     <li class="pc-h-item">
                         <a href="{{ route('education.index') }}" class="pc-head-link head-link-secondary me-0" title="Eğitim rehberi" aria-label="Eğitim rehberi">

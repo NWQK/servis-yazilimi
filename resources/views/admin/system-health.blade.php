@@ -10,7 +10,8 @@
 @if($backup->enabled && (!$driveContentAt || \Carbon\Carbon::parse($driveContentAt)->lt(now()->subHours(26))))<p class="text-danger mb-1">Google Drive yedeği gecikmiş veya henüz alınmamış.</p>@endif
 @if($backup->enabled && (!$lastBackup || \Carbon\Carbon::parse($lastBackup)->lt(now()->subHours(26))))<p class="text-danger mb-1">VDS yedeği gecikmiş veya henüz alınmamış.</p>@endif
 @if($backup->last_error)<p class="text-danger">{{ $backup->last_error }}</p>@endif<a href="{{ route('backups.index') }}">Yedekleri görüntüle</a></div>
-<p class="mt-3 mb-0">Başarısız kuyruk işi: <strong>{{ $failedJobs }}</strong> · Kuyruk sürücüsü: {{ config('queue.default') }}</p>
+<p class="mt-3 mb-0"><a href="{{ route('integrity.index') }}">E-posta / SMS kuyruğunu ve stok–finans kontrollerini görüntüle</a></p>
+<p class="mt-2 mb-0">Diğer başarısız kuyruk işleri: <strong>{{ $failedJobs }}</strong> · Laravel kuyruk sürücüsü: {{ config('queue.default') }}. Merkezi mesajlar ayrı kalıcı gönderim kuyruğunda işlenir.</p>
 </div></div>
 <div class="card"><div class="card-body"><h5>Son 30 günün hata özetleri</h5><p class="text-muted">Aynı hata günlük sayaçla birleştirilir. Mesaj içeriği, alıcı adresi ve gizli bağlantı bilgileri kaydedilmez.</p><div class="table-responsive"><table class="table"><thead><tr><th>Bileşen</th><th>Hata kodu</th><th>Gün</th><th>Tekrar</th><th>Son görülme</th></tr></thead><tbody>@forelse($errors as $error)<tr><td>{{ ['smtp'=>'E-posta','sms'=>'SMS','scheduler'=>'Zamanlayıcı'][$error->component] ?? $error->component }}</td><td>{{ \App\Services\SystemHealth::explanation($error->code) }}<small class="d-block text-muted">{{ $error->code }}</small></td><td>{{ $error->day }}</td><td>{{ $error->count }}</td><td>{{ $error->last_seen_at }}</td></tr>@empty<tr><td colspan="5">Kayıtlı hata yok.</td></tr>@endforelse</tbody></table></div>{{ $errors->links() }}</div></div>
 @endsection

@@ -43,6 +43,7 @@ class RegisteredUserController extends Controller
      */
     public function store(Request $request)
     {
+        abort_unless(getSettingsValByName('register_page') === 'on', 403);
         $google_recaptcha = getSettingsValByName('google_recaptcha');
         if ($google_recaptcha == 'on') {
             $validation['g-recaptcha-response'] = 'required|captcha';
@@ -66,20 +67,20 @@ class RegisteredUserController extends Controller
             'parent_id' => 1,
         ];
         $owner_email_verification = getSettingsValByName('owner_email_verification');
-        $owner = User::create($userData);
-        $userRole = Role::findByName('owner');
-        $owner->assignRole($userRole);
+        $owner = \DB::transaction(function () use ($userData) {
+            $owner = User::create($userData);
+            $owner->assignRole(Role::findByName('owner'));
+            defaultClientCreate($owner->id);
+            defaultEmployeeCreate($owner->id);
+            app(\App\Services\DefaultInventoryCatalog::class)->seed($owner->id);
+            defultTemplate($owner->id);
+            return $owner;
+        });
         Auth::login($owner);
-
-        defaultClientCreate($owner->id);
-        defaultEmployeeCreate($owner->id);
-
-        app(\App\Services\DefaultInventoryCatalog::class)->seed($owner->id);
-
-        defultTemplate($owner->id);
+        $request->session()->regenerate();
         if ($owner_email_verification == 'on') {
-            $token = sha1($owner->email);
-            $url = route('email-verification', $token);
+            $token = bin2hex(random_bytes(32));
+            $url = rtrim(config('app.url'),'/').route('email-verification', $token, false);
 
             $owner->email_verification_token = $token;
             $owner->save();
@@ -93,12 +94,14 @@ class RegisteredUserController extends Controller
             ];
             $to = $owner->email;
             $response = sendEmailVerification($to, $data);
+            $request->session()->put('pending_verification_user',$owner->id);
+            auth()->logout();
             if ($response['status'] == 'success') {
                 auth()->logout();
                 return redirect()->route('login')->with('error', __('We have sent an account verification email to your registered email inbox. Please check your email and follow the instructions to verify your account.'));
             } else {
-                $owner->delete();
-                return redirect()->back()->with('error', $response['message']);
+                // Keep a pending account recoverable; deleting only users leaves orphaned setup rows.
+                return redirect()->route('login')->with('error', 'Doğrulama e-postası gönderilemedi. Giriş ekranından yeniden gönderebilirsiniz.');
             }
         } else {
             $module = 'owner_create';

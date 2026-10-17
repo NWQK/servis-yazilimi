@@ -20,11 +20,17 @@ class PaymentController extends Controller
 
     public function subscriptionBankTransfer(Request $request, $id)
     {
-        $subscriptionId = \Illuminate\Support\Facades\Crypt::decrypt($id);
+        abort_unless(auth()->user()->type === 'owner',403);
+        try { $subscriptionId = \Illuminate\Support\Facades\Crypt::decrypt($id); }
+        catch (\Illuminate\Contracts\Encryption\DecryptException $e) { abort(404); }
+        abort_unless(is_scalar($subscriptionId) && ctype_digit((string)$subscriptionId),404);
+        $subscription = Subscription::findOrFail($subscriptionId);
         $validator = \Validator::make(
             $request->all(),
             [
-                'payment_receipt' => 'required',
+                'payment_receipt' => 'required|file|mimes:pdf,jpg,jpeg,png|max:8192',
+                'name' => 'nullable|string|max:255',
+                'coupon' => 'nullable|string|max:100',
             ]
         );
         if ($validator->fails()) {
@@ -51,8 +57,6 @@ class PaymentController extends Controller
         }
 
         $coupon = $request->coupon;
-        $subscription = Subscription::find($subscriptionId);
-
         $amount = Coupon::couponApply($subscriptionId, $coupon);
         $packageTransId = uniqid('', true);
 
@@ -77,6 +81,7 @@ class PaymentController extends Controller
     public function subscriptionManualAssignPackage(Request $request, $id, $user_id)
     {
         abort_unless(auth()->user()->type === 'super admin', 403);
+        \App\Models\User::where('type','owner')->findOrFail($user_id);
         $subscriptionId = \Illuminate\Support\Facades\Crypt::decrypt($id);
 
         $coupon = $request->coupon;
@@ -105,24 +110,24 @@ class PaymentController extends Controller
     {
         abort_unless(auth()->user()->type === 'super admin', 403);
         abort_unless(in_array($status, ['accept', 'reject'], true), 422);
-        $order = PackageTransaction::find($id);
-        if ($status == 'accept') {
-            $subscription = Subscription::find($order->subscription_id);
-            $assignPlan = assignManuallySubscription($subscription->id, $order->user_id);
-            if (!empty($order)) {
-                $order->payment_status = 'Success';
-                $order->save();
+        $initial = PackageTransaction::where('payment_type','Bank Transfer')->findOrFail($id);
+        app(\App\Services\InventoryAccounting::class)->transaction((int)$initial->user_id, function () use ($id, $status) {
+            $order = PackageTransaction::where('payment_type','Bank Transfer')->lockForUpdate()->findOrFail($id);
+            \App\Models\User::where('type','owner')->findOrFail($order->user_id);
+            $result = $status === 'accept' ? 'Success' : 'Reject';
+            if ($order->payment_status === $result) return;
+            abort_unless($order->payment_status === 'Pending', 409, 'Bu ödeme talebi daha önce sonuçlandırıldı.');
+            if ($status === 'accept') {
+                $subscription = Subscription::findOrFail($order->subscription_id);
+                assignManuallySubscription($subscription->id, $order->user_id);
+            } else {
+                $couponHistory = CouponHistory::where('package', $order->subscription_id)->where('user_id', $order->user_id)->latest()->first();
+                if ($couponHistory) $couponHistory->delete();
             }
-        } else {
-
-            $order->payment_status = 'Reject';
+            $order->payment_status = $result;
             $order->save();
-
-            $couponHistory = CouponHistory::where('package', $id)->where('user_id', $order->user_id)->latest()->first();
-            if (!empty($couponHistory)) {
-                $couponHistory->delete();
-            }
-        }
+            \App\Services\AdminAudit::record('subscription.payment_reviewed',$order->user_id,[],['transaction_id'=>$order->id,'result'=>$result]);
+        });
 
         return redirect()
             ->back()

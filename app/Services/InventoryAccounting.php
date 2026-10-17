@@ -9,25 +9,27 @@ use Illuminate\Validation\ValidationException;
 
 class InventoryAccounting
 {
-    public function counterSale(int $tenant, int $actor, int $itemId, int $quantity, string $requestKey, $expectedPrice): object
+    public function counterSale(int $tenant, int $actor, int $itemId, int $quantity, string $requestKey, $expectedPrice, string $channel='unclassified'): object
     {
-        return $this->transaction($tenant, function () use ($tenant, $actor, $itemId, $quantity, $requestKey, $expectedPrice) {
-            $existing = DB::table('counter_sales')->where('parent_id',$tenant)->where('request_key',$requestKey)->first();
+        if(!array_key_exists($channel,CashRegister::CHANNELS))$this->invalid('Geçersiz ödeme yöntemi.');
+        return $this->transaction($tenant, function () use ($tenant, $actor, $itemId, $quantity, $requestKey, $expectedPrice,$channel) {
+            $existing = DB::table('counter_sales')->where('parent_id',$tenant)->where('request_key',$requestKey)->lockForUpdate()->first();
             if ($existing) {
-                if ((int)$existing->item_id !== $itemId || (int)$existing->quantity !== $quantity || (int)$existing->created_by !== $actor || $this->money($existing->unit_price) !== $this->money($expectedPrice)) $this->invalid('Bu satış isteği daha önce farklı bilgilerle kaydedildi. Sayfayı yenileyin.');
+                if ($existing->cash_channel!==$channel || (int)$existing->item_id !== $itemId || (int)$existing->quantity !== $quantity || (int)$existing->created_by !== $actor || $this->money($existing->unit_price) !== $this->money($expectedPrice)) $this->invalid('Bu satış isteği daha önce farklı bilgilerle kaydedildi. Sayfayı yenileyin.');
                 return $existing;
             }
             $item = Item::where('parent_id',$tenant)->lockForUpdate()->findOrFail($itemId);
             if ($quantity < 1 || $quantity > 100000000 || $quantity > (int)$item->quantity) $this->invalid('Satış adedi geçersiz veya yeterli stok yok.');
             if ($this->money($expectedPrice) !== $this->money($item->sales_price)) $this->invalid('Ürünün satış fiyatı değişti. Satış ekranını yeniden açın.');
             if (!$item->inventory_key) $item->inventory_key = (string)Str::uuid();
+            IntegrityCheck::baseline($item);
             $item->quantity -= $quantity;
             $item->save();
             $movement = $this->movement($item, 'counter_sale', -$quantity, $item->sales_price);
             $id = DB::table('counter_sales')->insertGetId([
                 'parent_id'=>$tenant, 'created_by'=>$actor, 'request_key'=>$requestKey, 'inventory_key'=>$item->inventory_key,
                 'item_id'=>$item->id, 'item_title'=>$item->title, 'quantity'=>$quantity, 'unit_price'=>$this->money($item->sales_price),
-                'amount'=>$this->money($item->sales_price,$quantity), 'sale_date'=>now()->toDateString(),
+                'amount'=>$this->money($item->sales_price,$quantity), 'cash_channel'=>$channel,'sale_date'=>now('Europe/Istanbul')->toDateString(),
                 'stock_movement_id'=>$movement, 'created_at'=>now(), 'updated_at'=>now(),
             ]);
             return DB::table('counter_sales')->find($id);
@@ -64,6 +66,7 @@ class InventoryAccounting
             $item->inventory_key = $item->inventory_key ?: (string) Str::uuid();
             $item->save();
             $difference = (int) $item->quantity - $previousQuantity;
+            IntegrityCheck::baseline($item,$previousQuantity);
             if ($difference !== 0) {
                 $movement = $this->movement($item, $difference > 0 ? 'purchase' : 'adjustment', $difference, $item->purchase_price);
                 if ($difference > 0) {
@@ -217,11 +220,19 @@ class InventoryAccounting
             $item = $this->restoreItem($line);
         }
         if (!$item) $this->invalid('Ürün bulunamadı veya bu işletmeye ait değil.');
+        FinancialAmount::multiply($same ? $line->amount : $item->sales_price,$quantity);
+        if(array_key_exists('tax',$row) || !$same){
+            $raw=(string)($row['tax']??$item->taxs??'');$taxIds=$raw===''?[]:array_values(array_unique(explode(',',$raw)));
+            foreach($taxIds as $taxId)if(!ctype_digit($taxId) || (int)$taxId<1)$this->invalid('Geçersiz ürün vergisi.');
+            if(\App\Models\Tax::where('parent_id',$invoice->parent_id)->whereIn('id',$taxIds)->count()!==count($taxIds))$this->invalid('Ürün vergisi bu işletmeye ait değil veya silinmiş.');
+            $row['tax']=implode(',',$taxIds);
+        }
         if (!$item->inventory_key) {
             $item->inventory_key = (string) Str::uuid();
             $item->save();
         }
         $difference = $quantity - $oldQuantity;
+        IntegrityCheck::baseline($item);
         $tracked = $same ? (int) $line->stock_quantity : 0;
         if ($difference > 0) {
             if ((int) $item->quantity < $difference) $this->invalid($item->title . ': yeterli stok yok.');
@@ -259,6 +270,7 @@ class InventoryAccounting
     {
         if ($quantity <= 0) return;
         $item = $this->restoreItem($line);
+        IntegrityCheck::baseline($item);
         $item->quantity += $quantity;
         $item->save();
         $this->movement($item, 'return', $quantity, $line->amount, $line->id);
@@ -299,7 +311,7 @@ class InventoryAccounting
 
     private function money($price, int $quantity = 1): string
     {
-        return number_format((int) round((float) $price * 100) * $quantity / 100, 2, '.', '');
+        return FinancialAmount::multiply($price,$quantity);
     }
 
     private function invalid(string $message): void

@@ -3,6 +3,7 @@
 namespace Laravel\Breeze\Console;
 
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Foundation\Application;
 use Symfony\Component\Finder\Finder;
 
 trait InstallsBladeStack
@@ -20,7 +21,7 @@ trait InstallsBladeStack
                 '@tailwindcss/forms' => '^0.5.2',
                 'alpinejs' => '^3.4.2',
                 'autoprefixer' => '^10.4.2',
-                'postcss' => '^8.4.6',
+                'postcss' => '^8.4.31',
                 'tailwindcss' => '^3.1.0',
             ] + $packages;
         });
@@ -41,6 +42,7 @@ trait InstallsBladeStack
             $this->removeDarkClasses((new Finder)
                 ->in(resource_path('views'))
                 ->name('*.blade.php')
+                ->notPath('livewire/welcome/navigation.blade.php')
                 ->notName('welcome.blade.php')
             );
         }
@@ -61,7 +63,6 @@ trait InstallsBladeStack
         // "Dashboard" Route...
         $this->replaceInFile('/home', '/dashboard', resource_path('views/welcome.blade.php'));
         $this->replaceInFile('Home', 'Dashboard', resource_path('views/welcome.blade.php'));
-        $this->replaceInFile('/home', '/dashboard', app_path('Providers/RouteServiceProvider.php'));
 
         // Tailwind / Vite...
         copy(__DIR__.'/../../stubs/default/tailwind.config.js', base_path('tailwind.config.js'));
@@ -70,12 +71,20 @@ trait InstallsBladeStack
         copy(__DIR__.'/../../stubs/default/resources/css/app.css', resource_path('css/app.css'));
         copy(__DIR__.'/../../stubs/default/resources/js/app.js', resource_path('js/app.js'));
 
+        if (version_compare(Application::VERSION, '13.0.0', '>=')) {
+            $this->replaceInFile("import './bootstrap';", '', resource_path('js/app.js'));
+        }
+
         $this->components->info('Installing and building Node dependencies.');
 
         if (file_exists(base_path('pnpm-lock.yaml'))) {
             $this->runCommands(['pnpm install', 'pnpm run build']);
         } elseif (file_exists(base_path('yarn.lock'))) {
             $this->runCommands(['yarn install', 'yarn run build']);
+        } elseif (file_exists(base_path('bun.lock')) || file_exists(base_path('bun.lockb'))) {
+            $this->runCommands(['bun install', 'bun run build']);
+        } elseif (file_exists(base_path('deno.lock'))) {
+            $this->runCommands(['deno install', 'deno task build']);
         } else {
             $this->runCommands(['npm install', 'npm run build']);
         }

@@ -58,6 +58,7 @@
                                                 alt="" class="mr-2 avatar-sm rounded-circle user-avatar">
                                             <a href="#"
                                                 class="text-body font-weight-semibold">{{ $employee->name }}</a>
+                                            @if($employee->departed_at)<small class="d-block text-muted">Ayrıldı · erişim kapalı</small>@endif
                                         </td>
                                         <td>{{ $employee->email }} </td>
                                         <td>{{ !empty($employee->phone_number) ? $employee->phone_number : '-' }} </td>
@@ -81,9 +82,9 @@
                                                             data-title="{{ __('Edit') }}"> <i data-feather="edit"></i></a>
                                                     @endcan
                                                     @can('delete employee')
-                                                        <a class=" avtar avtar-xs btn-link-danger text-danger confirm_dialog"
+                                                        <a class=" avtar avtar-xs btn-link-danger text-danger"
                                                             data-bs-toggle="tooltip"
-                                                            data-bs-original-title="{{ __('Detete') }}" href="#"> <i
+                                                            data-bs-original-title="Personel ayrılışı" href="{{ route('employee-departures.show',$employee->id) }}"> <i
                                                                 data-feather="trash-2"></i></a>
                                                     @endcan
                                                     {!! Form::close() !!}

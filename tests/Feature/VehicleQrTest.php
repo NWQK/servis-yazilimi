@@ -338,7 +338,7 @@ class VehicleQrTest extends TestCase
             'last_service_date', 'next_service_due_date', 'insurance_details'];
     }
 
-    /** @dataProvider optionalVehicleCases */
+    #[\PHPUnit\Framework\Attributes\DataProvider('optionalVehicleCases')]
     public function test_vehicle_store_uses_qr_workflow($detailsCase)
     {
         $code = $this->ready();
@@ -517,7 +517,7 @@ class VehicleQrTest extends TestCase
         $this->get('/q/' . $qr->token)->assertOk()->assertSee('Toyota Corolla');
     }
 
-    /** @dataProvider customerEmailCases */
+    #[\PHPUnit\Framework\Attributes\DataProvider('customerEmailCases')]
     public function test_combined_client_wizard_creates_and_links_every_record_once($emailCase)
     {
         $code = $this->ready();

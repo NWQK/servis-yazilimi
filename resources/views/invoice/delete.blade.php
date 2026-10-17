@@ -1,4 +1,4 @@
-<form method="post" action="{{ route('invoice.destroy', $invoice->id) }}">
+<form method="post" action="{{ route('invoice.destroy', $invoice->id) }}" data-invoice-preview="{{ route('invoice.preview',['id'=>$invoice->id,'action'=>'delete']) }}">
 @include('invoice.operation-fields')@csrf @method('DELETE')
 <div class="modal-body"><h5>{{ invoicePrefix().$invoice->invoice_id }} numaralı fatura silinsin mi?</h5><p>Fatura ve bağlı ödeme kayıtları silinecek. Bu işlem para iadesi yapmaz.</p>
 <fieldset><legend class="h6">Fatura içerisindeki ürünler stoklara tekrar eklensin mi?</legend>

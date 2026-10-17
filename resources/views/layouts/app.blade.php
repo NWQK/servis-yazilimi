@@ -29,6 +29,7 @@
     <!-- [ Main Content ] start -->
     <div class="pc-container">
         <div class="pc-content">
+            @include('branches.context')
             <!-- [ breadcrumb ] start -->
             <div class="page-header">
                 <div class="page-block">

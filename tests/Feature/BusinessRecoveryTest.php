@@ -260,7 +260,7 @@ class BusinessRecoveryTest extends TestCase
         $staff=User::create(['name'=>'Staff','email'=>'staff@restore.test','type'=>'employee','parent_id'=>$this->owner->id,'password'=>Hash::make('old')]);
         $removed=User::create(['name'=>'Removed','email'=>'removed@restore.test','type'=>'employee','parent_id'=>$this->owner->id,'password'=>Hash::make('removed')]);
         DB::table('settings')->insert(['parent_id'=>$this->owner->id,'name'=>'smtp_password','value'=>'before']);
-        $backup=$this->backup();$removed->delete();$staff->update(['password'=>Hash::make('new'),'name'=>'Current staff','is_active'=>0]);
+        $backup=$this->backup();DB::table('users')->where('id',$removed->id)->delete();$staff->update(['password'=>Hash::make('new'),'name'=>'Current staff','is_active'=>0]);
         DB::table('settings')->where('parent_id',$this->owner->id)->where('name','smtp_password')->update(['value'=>'current']);
         $a['client']->update(['name'=>'Changed']);$password=$staff->fresh()->password;
         $job=$this->execute($this->prepared($backup,'replace'));

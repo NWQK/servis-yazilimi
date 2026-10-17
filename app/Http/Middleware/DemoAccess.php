@@ -11,6 +11,7 @@ class DemoAccess
         $user=$request->user();
         if (!$user || in_array($user->type,['super admin','client'],true)) return $next($request);
         $owner=$user->type==='owner' ? $user : User::where('type','owner')->find($user->parent_id);
+        if ($context = \App\Services\BranchContext::current()) $owner = $context['owner'];
         if (!$owner || !app(DemoLifecycle::class)->expired($owner)) return $next($request);
         $name=(string)$request->route()?->getName();
         if (str_starts_with($name,'subscriptions.') || str_starts_with($name,'subscription.')
@@ -20,6 +21,7 @@ class DemoAccess
             || (!in_array('auth',$request->route()->gatherMiddleware(),true) && !in_array($name,['home','dashboard'],true) && !$request->is('/'))) return $next($request);
         $message='14 günlük demo süreniz doldu. Devam etmek için bir paket seçin. Son girişinizden itibaren 30 gün giriş yapılmayan ücretsiz demo hesapları ve işletme kayıtları silinir.';
         if ($request->expectsJson()) return response()->json(['message'=>$message],403);
+        if ($user->type === 'branch_manager' || \App\Services\BranchContext::current()) return redirect()->route('branches.portal')->with('error','Bu şubenin demo süresi doldu. Şube sahibi paketini güncellemelidir.');
         return redirect()->route('subscriptions.index')->with('error',$message);
     }
 }

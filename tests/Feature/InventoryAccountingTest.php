@@ -30,6 +30,8 @@ class InventoryAccountingTest extends TestCase
         $this->owner = User::create(['name' => 'Shop', 'email' => 'stock@example.test', 'password' => bcrypt('test'), 'type' => 'owner', 'lang' => 'english']);
         Gate::before(fn ($user) => $user->type === 'owner' ? true : null);
         $this->actingAs($this->owner);
+        // Product forms require a real unit belonging to this business.
+        DB::table('units')->insert(['id'=>1,'unit'=>'Adet','parent_id'=>$this->owner->id]);
         DB::table('settings')->insert(['parent_id' => $this->owner->id, 'name' => 'pricing_feature', 'value' => 'off']);
         $this->stock = app(InventoryAccounting::class);
     }

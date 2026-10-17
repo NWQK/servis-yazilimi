@@ -60,8 +60,8 @@ class ItemController extends Controller
     public function sell(Request $request, int $id, InventoryAccounting $accounting)
     {
         abort_unless(auth()->user()->can('edit item') && auth()->user()->can('create invoice payment'), 403);
-        $data = $request->validate(['quantity'=>'required|integer|min:1|max:100000000', 'request_key'=>'required|uuid', 'unit_price'=>'required|numeric|min:0|max:9999999.99']);
-        $sale = $accounting->counterSale(parentId(), auth()->id(), $id, (int)$data['quantity'], $data['request_key'], $data['unit_price']);
+        $data = $request->validate(['cash_channel'=>'nullable|in:cash,card,transfer','quantity'=>'required|integer|min:1|max:100000000', 'request_key'=>'required|uuid', 'unit_price'=>'required|numeric|min:0|max:9999999.99']);
+        $sale = $accounting->counterSale(parentId(), auth()->id(), $id, (int)$data['quantity'], $data['request_key'], $data['unit_price'],$data['cash_channel']??'unclassified');
         return redirect()->route('item.index')->with('success', $sale->quantity.' adet '.$sale->item_title.' satışı kaydedildi. Tahsilat: '.priceFormat($sale->amount));
     }
 
@@ -102,7 +102,9 @@ class ItemController extends Controller
                     'category_id' => ['nullable', 'integer', Rule::exists('item_categories', 'id')->where('parent_id', parentId())],
                     'item_code' => 'required',
                     'quantity' => 'required|integer|min:0|max:100000000',
-                    'units' => 'required',
+                    'units' => ['required','integer',Rule::exists('units','id')->where('parent_id',parentId())],
+                    'taxs' => 'nullable|array',
+                    'taxs.*' => \App\Services\ServiceInput::tax(),
                     'purchase_price' => 'required|numeric|min:0|max:9999999.99',
                     'sales_price' => 'required|numeric|min:0|max:9999999.99',
                     'purchase_date' => 'required|date',
@@ -153,7 +155,9 @@ class ItemController extends Controller
                     'category_id' => ['nullable', 'integer', Rule::exists('item_categories', 'id')->where('parent_id', parentId())],
                     'item_code' => 'required',
                     'quantity' => 'required|integer|min:0|max:100000000',
-                    'units' => 'required',
+                    'units' => ['required','integer',Rule::exists('units','id')->where('parent_id',parentId())],
+                    'taxs' => 'nullable|array',
+                    'taxs.*' => \App\Services\ServiceInput::tax(),
                     'purchase_price' => 'required|numeric|min:0|max:9999999.99',
                     'sales_price' => 'required|numeric|min:0|max:9999999.99',
                     'purchase_date' => 'required|date',

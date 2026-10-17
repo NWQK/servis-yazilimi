@@ -16,9 +16,11 @@
 @endsection
 
 @section('content')
+    @if($productSale)<div class="alert alert-info"><strong>Ürün satışı faturası</strong><br>Müşteri ve ürünleri seçin. Araç veya servis kaydı gerekmez. Ürünler kaydedildiğinde stoktan düşer; tahsilat için faturadaki Ödeme al seçeneğini kullanın.</div>@endif
     <div class="row mt-1">
         {{ Form::open(['url' => 'invoice', 'method' => 'post']) }}
 @include('invoice.operation-fields')
+        <input type="hidden" name="invoice_kind" value="{{ $productSale?'product':'service' }}">
         <div class="col-sm-12">
             <div class="card">
                 <div class="card-body">
@@ -29,13 +31,13 @@
                         </div>
                         <div class="form-group col-md-2 col-lg-3">
                             {{ Form::label('invoice_date', __('Invoice Date'), ['class' => 'form-label']) }}
-                            {{ Form::date('invoice_date', null, ['class' => 'form-control', 'required' => 'required']) }}
+                            {{ Form::date('invoice_date', $productSale?now('Europe/Istanbul')->toDateString():null, ['class' => 'form-control', 'required' => 'required']) }}
                         </div>
                         <div class="form-group col-md-3 col-lg-3">
                             {{ Form::label('client', __('Client'), ['class' => 'form-label']) }}
                             {{ Form::select('client', $clients, null, ['class' => 'form-control select2', 'id' => 'client_id', 'required' => 'required']) }}
                         </div>
-                        <div class="form-group col-md-3 col-lg-3">
+                        @if(!$productSale)<div class="form-group col-md-3 col-lg-3">
                             {{ Form::label('service_id', __('Service'), ['class' => 'form-label']) }}
                             <div class="service_div">
                                 {!! Form::select('service', $services ?? [], null, [
@@ -46,6 +48,7 @@
                                 ]) !!}
                             </div>
                         </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -53,12 +56,13 @@
         <div class="col-sm-12"><div class="card"><div class="card-body">
             @include('invoice.billing_section')
             @include('invoice.discount_field')
-            <label for="invoice_external_labor" class="form-label">Harici işçilik tutarı, vergi hariç ({{ settings()['CURRENCY_SYMBOL'] }})</label>
+            @if(!$productSale)<label for="invoice_external_labor" class="form-label">Harici işçilik tutarı, vergi hariç ({{ settings()['CURRENCY_SYMBOL'] }})</label>
             <input id="invoice_external_labor" class="form-control" value="0,00" readonly>
             <div class="mt-2">İşçilik vergisi: <span id="invoice_external_labor_tax">0,00</span></div>
             <small class="text-muted">Seçilen servisten alınır ve fatura toplamına eklenir. Değiştirmek için servisi düzenleyin.</small>
+            @endif
         </div></div></div>
-        <div class="card repeater">
+        @if(!$productSale)<div class="card repeater">
             <div class="card-header">
                 <div class="d-flex align-items-center justify-content-between">
                     <h5 class="mb-0">{{ __('Service Type') }}</h5>
@@ -116,6 +120,7 @@
             </div>
         </div>
 
+        @endif
         <div class="col-sm-12">
             <div class="card">
                 <div class="card-body">
@@ -235,6 +240,7 @@
     </script>
     <script>
         $('#client_id').on('change', function() {
+            if (!$('#service').length) return;
             "use strict";
             var client_id = $(this).val();
             $('#invoice_external_labor').val('0,00');

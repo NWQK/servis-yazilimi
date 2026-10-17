@@ -7,6 +7,16 @@ use Illuminate\Support\Collection;
 
 class RolePermissions
 {
+    public static function reserved(string $name): bool
+    {
+        return in_array(strtolower(trim($name)), ['client', 'employee', 'owner', 'super admin', 'branch_manager'], true);
+    }
+
+    public static function assignableRoles()
+    {
+        return \Spatie\Permission\Models\Role::where('parent_id', parentId())
+            ->whereNotIn(\DB::raw('LOWER(TRIM(name))'), ['client', 'employee', 'owner', 'super admin', 'branch_manager']);
+    }
     public static function isClient(string $name): bool
     {
         return strtolower(trim($name)) === 'client';
@@ -15,7 +25,7 @@ class RolePermissions
     public static function label(string $name): string
     {
         return ['client' => 'Müşteri', 'employee' => 'Personel', 'owner' => 'İşletme sahibi',
-            'super admin' => 'Süper yönetici', 'manager' => 'Yönetici'][$name] ?? $name;
+            'super admin' => 'Süper yönetici', 'manager' => 'Yönetici', 'branch_manager'=>'Şube merkez yöneticisi'][$name] ?? $name;
     }
 
     public static function active(string $name, User $user): bool

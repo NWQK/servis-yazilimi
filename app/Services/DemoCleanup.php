@@ -9,6 +9,7 @@ class DemoCleanup
     public function candidates()
     {
         return User::where('type','owner')->whereNull('paid_subscription_at')
+            ->when(Schema::hasTable('business_branches'),fn($q)=>$q->whereNotExists(fn($q)=>$q->selectRaw('1')->from('business_branches')->whereColumn('owner_id','users.id')))
             ->when(Schema::hasTable('business_recovery_locks'),fn($q)=>$q->whereNotExists(fn($q)=>$q->selectRaw('1')->from('business_recovery_locks')->whereColumn('owner_id','users.id')))
             ->whereIn('subscription',DB::table('subscriptions')->where('vehicle_limit',50)->select('id'))
             ->whereNotNull('demo_expires_at')->where('demo_expires_at','<=',now())

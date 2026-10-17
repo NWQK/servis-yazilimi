@@ -196,7 +196,6 @@ return [
         App\Providers\RouteServiceProvider::class,
 
         /* Setup Wizard */
-        RachidLaasri\LaravelInstaller\Providers\LaravelInstallerServiceProvider::class,
         Anhskohbo\NoCaptcha\NoCaptchaServiceProvider::class,
         
         Lab404\Impersonate\ImpersonateServiceProvider::class,

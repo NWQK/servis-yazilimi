@@ -21,7 +21,7 @@ return new class extends Migration {
         });
         Schema::create('system_health', function(Blueprint $t){
             $t->string('component',50)->primary(); $t->string('status',20); $t->string('code',80)->nullable();
-            $t->unsignedInteger('consecutive_failures')->default(0); $t->timestamp('last_success_at')->nullable(); $t->timestamp('last_failure_at')->nullable(); $t->timestamp('checked_at');
+            $t->unsignedInteger('consecutive_failures')->default(0); $t->timestamp('last_success_at')->nullable(); $t->timestamp('last_failure_at')->nullable(); $t->timestamp('checked_at')->useCurrent();
         });
         Schema::create('system_health_errors', function(Blueprint $t){
             $t->id(); $t->string('component',50); $t->string('code',80); $t->date('day'); $t->unsignedInteger('count')->default(1);

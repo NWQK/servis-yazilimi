@@ -12,6 +12,10 @@ use Illuminate\Support\Facades\DB;
 
 class ReportController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+    }
     public function service(Request $request)
     {
 
@@ -173,7 +177,7 @@ public function incomeByMonth($year = null)
     while ($currentdate <= $end) {
         $month = date('m', $currentdate);
         $year = date('Y', $currentdate);
-        $payment['label'][] = \Carbon\Carbon::createFromTimestamp($currentdate)->locale('tr')->translatedFormat('M Y');
+        $payment['label'][] = \Carbon\Carbon::createFromTimestamp($currentdate, config('app.timezone'))->locale('tr')->translatedFormat('M Y');
 
         $incomeQuery = InvoicePayment::accounted()->join('invoices', 'invoices.id', '=', 'invoice_payments.invoice_id')
             ->whereMonth('payment_date', $month)

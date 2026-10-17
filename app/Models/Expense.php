@@ -16,6 +16,7 @@ class Expense extends Model
         'receipt',
         'notes',
         'parent_id',
+        'cash_channel',
     ];
 
     public function vehicles()

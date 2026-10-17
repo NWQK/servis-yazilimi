@@ -64,9 +64,11 @@ class ExporterTest extends BaseTestCase
         $this->removeJsonLanguageFiles();
 
         $view = "{{ __('name__') }} " .
+            "{{ trans_choice('name_trans_choice|names_trans_choice', 1) }} " .
             "@lang('name_lang') " .
             "{{ _t('name_t') }} " .
             "{{ __('name__space_end' ) }} " .
+            "{{ trans_choice( 'name_trans_choice_space|names_trans_choice_space' , 2) }} " .
             "@lang( 'name_lang_space_start') " .
             "{{ _t( 'name_t_space_both' ) }} " .
             "{{ _t(  'name_t_double_space'  ) }}";
@@ -81,9 +83,11 @@ class ExporterTest extends BaseTestCase
 
         $expected = [
             'name__' => 'name__',
+            'name_trans_choice|names_trans_choice' => 'name_trans_choice|names_trans_choice',
             'name_lang' => 'name_lang',
             'name_t' => 'name_t',
             'name__space_end' => 'name__space_end',
+            'name_trans_choice_space|names_trans_choice_space' => 'name_trans_choice_space|names_trans_choice_space',
             'name_lang_space_start' => 'name_lang_space_start',
             'name_t_space_both' => 'name_t_space_both',
             'name_t_double_space' => 'name_t_double_space',
@@ -99,6 +103,8 @@ class ExporterTest extends BaseTestCase
         $view = <<<EOD
 {{ __("He said \"WOW\".") }}
 {{ __('We\'re amazing!') }}
+{{ trans_choice("He found \"one item\"|They found \"many items\"", 1) }}
+{{ trans_choice('I\'m \"one\"|We\'re \"many\"', 2) }}
 @lang("You're pretty great!")
 @lang("You\"re pretty great!")
 {{ __("Therefore, we automatically look for columns named something like \"Last name\", \"First name\", \"E-mail\" etc.") }}
@@ -115,6 +121,8 @@ EOD;
         $expected = [
             'He said \"WOW\".' => 'He said \"WOW\".',
             'We\'re amazing!' => 'We\'re amazing!',
+            'He found \"one item\"|They found \"many items\"' => 'He found \"one item\"|They found \"many items\"',
+            'I\'m \"one\"|We\'re \"many\"' => 'I\'m \"one\"|We\'re \"many\"',
             "You're pretty great!" => "You're pretty great!",
             'You\"re pretty great!' => 'You\"re pretty great!',
             'Therefore, we automatically look for columns named something like \"Last name\", \"First name\", \"E-mail\" etc.' =>
@@ -314,6 +322,8 @@ EOD;
             'name1_en' => 'name1_es',
             'name2_en' => 'name2_es',
             'name3_en' => 'name3_es',
+            // Testing two-letter persistent strings.
+            'MO' => 'MO_translated',
         ];
 
         $content = json_encode($existing_translations);
@@ -322,7 +332,7 @@ EOD;
 
         // 2. Create a file with the keys of any strings which should persist even if they are not contained in the views.
 
-        $persistentContent = json_encode(['name2_en']);
+        $persistentContent = json_encode(['name2_en', 'MO']);
         $this->writeToTranslationFile(Exporter::PERSISTENT_STRINGS_FILENAME_WO_EXT, $persistentContent);
 
         // 3. Create a test view only containing one of the non-persistent strings, and a new string.
@@ -341,6 +351,8 @@ EOD;
             'name1_en' => 'name1_es',
             'name2_en' => 'name2_es',
             'name4_en' => 'name4_en',
+            // Testing two-letter persistent strings.
+            'MO' => 'MO_translated',
         ];
 
         $this->assertEquals($expected, $actual);
@@ -534,6 +546,52 @@ EOD;
         $expected = [
             'STATIC TEXT TO TRANSLATE' => 'STATIC TEXT TO TRANSLATE',
             'PUBLIC TEXT TO TRANSLATE' => 'PUBLIC TEXT TO TRANSLATE',
+        ];
+
+        $this->assertEquals($expected, $actual);
+    }
+
+    public function testNamedParameterSyntax()
+    {
+        $this->removeJsonLanguageFiles();
+
+        $view = "{{ trans_choice(key: 'One item|Many items', number: 1) }} " .
+            "{{ __(key: 'Simple message') }} " .
+            "{{ trans_choice(\n    key: 'Single line|Multiple lines',\n    number: 5,\n    replace: []\n) }} " .
+            "{{ __(key: 'Another message', replace: ['name' => 'John']) }}";
+
+        $this->createTestView($view);
+
+        $this->artisan('translatable:export', ['lang' => 'es'])
+            ->expectsOutput('Translatable strings have been extracted and written to the es.json file.')
+            ->assertExitCode(0);
+
+        $actual = $this->getTranslationFileContent('es');
+        $expected = [
+            'One item|Many items' => 'One item|Many items',
+            'Simple message' => 'Simple message',
+            'Single line|Multiple lines' => 'Single line|Multiple lines',
+            'Another message' => 'Another message',
+        ];
+
+        $this->assertEquals($expected, $actual);
+    }
+
+    public function testExactNamedParameterPattern()
+    {
+        $this->removeJsonLanguageFiles();
+
+        $view = "{{ trans_choice(\n  key: 'Some string|Some strings',\n  number: 123,\n  replace: [],\n  locale: \n) }}";
+
+        $this->createTestView($view);
+
+        $this->artisan('translatable:export', ['lang' => 'es'])
+            ->expectsOutput('Translatable strings have been extracted and written to the es.json file.')
+            ->assertExitCode(0);
+
+        $actual = $this->getTranslationFileContent('es');
+        $expected = [
+            'Some string|Some strings' => 'Some string|Some strings',
         ];
 
         $this->assertEquals($expected, $actual);

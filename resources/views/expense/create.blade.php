@@ -15,6 +15,7 @@
         </div>
     @endif
     <div class="row">
+        <div class="form-group col-md-12"><label for="expense-channel" class="form-label">Ödeme yöntemi</label>{{ Form::select('cash_channel',\App\Services\CashRegister::CHANNELS,'unclassified',['id'=>'expense-channel','class'=>'form-control']) }}<small>Nakit kasadan ödeme yapılmışsa Nakit seçin. Belirtilmemiş giderler nakit kasaya dahil edilmez.</small></div>
         <div class="form-group col-md-6">
             {{ Form::label('title', __('Title'), ['class' => 'form-label']) }}
             {{ Form::text('title', null, ['class' => 'form-control', 'placeholder' => __('Enter expense title'), 'required' => 'required']) }}

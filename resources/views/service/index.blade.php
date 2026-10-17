@@ -39,7 +39,7 @@
                                     <th>{{ __('Vehicle') }}</th>
                                     <th>{{ __('Client') }}</th>
                                     <th>{{ __('Duration') }}</th>
-                                    @if (\Auth::user()->type == 'owner' || \Auth::user()->type == 'manager')
+                                    @if (isBusinessOwner() || \Auth::user()->type == 'manager')
                                         <th>{{ __('Assign') }}</th>
                                     @endif
                                     <th>{{ __('Status') }}</th>
@@ -64,7 +64,7 @@
                                             {{ timeFormat($service->service_time) }} <br>
                                             {{ dateFormat($service->due_date) }} - {{ timeFormat($service->due_time) }}
                                         </td>
-                                        @if (\Auth::user()->type == 'owner' || \Auth::user()->type == 'manager')
+                                        @if (isBusinessOwner() || \Auth::user()->type == 'manager')
                                             <td>{{ !empty($service->assigns) ? $service->assigns->name : '-' }} </td>
                                         @endif
                                         <td>

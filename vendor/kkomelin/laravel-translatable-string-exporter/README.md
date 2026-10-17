@@ -1,7 +1,7 @@
 # Translatable String Exporter for Laravel
 
 [![Tests Status Badge](https://github.com/kkomelin/laravel-translatable-string-exporter/actions/workflows/run-tests.yml/badge.svg)](https://github.com/kkomelin/laravel-translatable-string-exporter/actions/workflows/run-tests.yml)
-[![PHPStan Status Badge](https://github.com/kkomelin/laravel-translatable-string-exporter/actions/workflows/phpstan.yml.yml/badge.svg)](https://github.com/kkomelin/laravel-translatable-string-exporter/actions/workflows/phpstan.yml.yml)
+[![PHPStan Status Badge](https://github.com/kkomelin/laravel-translatable-string-exporter/actions/workflows/phpstan.yml/badge.svg)](https://github.com/kkomelin/laravel-translatable-string-exporter/actions/workflows/phpstan.yml)
 [![Code Styles Check Badge](https://github.com/kkomelin/laravel-translatable-string-exporter/actions/workflows/php-cs-fixer.yml/badge.svg)](https://github.com/kkomelin/laravel-translatable-string-exporter/actions/workflows/php-cs-fixer.yml)
 
 You can use `__('Translate me')` or `@lang('Translate me')` with translations in JSON files to translate strings.
@@ -14,6 +14,7 @@ Translatable String Exporter is aimed to collect all translatable strings of an 
 | `<=1.15.1` | `5.6`        |
 | `>1.15.1`  | `^7.2\|^8.0` |
 | `>1.18.0`  | `^8.0`       |
+| `>1.25.0`  | `^8.2`       |
 
 _Even though we drop support for PHP versions in minor releases, Composer ensures that users with previous versions of PHP don't get not-yet-supported PHP code._
 

@@ -1,6 +1,7 @@
 <form method="post" action="{{ route('item.sell', $item->id) }}">@csrf
 <div class="modal-body">
     <h5>{{ $item->title }}</h5><p>Mevcut stok: <strong>{{ $item->quantity }}</strong> · Birim satış fiyatı: <strong>{{ priceFormat($item->sales_price) }}</strong></p>
+    <label for="sale-channel" class="form-label">Ödeme yöntemi</label><select id="sale-channel" name="cash_channel" class="form-control mb-3" required><option value="cash">Nakit</option><option value="card">Kart</option><option value="transfer">Havale / EFT</option></select>
     <p>Satış fiyatı × adet tutarı tahsil edilmiş gelir olarak kaydedilir. Ayrıca vergi eklenmez. Fatura veya müşteri kaydı oluşturulmaz.</p>
     <input type="hidden" name="request_key" value="{{ $requestKey }}"><input type="hidden" name="unit_price" value="{{ $item->sales_price }}">
     <label for="counter-quantity" class="form-label">Satılacak adet</label><input class="form-control" id="counter-quantity" type="number" name="quantity" min="1" max="{{ $item->quantity }}" value="1" step="1" required data-counter-price="{{ (int)round($item->sales_price * 100) }}">

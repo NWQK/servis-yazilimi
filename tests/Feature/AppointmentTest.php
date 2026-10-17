@@ -404,7 +404,7 @@ class AppointmentTest extends TestCase
         return $matches[1];
     }
 
-    /** @dataProvider invalidNationalPhones */
+    #[\PHPUnit\Framework\Attributes\DataProvider('invalidNationalPhones')]
     public function test_booking_phone_requires_ten_national_mobile_digits($phone)
     {
         $this->postJson($this->profile->publicUrl(), $this->data(['phone' => $phone]))->assertStatus(422)->assertJsonValidationErrors('phone');
@@ -562,7 +562,7 @@ class AppointmentTest extends TestCase
         $this->assertNotSame(str_repeat('a', 32), DB::table('appointment_sms_settings')->value('api_key'));
     }
 
-    /** @dataProvider providerResponses */
+    #[\PHPUnit\Framework\Attributes\DataProvider('providerResponses')]
     public function test_provider_failure_and_uncertainty($body, $http, $status, $error)
     {
         \Illuminate\Support\Facades\Http::swap(new \Illuminate\Http\Client\Factory());

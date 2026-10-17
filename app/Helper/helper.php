@@ -281,12 +281,25 @@ if (!function_exists('priceFormat')) {
 if (!function_exists('parentId')) {
     function parentId()
     {
+        if ($context = \App\Services\BranchContext::current()) return (int) $context['owner']->id;
+        if (auth()->user()?->type === 'branch_manager') return (int) auth()->id();
         if (\Auth::user()->type == 'owner' || \Auth::user()->type == 'super admin') {
             return \Auth::user()->id;
         } else {
             return \Auth::user()->parent_id;
         }
     }
+}
+
+function isBusinessOwner(): bool
+{
+    return auth()->user()?->type === 'owner'
+        || (auth()->user()?->type === 'branch_manager' && \App\Services\BranchContext::current() !== null);
+}
+
+function isAssignedEmployee(): bool
+{
+    return auth()->user()?->type === 'employee' && \App\Services\BranchContext::current() === null;
 }
 // assignSubscription
 if (!function_exists('assignSubscription')) {
@@ -357,7 +370,7 @@ if (!function_exists('SetLimit')) {
     {
         if ($subscription->vehicle_limit !== null) {
             // Vehicle packages do not limit or deactivate customer and staff accounts.
-            User::where('parent_id', $id)->whereNotIn('type', ['super admin', 'owner'])->update(['is_active' => 1]);
+            User::where('parent_id', $id)->whereNotIn('type', ['super admin', 'owner'])->whereNull('departed_at')->whereNull('client_archived_at')->update(['is_active' => 1]);
             return;
         }
         // set user_limit
@@ -370,7 +383,7 @@ if (!function_exists('SetLimit')) {
         // set employee
         $employee_limit = $subscription->employee_limit;
         $employee = User::where('parent_id', '=', $id)->whereIn('type', ['employee'])->update(['is_active' => 0]);
-        $employee = User::where('parent_id', '=', $id)->whereIn('type', ['employee'])->take($employee_limit)->get()->each(function ($employee) {
+        $employee = User::where('parent_id', '=', $id)->whereIn('type', ['employee'])->whereNull('departed_at')->take($employee_limit)->get()->each(function ($employee) {
             $employee->update(['is_active' => 1]);
         });
 
@@ -856,6 +869,11 @@ if (!function_exists('sendEmail')) {
 if (!function_exists('commonEmailSend')) {
     function commonEmailSend($to, $datas)
     {
+        if (\App\Services\CommunicationOutbox::asynchronous()) {
+            if (!\App\Services\CentralEmail::enabled()) return ['status'=>'success','skipped'=>true];
+            app(\App\Services\CommunicationOutbox::class)->email((string)$to,$datas,'common',Auth::check()?(int)parentId():null);
+            return ['status'=>'success','message'=>'E-posta gönderim kuyruğuna alındı.'];
+        }
         if (\DB::transactionLevel()>0) {
             \DB::afterCommit(fn()=>commonEmailSend($to,$datas));
             return ['status'=>'success','message'=>'E-posta işlemin kaydedilmesinden sonra gönderilecek.'];
@@ -885,6 +903,11 @@ if (!function_exists('emailSettings')) { function emailSettings($id) { return ap
 if (!function_exists('sendEmailVerification')) {
     function sendEmailVerification($to, $data)
     {
+        if (\App\Services\CommunicationOutbox::asynchronous()) {
+            if (!\App\Services\CentralEmail::enabled()) return ['status'=>'success','skipped'=>true];
+            app(\App\Services\CommunicationOutbox::class)->email((string)$to,$data,'verification',null,null,[],now()->addMinutes(60));
+            return ['status'=>'success','message'=>'Doğrulama e-postası gönderim kuyruğuna alındı.'];
+        }
         if (!\App\Services\CentralEmail::enabled()) return ['status'=>'success', 'skipped'=>true, 'message'=>'Merkezi e-posta sistemi kapalı; gönderim yapılmadı.'];
         try {
             $data['settings'] = emailSettings(0);

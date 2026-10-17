@@ -8,6 +8,7 @@ class VehicleRegistrationSms
 {
     public function send(Vehicle $vehicle): void
     {
+        if(CommunicationOutbox::asynchronous() && DB::transactionLevel()===0){DB::transaction(fn()=>$this->send($vehicle));return;}
         try {
             $settings = AppointmentSmsSetting::central();
             if (!$settings->enabled || !$settings->vehicle_sms_enabled) return;
@@ -23,7 +24,7 @@ class VehicleRegistrationSms
                 $message->update(['status'=>'failed','error_code'=>!$phone ? 'invalid_phone' : (!$link ? 'missing_link' : 'sms_disabled')]);
                 return;
             }
-            $result = app(AppointmentSmsGateway::class)->send($phone,$body);
+            $result = app(AppointmentSmsGateway::class)->send($phone,$body,['kind'=>'vehicle','id'=>$message->id,'owner'=>$vehicle->parent_id]);
             $message->update($result + ['sent_at'=>($result['status']==='accepted' ? now() : null)]);
         } catch (\Throwable $error) {
             // Never roll back vehicle creation or resend an uncertain delivery automatically.

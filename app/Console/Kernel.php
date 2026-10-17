@@ -16,6 +16,8 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->command('platform:heartbeat')->everyMinute()->withoutOverlapping();
+        $schedule->command('communications:work')->everyMinute()->withoutOverlapping(10);
+        $schedule->command('platform:check-integrity')->dailyAt('03:10')->timezone('Europe/Istanbul')->withoutOverlapping(180);
         $schedule->command('platform:recover')->everyMinute()->withoutOverlapping(180);
         $schedule->command('platform:purge-history')->hourlyAt(20)->between('03:00','06:59')->withoutOverlapping();
         $schedule->command('platform:backup')->dailyAt('23:55')->timezone('Europe/Istanbul')->withoutOverlapping(180);

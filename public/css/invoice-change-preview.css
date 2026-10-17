@@ -1,0 +1,1 @@
+.invoice-preview-dialog{border:0;border-top:4px solid #d50019;border-radius:14px;padding:24px;width:min(560px,calc(100vw - 24px));max-height:85vh;overflow:auto;color:#171717;background:#fff;box-shadow:0 16px 60px #0004}.invoice-preview-dialog::backdrop{background:#0008}.invoice-preview-dialog p{overflow-wrap:anywhere}

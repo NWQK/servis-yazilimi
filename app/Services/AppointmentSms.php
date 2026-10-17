@@ -50,9 +50,11 @@ class AppointmentSms
 
     private function sendCode(AppointmentSmsChallenge $challenge, AppointmentProfile $profile, string $code): void
     {
+        if(CommunicationOutbox::asynchronous() && DB::transactionLevel()===0){DB::transaction(fn()=>$this->sendCode($challenge,$profile,$code));return;}
         $settings = AppointmentSmsSetting::central();
         $body = $settings->renderMessage($settings->verification_template, ['{kod}' => $code, '{isletme}' => $profile->display_name]);
-        $result = app(AppointmentSmsGateway::class)->send($challenge->payload['phone'], $body);
+        $result = app(AppointmentSmsGateway::class)->send($challenge->payload['phone'], $body,
+            ['kind'=>'challenge','id'=>$challenge->id,'business_owner'=>$profile->owner_id,'code_hash'=>$challenge->code_hash,'expires'=>$challenge->expires_at->toDateTimeString()]);
         $challenge->update(['send_status' => $result['status'], 'error_code' => $result['error_code'] ?? null, 'provider_sid' => $result['provider_sid'] ?? null]);
     }
 
@@ -113,6 +115,7 @@ class AppointmentSms
 
     public function dispatchApproval(int $appointmentId): ?AppointmentSmsMessage
     {
+        if(CommunicationOutbox::asynchronous() && DB::transactionLevel()===0)return DB::transaction(fn()=>$this->dispatchApproval($appointmentId));
         $message = AppointmentSmsMessage::where('appointment_id', $appointmentId)->first();
         if (!$message) return null;
         if (!AppointmentSmsSetting::central()->enabled) return $message;
@@ -123,7 +126,7 @@ class AppointmentSms
             $message->update(['status' => 'cancelled']);
             return $message;
         }
-        $result = app(AppointmentSmsGateway::class)->send($message->recipient, $message->body);
+        $result = app(AppointmentSmsGateway::class)->send($message->recipient, $message->body,['kind'=>'approval','id'=>$message->id,'business_owner'=>$appointment->profile->owner_id]);
         $message->update($result + ['sent_at' => $result['status'] === 'accepted' ? now() : null]);
         return $message;
     }

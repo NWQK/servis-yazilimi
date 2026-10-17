@@ -12,6 +12,7 @@ use App\Models\ServiceItem;
 use App\Models\ServiceType;
 use App\Models\Tax;
 use App\Models\User;
+use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Crypt;
@@ -27,10 +28,13 @@ class QuotationController extends Controller
                 $q->where('parent_id',parentId())->where('client',$request->input($clientField))->whereNull('deleted_at'))],
             'types'=>'sometimes|array|max:100',
             'types.*.service_type'=>\App\Services\ServiceInput::type(),
+              'types.*.rate'=>'required|numeric|min:0|max:999999999.99',
             'types.*.tax'=>'nullable|array','types.*.tax.*'=>\App\Services\ServiceInput::tax(),
             'types.*.id'=>['nullable','integer',\Illuminate\Validation\Rule::exists('quotation_services','id')->where('parent_id',parentId())->where('quotation_id',$quotationId??0)],
             'items'=>'sometimes|array|max:100',
             'items.*.item'=>['required','integer',\Illuminate\Validation\Rule::exists('items','id')->where('parent_id',parentId())],
+              'items.*.quantity'=>'required|integer|min:1|max:100000000',
+              'items.*.amount'=>'required|numeric|min:0|max:999999999.99',
             'items.*.tax'=>'nullable|array','items.*.tax.*'=>\App\Services\ServiceInput::tax(),
             'items.*.id'=>['nullable','integer',\Illuminate\Validation\Rule::exists('quotation_items','id')->where('parent_id',parentId())->where('quotation_id',$quotationId??0)],
         ]);
@@ -101,7 +105,7 @@ class QuotationController extends Controller
             $quotation->parent_id = parentId();
             $quotation->save();
 
-            $quotationTypes = $request->types;
+            $quotationTypes = $request->input('types',[]);
 
             for ($i = 0; $i < count($quotationTypes); $i++) {
                 $serviceType = new QuotationService();
@@ -114,7 +118,7 @@ class QuotationController extends Controller
                 $serviceType->save();
             }
 
-            $quotationItems = $request->items;
+            $quotationItems = $request->input('items',[]);
             for ($i = 0; $i < count($quotationItems); $i++) {
                 $items = new QuotationItem();
                 $items->quotation_id = $quotation->id;
@@ -308,16 +312,18 @@ class QuotationController extends Controller
         abort_unless(auth()->user()->type!=='client' && auth()->user()->can('convert quotation'),403);
         Quotation::where('parent_id',parentId())->findOrFail($id);
         $request->validate(['assign'=>\App\Services\ServiceInput::assignee(),'types'=>'sometimes|array|max:100',
+            'status'=>['required',\Illuminate\Validation\Rule::in(array_keys(Service::status()))],
+            'types.*.rate'=>'required|numeric|min:0|max:999999999.99',
             'types.*.service_type'=>\App\Services\ServiceInput::type(),
             'types.*.tax'=>'nullable|array','types.*.tax.*'=>\App\Services\ServiceInput::tax()]);
         $validator = \Validator::make(
             $request->all(),
             [
                 'assign' => 'required',
-                'service_date' => 'required',
-                'service_time' => 'required',
-                'due_date' => 'required',
-                'due_time' => 'required',
+                'service_date' => 'required|date_format:Y-m-d',
+                'service_time' => 'required|date_format:H:i,H:i:s',
+                'due_date' => 'required|date_format:Y-m-d',
+                'due_time' => 'required|date_format:H:i,H:i:s',
 
 
             ]
@@ -327,7 +333,10 @@ class QuotationController extends Controller
             return redirect()->back()->with('error', $messages->first());
         }
 
-        $quotation = Quotation::where('parent_id',parentId())->findOrFail($id);
+        $quotation = Quotation::where('parent_id',parentId())->lockForUpdate()->findOrFail($id);
+        abort_if($quotation->convert_service,409,'Bu teklif daha önce servise dönüştürülmüş.');
+        Vehicle::where('parent_id',parentId())->where('client',$quotation->client_id)->findOrFail($quotation->vehicle_id);
+        User::where('parent_id',parentId())->where('type','client')->whereNull('client_archived_at')->findOrFail($quotation->client_id);
         $quotation->convert_service = 1;
         $quotation->save();
 
@@ -346,7 +355,7 @@ class QuotationController extends Controller
         $service->parent_id = parentId();
         $service->save();
 
-        $serviceTypes = $request->types;
+        $serviceTypes = $request->input('types',[]);
 
         for ($i = 0; $i < count($serviceTypes); $i++) {
             $serviceItem = new ServiceItem();

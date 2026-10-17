@@ -43,7 +43,7 @@ class ClientController extends Controller
         $qrCodes = VehicleQrCode::where('parent_id', parentId())->available()->whereNotNull('printed_at')->orderBy('id')->get();
         $types = VehicleType::where('parent_id', parentId())->get()->pluck('type', 'id');
         $types->prepend(__('Select Brand'), '');
-        $employees = User::where('parent_id', parentId())->where('type', 'employee')->get()->pluck('name', 'id');
+        $employees = User::where('parent_id', parentId())->where('type', 'employee')->where('is_active',1)->get()->pluck('name', 'id');
         $employees->prepend(__('Select Employee'), '');
         $status = Service::status();
         $taxes = Tax::where('parent_id', parentId())->pluck('title', 'id');
@@ -348,8 +348,8 @@ class ClientController extends Controller
         abort_unless(auth()->user()->can('edit client'),403);
         $user = User::where('parent_id',parentId())->where('type','client')->findOrFail($id);
         $client = $user->clients;
-        $vehicle = Vehicle::where('client', $user->id)->first();
-        $service = Service::where('client', $user->id)->with('types')->first();
+        $vehicle = Vehicle::where('parent_id',parentId())->where('client', $user->id)->first();
+        $service = Service::where('parent_id',parentId())->where('client', $user->id)->with('types')->first();
         if (!$vehicle || !$service) return view('client.simple',['customer'=>$user,'profile'=>$client]);
         $gender = User::genderList();
         $types = VehicleType::where('parent_id', parentId())->pluck('type', 'id');
@@ -372,6 +372,7 @@ class ClientController extends Controller
             User::whereKey(parentId())->lockForUpdate()->firstOrFail();
             User::where('parent_id',parentId())->where('type','client')->findOrFail($id);
             $editingVehicle=Vehicle::where('parent_id',parentId())->where('client',$id)->first();
+            $editingService=Service::where('parent_id',parentId())->where('client',$id)->first();
             if ($editingVehicle) \App\Services\ChassisNumber::validateForm($request,$editingVehicle);
             $request->validate(['external_labor_amount' => \App\Services\ExternalLabor::RULE, 'external_labor_tax_id' => \App\Services\ExternalLabor::taxRules()]);
             if (\Auth::user()->can('edit client')) {
@@ -397,7 +398,7 @@ class ClientController extends Controller
                     'next_service_due_date' => 'nullable|date',
                     'insurance_details' => 'nullable|string',
                     'vehicle_notes' => 'nullable|string',
-                    'assign'        => \App\Services\ServiceInput::assignee(),
+                    'assign'        => \App\Services\ServiceInput::assignee($editingService),
                     'types'=>'sometimes|array|max:100',
                     'types.*.service_type'=>\App\Services\ServiceInput::type(),
                     'types.*.tax'=>'nullable|array',
@@ -407,7 +408,7 @@ class ClientController extends Controller
                     'service_time'  => 'nullable|date_format:H:i,H:i:s',
                     'due_date'      => 'nullable|date_format:Y-m-d',
                     'due_time'      => 'nullable|date_format:H:i,H:i:s',
-                    'status'        => 'required',
+                    'status'        => ['required',Rule::in(array_keys(Service::status()))],
                 ]);
                 if ($validator->fails()) {
                     return redirect()->back()->withErrors($validator)->withInput();
@@ -418,7 +419,7 @@ class ClientController extends Controller
                     'email'        => $request->filled('email') ? $request->email : null,
                     'phone_number' => $request->phone_number,
                 ]);
-                $client = Client::where('user_id', $id)->first();
+                $client = Client::where('parent_id',parentId())->where('user_id', $id)->first();
                 if ($client) {
                     $client->update([
                         'state'     => $request->state,
@@ -428,7 +429,7 @@ class ClientController extends Controller
                         'notes'     => $request->notes,
                     ]);
                 }
-                $vehicle = Vehicle::where('client', $id)->first();
+                $vehicle = Vehicle::where('parent_id',parentId())->where('client', $id)->first();
                 if ($vehicle) {
                     $serviceMileageChanged=$request->filled('mileage') && (int)$request->mileage !== (int)$vehicle->mileage;
                     $historyIdentityChanged=\App\Services\ChassisNumber::normalize($vehicle->chassis_no)!==\App\Services\ChassisNumber::normalize($request->chassis_no);
@@ -451,7 +452,7 @@ class ClientController extends Controller
                     ]);
                 }
                 if ($vehicle && $request->exists('history_public')) app(\App\Services\PublicVehicleHistory::class)->share($vehicle,!$historyIdentityChanged && $request->boolean('history_public'));
-                $service = Service::where('client', $id)->first();
+                $service = Service::where('parent_id',parentId())->where('client', $id)->first();
                 if ($service) {
                     abort_unless((int) $service->parent_id === (int) parentId(), 403);
                     if ($request->exists('external_labor_amount') || $request->exists('external_labor_tax_id')) app(\App\Services\ExternalLabor::class)->update($service, $request->exists('external_labor_amount') ? $request->external_labor_amount : $service->external_labor_amount, $request->external_labor_tax_id, $request->exists('external_labor_tax_id'));

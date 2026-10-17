@@ -21,7 +21,7 @@ class Verify2FA
             return $next($request);
         }
 
-        if (Auth::user()->type === 'owner' && Auth::user()->twofa_required && !Auth::user()->twofa_secret) {
+        if (in_array(Auth::user()->type, ['owner','branch_manager'], true) && Auth::user()->twofa_required && !Auth::user()->twofa_secret) {
             if ($request->is('logout') && $request->isMethod('post')) return $next($request);
             session()->flash('tab','2FA');
             if (($request->is('settings') && $request->isMethod('get'))

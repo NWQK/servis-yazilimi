@@ -22,6 +22,7 @@ class ServiceTypeController extends Controller
 
     public function create()
     {
+        abort_unless(auth()->user()->can('create service type'), 403);
         $taxes = Tax::where('parent_id', parentId())
             ->get()
             ->mapWithKeys(function ($tax) {
@@ -38,6 +39,9 @@ class ServiceTypeController extends Controller
                 $request->all(),
                 [
                     'type' => 'required',
+                    'rate' => 'required|numeric|min:0|max:999999999.99',
+                    'tax' => 'nullable|array',
+                    'tax.*' => \App\Services\ServiceInput::tax(),
                 ]
             );
             if ($validator->fails()) {
@@ -67,12 +71,13 @@ class ServiceTypeController extends Controller
 
     public function edit($id)
     {
+        abort_unless(auth()->user()->can('edit service type'), 403);
         $taxes = Tax::where('parent_id', parentId())
             ->get()
             ->mapWithKeys(function ($tax) {
                 return [$tax->id => $tax->title . ' (' . $tax->rate . '%)'];
             });
-        $serviceType = ServiceType::find($id);
+        $serviceType = ServiceType::where('parent_id', parentId())->findOrFail($id);
         $tax = !empty($serviceType->tax) ? explode(',', $serviceType->tax) : '-';
         return view('service_type.edit', compact('serviceType', 'taxes', 'tax'));
     }
@@ -85,6 +90,9 @@ class ServiceTypeController extends Controller
                 $request->all(),
                 [
                     'type' => 'required',
+                    'rate' => 'required|numeric|min:0|max:999999999.99',
+                    'tax' => 'nullable|array',
+                    'tax.*' => \App\Services\ServiceInput::tax(),
                 ]
             );
             if ($validator->fails()) {

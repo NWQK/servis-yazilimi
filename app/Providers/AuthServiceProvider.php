@@ -25,6 +25,19 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
+        Gate::before(function ($user, $ability) {
+            if ($user->type === 'employee' && ($context=\App\Services\BranchContext::current())) {
+                return $context['grant'] && \App\Services\BranchPermissions::ability($context['grant'],$ability);
+            }
+            if ($user->type !== 'branch_manager') return null;
+            if (in_array($ability, ['manage account settings','manage password settings','manage 2FA settings'], true)) return true;
+            $context = \App\Services\BranchContext::current();
+            if (!$context || !\App\Services\BranchContext::businessRoute((string)request()->route()?->getName())) return false;
+            // Use the selected shop's permissions; never give platform permissions to a central account.
+            if (preg_match('/user|role|pricing|payment settings|email|notification|sms|openai|n8n|seo|recaptcha|coupon|home page|auth page|footer|FAQ|Page/i', $ability)) return false;
+            return $context['owner']->can($ability);
+        });
+
         \Illuminate\Support\Facades\Auth::provider('accounts', function ($app, array $config) {
             return new \App\Auth\AccountUserProvider($app['hash'], $config['model']);
         });

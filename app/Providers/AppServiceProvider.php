@@ -14,7 +14,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        //
+        $this->app->extend('url', fn($url) => new \App\Routing\BranchUrlGenerator($url));
     }
 
     /**
@@ -24,6 +24,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
+            \Illuminate\Support\Facades\Validator::resolver(fn($translator,$data,$rules,$messages,$attributes)=>
+                new \App\Validation\SafeValidator($translator,$data,$rules,$messages,$attributes));
+            if($this->app->environment('production'))config(['app.debug'=>false]);
             Schema::defaultStringLength(191);
             config(['app.locale' => 'tr', 'app.fallback_locale' => 'tr', 'app.timezone' => 'Europe/Istanbul']);
             date_default_timezone_set('Europe/Istanbul');

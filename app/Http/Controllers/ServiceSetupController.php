@@ -8,8 +8,8 @@ class ServiceSetupController extends Controller
 {
     public function index()
     {
-        abort_unless(auth()->user()->type === 'owner' && auth()->user()->can('manage service'), 403);
-        $owner = auth()->id();
+        abort_unless(isBusinessOwner() && auth()->user()->can('manage service'), 403);
+        $owner = parentId();
         $clientCount = User::where('parent_id', $owner)->where('type', 'client')->whereNull('client_archived_at')->count();
         $vehicleCount = Vehicle::where('parent_id', $owner)->count();
         $employeeCount = User::where('parent_id', $owner)->where('type', 'employee')->count();

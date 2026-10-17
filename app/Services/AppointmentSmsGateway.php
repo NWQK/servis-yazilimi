@@ -5,7 +5,16 @@ use Illuminate\Support\Facades\Http;
 
 class AppointmentSmsGateway
 {
-    public function send(string $phone, string $body): array
+    public function send(string $phone, string $body, array $tracking = []): array
+    {
+        if (CommunicationOutbox::asynchronous()) {
+            $row=app(CommunicationOutbox::class)->enqueue('sms',['to'=>$phone,'body'=>$body,'tracking'=>$tracking],$tracking['owner']??$tracking['business_owner']??null,null,
+                isset($tracking['expires']) ? \Carbon\Carbon::parse($tracking['expires']) : now()->addDay(),($tracking['kind']??'')==='challenge'?0:5);
+            return ['status'=>'queued','error_code'=>null];
+        }
+        return $this->sendNow($phone,$body);
+    }
+    public function sendNow(string $phone, string $body): array
     {
         $result=$this->deliver($phone,$body);
         SystemHealth::record('sms',$result['status']==='accepted',$result['error_code']??'accepted');

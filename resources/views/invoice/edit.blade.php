@@ -16,8 +16,10 @@
 @endsection
 
 @section('content')
+    @php($productSale=$invoice->invoice_kind==='product')
+    @if($productSale)<div class="alert alert-info">Ürün satışı faturası — araç ve servis gerektirmez.</div>@endif
     <div class="row mt-1">
-        {{ Form::model($invoice, ['route' => ['invoice.update', encrypt($invoice->id)], 'method' => 'put']) }}
+        {{ Form::model($invoice, ['route' => ['invoice.update', encrypt($invoice->id)], 'method' => 'put','data-invoice-preview'=>route('invoice.preview',['id'=>$invoice->id,'action'=>'update'])]) }}
 @include('invoice.operation-fields')
         <div class="col-sm-12">
             <div class="card">
@@ -35,7 +37,7 @@
                             {{ Form::label('client', __('Client'), ['class' => 'form-label']) }}
                             {{ Form::select('client', $clients, null, ['class' => 'form-control select2', 'id' => 'client_id', 'required' => 'required']) }}
                         </div>
-                        <div class="form-group col-md-3 col-lg-3">
+                        @if(!$productSale)<div class="form-group col-md-3 col-lg-3">
                             {{ Form::label('service_id', __('Service'), ['class' => 'form-label']) }}
                             <div class="service_div">
                                 <select class="form-control select2 service" id="service" name="service">
@@ -51,6 +53,7 @@
                                 </select>
                             </div>
                         </div>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -58,12 +61,13 @@
         <div class="col-sm-12"><div class="card"><div class="card-body">
             @include('invoice.billing_section')
             @include('invoice.discount_field')
-            <label for="invoice_external_labor" class="form-label">Harici işçilik tutarı, vergi hariç ({{ settings()['CURRENCY_SYMBOL'] }})</label>
+            @if(!$productSale)<label for="invoice_external_labor" class="form-label">Harici işçilik tutarı, vergi hariç ({{ settings()['CURRENCY_SYMBOL'] }})</label>
             <input id="invoice_external_labor" class="form-control" value="{{ number_format($invoice->external_labor_amount, 2, ',', '.') }}" readonly>
             <div class="mt-2">İşçilik vergisi: <span id="invoice_external_labor_tax">{{ priceFormat($invoice->getExternalLaborTaxAmount()) }} (%{{ (float) $invoice->external_labor_tax_rate }})</span></div>
             <small class="text-muted">Seçilen servisten alınır ve fatura toplamına eklenir. Değiştirmek için servisi düzenleyin.</small>
+            @endif
         </div></div></div>
-        <div class="card repeater">
+        @if(!$productSale)<div class="card repeater">
             <div class="card-header">
                 <div class="d-flex align-items-center justify-content-between">
                     <h5 class="mb-0">{{ __('Service Type') }}</h5>
@@ -164,6 +168,7 @@
             </div>
         </div>
 
+        @endif
         <div class="col-sm-12">
             <div class="card">
                 <div class="card-body">
@@ -330,6 +335,7 @@
     </script>
     <script>
         $('#client_id').on('change', function() {
+            if (!$('#service').length) return;
             "use strict";
             var client_id = $(this).val();
             $('#invoice_external_labor').val('0,00');

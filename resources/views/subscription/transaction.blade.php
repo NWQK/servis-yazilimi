@@ -64,11 +64,6 @@
                                                     href="{{ $transaction->receipt }}">
                                                     <i data-feather="file"></i></a>
                                             @elseif($transaction->payment_type == 'Bank Transfer')
-                                                {!! Form::open([
-                                                    'method' => 'DELETE',
-                                                    'route' => ['subscription.bank.transfer.action', [$transaction->id, 'accept']],
-                                                ]) !!}
-
                                                 <a class="avtar avtar-xs btn-link-primary text-primary"
                                                     data-bs-toggle="tooltip" target="_blank"
                                                     data-bs-original-title="{{ __('Receipt') }}"
@@ -76,17 +71,12 @@
                                                     <i data-feather="file"></i></a>
 
                                                 @if (\Auth::user()->type == 'super admin' && $transaction->payment_status == 'Pending')
-                                                    <a class="avtar avtar-xs btn-link-success text-success"
-                                                        data-bs-toggle="tooltip"
-                                                        data-bs-original-title="{{ __('Accept') }}"
-                                                        href="{{ route('subscription.bank.transfer.action', [$transaction->id, 'accept']) }}">
-                                                        <i data-feather="user-check"></i></a>
-
-                                                    <a class="avtar avtar-xs btn-link-danger text-danger"
-                                                        data-bs-toggle="tooltip"
-                                                        data-bs-original-title="{{ __('Reject') }}"
-                                                        href="{{ route('subscription.bank.transfer.action', [$transaction->id, 'reject']) }}">
-                                                        <i data-feather="user-x"></i></a>
+                                                    @foreach(['accept'=>'user-check','reject'=>'user-x'] as $action=>$icon)
+                                                        <form method="post" class="d-inline" action="{{ route('subscription.bank.transfer.action', [$transaction->id, $action]) }}">
+                                                            @csrf
+                                                            <button type="submit" class="avtar avtar-xs btn-link-{{ $action==='accept'?'success':'danger' }} border-0" aria-label="{{ $action==='accept'?'Onayla':'Reddet' }}"><i data-feather="{{ $icon }}"></i></button>
+                                                        </form>
+                                                    @endforeach
                                                 @endif
                                             @endif
                                         </td>

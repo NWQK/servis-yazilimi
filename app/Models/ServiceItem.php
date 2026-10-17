@@ -12,6 +12,7 @@ class ServiceItem extends Model
         'service_id',
         'type_id',
         'rate',
+        'tax',
         'note',
         'parent_id',
 

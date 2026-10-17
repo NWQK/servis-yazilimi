@@ -84,6 +84,12 @@ class RoleController extends Controller
     private function reservedRoleName(?Role $role = null): \Closure
     {
         return function ($attribute, $value, $fail) use ($role) {
+            if (RolePermissions::reserved((string)$value) && (!$role || strtolower(trim($role->name)) !== strtolower(trim((string)$value)))) {
+                $fail('Bu rol adı sistem tarafından yönetilir; özel rol için farklı bir ad seçin.');
+            }
+            if (strtolower(trim((string)$value)) === 'branch_manager') {
+                $fail('Şube merkez yöneticisi yalnızca süper yönetici tarafından oluşturulur.');
+            }
             if (is_string($value) && RolePermissions::isClient($value) && (!$role || !RolePermissions::isClient($role->name))) {
                 $fail('Müşteri rolü sistem tarafından yönetilir; bu adla rol oluşturulamaz.');
             }

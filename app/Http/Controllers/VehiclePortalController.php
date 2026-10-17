@@ -79,7 +79,7 @@ class VehiclePortalController extends Controller
             'items' => fn ($q) => $q->where('parent_id', $parentId),
             'items.items' => fn ($q) => $q->where('parent_id', $parentId),
             'types' => fn ($q) => $q->where('parent_id', $parentId),
-            'payments' => fn ($q) => $q->where('parent_id', $parentId),
+            'payments' => fn ($q) => $q->where('parent_id', $parentId)->accounted(),
         ]);
         $taxes = Tax::where('parent_id', $parentId)->get()->keyBy('id');
         $serviceTypes = ServiceType::where('parent_id', $parentId)->pluck('type', 'id');

@@ -11,10 +11,7 @@ class NoticeBoardController extends Controller
     public function index()
     {
         if (\Auth::user()->can('manage note')) {
-           $notes = NoticeBoard::where(function ($query) {
-                $user = \Auth::user();
-                $query->where('parent_id', $user->parent_id)->orWhere('parent_id', $user->id);
-            })->orderBy('id', 'desc')->get();
+           $notes = NoticeBoard::where('parent_id', parentId())->orderBy('id', 'desc')->get();
 
             return view('note.index', compact('notes'));
         } else {
@@ -25,6 +22,7 @@ class NoticeBoardController extends Controller
 
     public function create()
     {
+        abort_unless(auth()->user()->can('create note'), 403);
         return view('note.create');
     }
 
@@ -79,7 +77,7 @@ class NoticeBoardController extends Controller
     public function edit($id)
     {
         if (\Auth::user()->can('edit note')) {
-            $note = NoticeBoard::find($id);
+            $note = NoticeBoard::where('parent_id', parentId())->findOrFail($id);
             return view('note.edit', compact('note'));
         } else {
             return redirect()->back()->with('error', __('Permission denied.'));
@@ -102,7 +100,7 @@ class NoticeBoardController extends Controller
                 return redirect()->back()->with('error', $messages->first());
             }
 
-            $note = NoticeBoard::find($id);
+            $note = NoticeBoard::where('parent_id', parentId())->findOrFail($id);
             if (!empty($request->attachment)) {
                 $noteFilenameWithExt = $request->file('attachment')->getClientOriginalName();
                 $noteFilename = pathinfo($noteFilenameWithExt, PATHINFO_FILENAME);
@@ -111,7 +109,7 @@ class NoticeBoardController extends Controller
                 $directory = storage_path('upload/applicant/attachment');
                 if (!empty($note->attachment)) {
 
-                    unlink($directory . '/' . $note->attachment);
+                    \File::delete($directory . '/' . basename($note->attachment));
                 }
                 if (!file_exists($directory)) {
                     mkdir($directory, 0777, true);
@@ -136,10 +134,10 @@ class NoticeBoardController extends Controller
     public function destroy($id)
     {
         if (\Auth::user()->can('delete note')) {
-            $note = NoticeBoard::find($id);
+            $note = NoticeBoard::where('parent_id', parentId())->findOrFail($id);
             $directory = storage_path('upload/applicant/attachment');
             if ($note->attachment) {
-                unlink($directory . '/' . $note->attachment);
+                \File::delete($directory . '/' . basename($note->attachment));
             }
             $note->delete();
 

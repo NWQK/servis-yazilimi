@@ -15,6 +15,9 @@
     $subscriptionData = currentSubscription();
 @endphp
 @section('content')
+    @if(auth()->user()->type === 'branch_manager' && \App\Services\BranchContext::current())
+        <div class="alert alert-info">Profil, şifre ve iki aşamalı doğrulama merkez hesabınıza aittir. İşletme bilgileri ve logolar seçili şubeye kaydedilir.</div>
+    @endif
     <div class="row">
         <div class="col-sm-12">
             <div class="card">

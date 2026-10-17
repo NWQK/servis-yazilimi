@@ -1,18 +1,34 @@
 @php
     // Each entry keeps its own permission; empty groups are hidden automatically.
     $isSuperAdmin = auth()->user()->type === 'super admin';
-    $isOwner = auth()->user()->type === 'owner';
+    $isOwner = isBusinessOwner();
+    $isBranchManager = auth()->user()->type === 'branch_manager';
+    $hasBranchAccess = in_array(auth()->user()->type,['owner','employee'],true)
+        && \Illuminate\Support\Facades\Schema::hasTable('business_branches')
+        && \Illuminate\Support\Facades\DB::table('business_branches')->where('owner_id',auth()->user()->type==='owner'?auth()->id():auth()->user()->parent_id)->exists();
     $supportUnread = ($isSuperAdmin || $isOwner) && \Illuminate\Support\Facades\Schema::hasTable('support_tickets')
-        ? \App\Models\SupportTicket::when(!$isSuperAdmin, fn($q)=>$q->where('owner_id',auth()->id()))->where($isSuperAdmin ? 'admin_unread' : 'owner_unread',true)->count() : 0;
+        ? \App\Models\SupportTicket::when(!$isSuperAdmin, fn($q)=>$q->where('owner_id',parentId()))->where($isSuperAdmin ? 'admin_unread' : 'owner_unread',true)->count() : 0;
     $hasHistory = $pricing_feature_settings === 'off' || ($subscription->enabled_logged_history ?? 0) == 1;
     // Owners can still view their package when public pricing is disabled.
     $hasPricing = $isSuperAdmin || $isOwner || $pricing_feature_settings === 'on';
     $entry = static fn ($label, $route, $permission, $patterns = null, $visible = true) => [
         'label' => $label, 'route' => $route, 'patterns' => $patterns ?? [str_replace('.index', '.*', $route)],
-        'visible' => $visible && ($permission === null || Gate::check($permission)),
+        'visible' => $visible && ($permission === null || Gate::check($permission))
+            && (!$isBranchManager || \App\Services\BranchContext::businessRoute($route)),
     ];
     $group = static fn ($label, $icon, $entries) => ['label' => $label, 'icon' => $icon, 'entries' => $entries];
     $sections = [
+        ['label'=>'Şube yönetimi', 'groups'=>[
+            $group('Şube merkezleri','ti-building',[
+                ['label'=>$isSuperAdmin ? 'Şube merkezlerini yönet' : 'Şubelerim', 'route'=>$isSuperAdmin ? 'branches.index' : 'branches.portal',
+                 'patterns'=>['branches.portal','branches.index'], 'visible'=>$isSuperAdmin || $isBranchManager || ($hasBranchAccess && auth()->user()->type==='employee')],
+                ['label'=>'Personel şube erişimleri','route'=>'branches.staff','patterns'=>['branches.staff*'],'visible'=>$isBranchManager],
+                ['label'=>'Şube karşılaştırmalı rapor','route'=>'branches.report','patterns'=>['branches.report'],'visible'=>$isBranchManager],
+                ['label'=>'Şube işlemleri geçmişi','route'=>'branches.history','patterns'=>['branches.history'],'visible'=>$isBranchManager],
+                ['label'=>'Şubeler arası stok transferi','route'=>'branch-transfers.index','patterns'=>['branch-transfers.*'],'visible'=>$isBranchManager || ($hasBranchAccess && Gate::check('manage item'))],
+                ['label'=>'Araç yönlendirmeleri','route'=>'branch-referrals.index','patterns'=>['branch-referrals.*'],'visible'=>$isBranchManager || ($hasBranchAccess && auth()->user()->type==='owner' && Gate::check('create service'))],
+            ]),
+        ]],
         ['label' => 'Günlük işlemler', 'groups' => [
             $group('Müşteriler', 'ti-user', [$entry('Müşteriler', 'client.index', 'manage client')]),
             $group('Araçlar', 'ti-truck', [
@@ -48,6 +64,7 @@
                 $entry('Fatura listesi', 'invoice.index', 'manage invoice', ['invoice.*', '!invoice.create', '!invoice.debts']),
                 $entry('Borç takibi', 'invoice.debts', 'manage invoice', ['invoice.debts'], auth()->user()->type !== 'client'),
                 $entry('Yeni fatura oluştur', 'invoice.create', 'create invoice', ['invoice.create']),
+                $entry('Ürün satışı', 'invoice.product-sale', 'create invoice', ['invoice.product-sale']),
                 $entry('Fatura işlem geçmişi', 'history.invoices', 'manage invoice', ['history.invoices'], auth()->user()->type !== 'client'),
             ]),
             $group('Teklifler', 'ti-clipboard', [$entry('Teklifler', 'quotation.index', 'manage quotation')]),
@@ -55,6 +72,7 @@
         ['label' => 'Mali işlemler', 'groups' => [
             $group('Finans', 'ti-chart-infographic', [
                 $entry('Gider kayıtları', 'expense.index', 'manage expense'),
+                $entry('Gün sonu kasa', 'report.cash', 'manage expense', ['report.cash*']),
                 $entry('Gelir raporu', 'report.income', 'manage income report', ['report.income']),
                 $entry('Gider raporu', 'report.expense', 'manage expense report', ['report.expense']),
                 $entry('Kâr ve zarar', 'report.profit_loss', 'manage profile and loss report', ['report.profit_loss']),
@@ -108,6 +126,7 @@
                 $entry('İşletme veri kurtarma', 'recoveries.index', null, ['recoveries.*'], $isSuperAdmin),
                 $entry('Bakım modu', 'maintenance.index', null, ['maintenance.*'], $isSuperAdmin),
                 $entry('Sistem sağlığı', 'system-health.index', null, ['system-health.*'], $isSuperAdmin),
+                $entry('Tutarlılık ve mesaj kuyruğu', 'integrity.index', null, ['integrity.*'], $isSuperAdmin),
             ]),
         ]],
     ];

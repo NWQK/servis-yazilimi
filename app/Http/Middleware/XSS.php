@@ -7,7 +7,6 @@ use Illuminate\Support\Facades\Auth;
 
 class XSS
 {
-    use \RachidLaasri\LaravelInstaller\Helpers\MigrationsHelper;
     public function handle($request, Closure $next)
     {
         $validationResult = $this->validateRequestFiles($request);
@@ -17,14 +16,7 @@ class XSS
 
         if (Auth::check()) {
             \App::setLocale('tr');
-            if (Auth::user()->type == 'super admin') {
-                $directoryMigrations             = $this->getMigrations();
-                $databaseMigrations           = $this->getExecutedMigrations();
-                $total = count($directoryMigrations) - count($databaseMigrations);
-                if ($total > 0) {
-                    return redirect()->route('LaravelUpdater::welcome');
-                }
-            }
+            // Migrations are an explicit CLI deployment step, never triggered by page views.
         }
         $data = $request->all();
         array_walk_recursive(

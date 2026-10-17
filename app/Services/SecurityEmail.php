@@ -38,6 +38,14 @@ class SecurityEmail
         $template=self::template($admin,$module);
         // Password recovery must remain available even if login notifications are switched off.
         if ($module === self::LOGIN && !$template->enabled_email) return;
+        if(CommunicationOutbox::asynchronous()) {
+            $values['{user_name}']=$user->name;
+            app(CommunicationOutbox::class)->email($user->email,['module'=>$module,
+                'subject'=>str_replace(["\r","\n"],'',strtr($template->subject,$values)),
+                'message'=>strtr($template->message,array_map(fn($value)=>e($value),$values))],
+                'common',$user->type==='owner'?$user->id:null,null,[],now()->addMinutes($module===self::RESET?(int)config('auth.passwords.users.expire',60):1440));
+            return;
+        }
         $smtp=app(TenantMailSettings::class)->apply($admin->id);
         $smtp['FROM_NAME']='sanayirandevu.com';
         $values['{user_name}']=$user->name;

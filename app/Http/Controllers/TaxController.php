@@ -21,6 +21,7 @@ class TaxController extends Controller
 
     public function create()
     {
+        abort_unless(auth()->user()->can('create tax'),403);
         return view('tax.create');
     }
 
@@ -31,7 +32,7 @@ class TaxController extends Controller
             $validator = \Validator::make(
                 $request->all(), [
                     'title' => 'required',
-                    'rate' => 'required',
+                    'rate' => 'required|numeric|between:0,100',
                 ]
             );
             if ($validator->fails()) {
@@ -59,17 +60,19 @@ class TaxController extends Controller
 
     public function edit(Tax $tax)
     {
+        abort_unless(auth()->user()->can('edit tax'),403);
         return view('tax.edit',compact('tax'));
     }
 
 
     public function update(Request $request, Tax $tax)
     {
+        $tax->refresh();
         if (\Auth::user()->can('edit tax')) {
             $validator = \Validator::make(
                 $request->all(), [
                     'title' => 'required',
-                    'rate' => 'required',
+                    'rate' => 'required|numeric|between:0,100',
                 ]
             );
             if ($validator->fails()) {
@@ -78,6 +81,9 @@ class TaxController extends Controller
                 return redirect()->back()->with('error', $messages->first());
             }
 
+            if ((float)$tax->rate !== (float)$request->rate && \App\Services\TaxReferences::invoiced($tax)) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['rate'=>'Bu vergi faturada kullanılmış. Geçmiş tutarları korumak için yeni oranla ayrı bir vergi oluşturun.']);
+            }
             $tax->title = $request->title;
             $tax->rate = $request->rate;
             $tax->save();
@@ -91,6 +97,9 @@ class TaxController extends Controller
     public function destroy(Tax $tax)
     {
         if (\Auth::user()->can('delete tax')) {
+            if (\App\Services\TaxReferences::used($tax)) {
+                throw \Illuminate\Validation\ValidationException::withMessages(['tax'=>'Bu vergi kayıtlı ürün, hizmet veya faturada kullanılıyor. İlgili kayıtları korumak için silinemez.']);
+            }
             $tax->delete();
             return redirect()->route('tax.index')->with('success', __('Tax successfully deleted.'));
         } else {

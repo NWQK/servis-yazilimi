@@ -15,8 +15,8 @@ class BusinessSetupController extends Controller
 
     private function owner(): int
     {
-        abort_unless(auth()->user()->type === 'owner', 403);
-        return (int) auth()->id();
+        abort_unless(isBusinessOwner(), 403);
+        return (int) parentId();
     }
 
     public function index(Request $request, string $step = 'business')
