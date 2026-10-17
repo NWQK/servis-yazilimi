@@ -30,7 +30,7 @@ class BusinessSetupTest extends TestCase {
   $this->get(route('business-setup.index',['step'=>'business']))->assertSee('Test Shop')->assertViewHas('complete',fn($c)=>$c['business']);
  }
  public function test_logos_use_existing_upload_rules_and_do_not_change_shared_environment() {
-  Storage::fake(config('filesystems.default'));$before=file_get_contents(base_path('.env'));
+  Storage::fake(config('filesystems.default'));$before=file_get_contents(app()->environmentFilePath());
   $temp=tempnam(sys_get_temp_dir(),'setup-logo-');file_put_contents($temp,base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAADElEQVQImWNgYGAAAAAEAAGjChXjAAAAAElFTkSuQmCC'));
   $logo=new UploadedFile($temp,'invoice.png','image/png',null,true);
   $this->post($this->url('logos'),['action'=>'logos','continue'=>1,'invoice_logo'=>$logo])->assertRedirect(route('business-setup.index',['step'=>'vehicles']));
@@ -38,7 +38,7 @@ class BusinessSetupTest extends TestCase {
   Storage::disk(config('filesystems.default'))->assertExists('upload/logo/'.$filename);
   $this->get(route('business-setup.index',['step'=>'logos']))->assertSee($filename)->assertViewHas('complete',fn($c)=>$c['logos']);
   $this->post($this->url('logos'),['action'=>'logos'])->assertSessionHasNoErrors();$this->assertSame($filename,DB::table('settings')->where('parent_id',$this->owner->id)->where('name','invoice_logo')->value('value'));
-  $this->assertSame($before,file_get_contents(base_path('.env')));
+  $this->assertSame($before,file_get_contents(app()->environmentFilePath()));
  }
  public function test_vehicle_import_confirmation_repeat_safety_and_manual_model_tenant_scope() {
   $this->post($this->url('vehicles'),['action'=>'catalog','category'=>'motosiklet'])->assertSessionHasErrors('confirm');$this->assertSame(0,VehicleType::count());

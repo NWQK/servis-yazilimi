@@ -48,7 +48,12 @@ class BusinessController extends Controller {
         if(!empty($data['q'])) {
             $search=$data['q'];
             $columns=match($kind){'customers'=>['name','phone_number'],'vehicles'=>['license_plate','model'],'services'=>['service_id','status']};
-            $query->where(function($q)use($columns,$search){foreach($columns as $col)$q->orWhere($col,'like','%'.$search.'%');});
+            $query->where(function($q)use($columns,$search,$kind){
+                foreach($columns as $col)$q->orWhere($col,'like','%'.$search.'%');
+                if($kind==='vehicles')$q->orWhereExists(fn($brand)=>$brand->selectRaw('1')->from('vehicle_brands')
+                    ->whereColumn('vehicle_brands.id','vehicles.brand')->whereColumn('vehicle_brands.parent_id','vehicles.parent_id')
+                    ->where('vehicle_brands.name','like','%'.$search.'%'));
+            });
         }
         $page=$this->selectFields($query,$kind)->orderByDesc('id')->simplePaginate($data['per_page']??20);
         return response()->json(['data'=>$page->items(),'meta'=>['page'=>$page->currentPage(),'has_more'=>$page->hasMorePages()]]);
@@ -77,7 +82,12 @@ class BusinessController extends Controller {
         $recoveryVersion=(int)User::whereKey($owner)->value('recovery_version');
         $hash=hash('sha256',json_encode([$recoveryVersion,$data]));
         $existing=DB::table('mobile_requests')->where('owner_id',$owner)->where('actor_id',$r->user()->id)->where('request_key',$key)->lockForUpdate()->first();
-        if($existing){abort_unless(hash_equals($existing->payload_hash,$hash),409,'İşlem anahtarı farklı bilgilerle kullanılmış.');return response()->json(['data'=>['id'=>$existing->customer_id]],200);}
+        if($existing){
+            abort_unless(hash_equals($existing->payload_hash,$hash),409,'İşlem anahtarı farklı bilgilerle kullanılmış.');
+            abort_unless($this->query($r,'customers')->whereKey($existing->customer_id)->exists(),409,
+                'Bu işlemle oluşturulan müşteri artık mevcut değil. Listeyi yenileyin.');
+            return response()->json(['data'=>['id'=>$existing->customer_id]],200);
+        }
         $customer=app(ClientRegistration::class)->create($owner,$data);
         DB::table('mobile_requests')->insert(['owner_id'=>$owner,'actor_id'=>$r->user()->id,'request_key'=>$key,'payload_hash'=>$hash,'customer_id'=>$customer->id,'created_at'=>now(),'updated_at'=>now()]);
         return response()->json(['data'=>['id'=>$customer->id]],201);

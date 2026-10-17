@@ -8,7 +8,11 @@ class MobileAppointmentView
     public function version(Appointment $appointment): string {
         return hash('sha256',json_encode([$appointment->id,$appointment->status,
             $appointment->updated_at?->format('Y-m-d H:i:s.u'),$appointment->starts_at?->toIso8601String(),
-            $appointment->pending_expires_at?->toIso8601String(),$appointment->cancelled_at?->toIso8601String()]));
+            $appointment->pending_expires_at?->toIso8601String(),$appointment->cancelled_at?->toIso8601String(),
+            $appointment->ends_at?->toIso8601String(),$appointment->customer_name,$appointment->phone,
+            $appointment->license_plate,$appointment->requested_service,$appointment->requested_vehicle,
+            $appointment->notes,(bool)$appointment->cancelled_by_customer,
+            $appointment->customer_cancel_until?->toIso8601String()]));
     }
     public function data(Appointment $appointment,bool $detail=false): array {
         $booking=app(AppointmentBooking::class);

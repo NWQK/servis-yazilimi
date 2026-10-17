@@ -192,6 +192,41 @@ class MobileApiTest extends TestCase {
         $brand=\App\Models\VehicleBrand::create(['parent_id'=>$owner->id,'type'=>$type->id,'name'=>'Örnek Marka']);
         return ['client'=>$customer->id,'type'=>$type->id,'brand'=>$brand->id,'license_plate'=>'34 API 2026','chassis_no'=>'TESTVN12345678901','mileage'=>'15000'];
     }
+    public function test_same_second_customer_edit_invalidates_appointment_approval(): void {
+        $this->freezeTime();
+        $mine=$this->appointment($this->owner);$token=$this->login();
+        $version=$this->callApi('GET','appointments/'.$mine->id,$token)->assertOk()->json('data.version');
+        // Web edits can have the same second-resolution updated_at timestamp.
+        $mine->update(['customer_name'=>'Changed customer','notes'=>'Different requested work']);
+        $this->callApi('POST','appointments/'.$mine->id.'/status',$token,
+            ['status'=>'approved','expected_version'=>$version],['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertConflict();
+        $this->assertSame('pending',$mine->fresh()->status);
+    }
+    public function test_vehicle_search_matches_displayed_tenant_catalog_label(): void {
+        $data=$this->vehiclePayload($this->owner);$token=$this->login();
+        $this->callApi('POST','vehicles',$token,$data,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertCreated();
+        $this->callApi('GET','vehicles?q='.urlencode('Örnek Marka'),$token)->assertOk()->assertJsonCount(1,'data');
+    }
+    public function test_customer_replay_after_archiving_does_not_report_a_live_record(): void {
+        $token=$this->login();$key=['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()];
+        $data=['name'=>'Archived customer','phone_number'=>'5551234567'];
+        $id=$this->callApi('POST','customers',$token,$data,$key)->assertCreated()->json('data.id');
+        DB::table('users')->where('id',$id)->update(['client_archived_at'=>now()]);
+        $this->callApi('POST','customers',$token,$data,$key)->assertConflict();
+        $this->assertSame(1,Client::count());
+    }
+    public function test_successful_mobile_login_updates_demo_activity_but_pending_2fa_does_not(): void {
+        $old=now()->subDays(29)->toDateTimeString();
+        DB::table('users')->where('id',$this->owner->id)->update(['last_business_login_at'=>$old]);
+        $this->login();
+        $this->assertSame(now()->toDateTimeString(),DB::table('users')->where('id',$this->owner->id)->value('last_business_login_at'));
+        DB::table('users')->where('id',$this->owner->id)->update(['last_business_login_at'=>$old,'twofa_secret'=>'JBSWY3DPEHPK3PXP']);
+        $pending=$this->login();
+        $this->assertSame($old,DB::table('users')->where('id',$this->owner->id)->value('last_business_login_at'));
+        $otp=(new \PragmaRX\Google2FA\Google2FA)->getCurrentOtp('JBSWY3DPEHPK3PXP');
+        $this->callApi('POST','auth/2fa',$pending,['code'=>$otp])->assertOk();
+        $this->assertSame(now()->toDateTimeString(),DB::table('users')->where('id',$this->owner->id)->value('last_business_login_at'));
+    }
     public function test_vehicle_creation_uses_shared_qr_rules_and_replays_before_duplicate_vin_validation(): void {
         $data=$this->vehiclePayload($this->owner);$token=$this->login();$key=['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()];
         $id=$this->callApi('POST','vehicles',$token,$data+['parent_id'=>9999,'status'=>'forged'],$key)->assertCreated()->json('data.id');

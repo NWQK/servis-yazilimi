@@ -23,6 +23,7 @@ class AuthController extends Controller {
             $pending=(bool)$user->twofa_secret;
             $expires=$pending?now()->addMinutes(5):now()->addDays(30);
             $token=$user->createToken($data['device_name'],[$pending?'mobile:2fa':'mobile:v1',app(MobileAccess::class)->snapshot($user,$owner)],$expires);
+            if(!$pending)app(\App\Services\DemoLifecycle::class)->recordLogin($user);
             RateLimiter::clear($key);
             return response()->json(['token'=>$token->plainTextToken,'requires_2fa'=>$pending,'expires_at'=>$expires->toIso8601String()]);
         });
@@ -36,6 +37,7 @@ class AuthController extends Controller {
         abort_unless(app(TwoFactorAuthentication::class)->consume($request->user(),$data['code']),422,'Doğrulama kodu geçersiz veya kullanılmış.');
         $user=$request->user()->fresh();$owner=app(MobileAccess::class)->owner($user);
         $new=$user->createToken($token->name,['mobile:v1',app(MobileAccess::class)->snapshot($user,$owner)],now()->addDays(30));
+        app(\App\Services\DemoLifecycle::class)->recordLogin($user);
         $token->delete(); RateLimiter::clear($key);
         return response()->json(['token'=>$new->plainTextToken,'requires_2fa'=>false]);
     }
