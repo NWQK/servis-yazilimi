@@ -68,6 +68,9 @@
                 $entry('Fatura işlem geçmişi', 'history.invoices', 'manage invoice', ['history.invoices'], auth()->user()->type !== 'client'),
             ]),
             $group('Teklifler', 'ti-clipboard', [$entry('Teklifler', 'quotation.index', 'manage quotation')]),
+            $group('İstatistikler', 'ti-chart-bar', [
+                $entry('Ürün ve servis istatistikleri', 'report.usage', null, ['report.usage'], \App\Services\UsageStatistics::accessible()),
+            ]),
         ]],
         ['label' => 'Mali işlemler', 'groups' => [
             $group('Finans', 'ti-chart-infographic', [

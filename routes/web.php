@@ -6,6 +6,7 @@ use App\Http\Controllers\AuthPageController;
 use App\Http\Controllers\N8nController;
 use Illuminate\Support\Facades\Route;
 Route::middleware(['auth','XSS'])->group(function(){
+    Route::get('report/usage', \App\Http\Controllers\UsageStatisticsController::class)->middleware('throttle:30,1')->name('report.usage');
     Route::get('branch-referrals',[\App\Http\Controllers\BranchReferralController::class,'index'])->name('branch-referrals.index');
     Route::post('branch-referrals',[\App\Http\Controllers\BranchReferralController::class,'send'])->middleware('throttle:20,1')->name('branch-referrals.send');
     Route::get('branch-referrals/{id}',[\App\Http\Controllers\BranchReferralController::class,'show'])->whereNumber('id')->name('branch-referrals.show');
