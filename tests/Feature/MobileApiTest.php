@@ -5,6 +5,34 @@ use Illuminate\Support\Facades\{DB,Hash,Mail,Http};
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 class MobileApiTest extends TestCase {
+    public function test_workspace_search_cannot_escape_tenant_and_show_alone_does_not_grant_list_access(): void {
+        $this->workspaceGrant(['manage item','show item']);
+        $token=$this->login();$foreign=$this->account('owner');
+        DB::table('items')->insert(['parent_id'=>$foreign->id,'title'=>'Hidden','item_code'=>'MATCH-ME']);
+        DB::table('suppliers')->insert(['parent_id'=>$foreign->id,'company_name'=>'Hidden','contact_name'=>'MATCH-ME','phone'=>'5550000000']);
+        foreach (['products','suppliers'] as $module) {
+            $this->callApi('GET','workspace/catalog/'.$module.'?q=MATCH-ME',$token)->assertOk()->assertJsonCount(0,'data');
+            $this->callApi('GET','workspace/catalog/'.$module.'?per_page=51',$token)->assertUnprocessable();
+        }
+        $invoice=Invoice::create(['parent_id'=>$this->owner->id,'invoice_id'=>51]);
+        $this->workspaceGrant(['show invoice']);
+        $this->callApi('GET','workspace/catalog/invoices/'.$invoice->id,$token)->assertForbidden();
+        $this->callApi('GET','workspace/reports/cash',$token)->assertForbidden();
+    }
+
+    public function test_workspace_profile_validation_and_recovery_lock_leave_existing_details_unchanged(): void {
+        $this->workspaceGrant(['manage company settings']);$token=$this->login();
+        $original=$this->callApi('GET','workspace/business-settings',$token)->assertOk()->json('data');
+        $payload=['expected_version'=>$original['version'],'billing'=>['name'=>'Must not persist','email'=>'invalid-email']];
+        $this->callApi('PUT','workspace/business-settings',$token,$payload)->assertUnprocessable();
+        $this->assertSame(0,DB::table('invoice_business_profiles')->where('parent_id',$this->owner->id)->count());
+        DB::table('business_recovery_locks')->insert(['owner_id'=>$this->owner->id,'recovery_id'=>(string)\Illuminate\Support\Str::uuid(),'created_at'=>now()]);
+        $payload['billing']=['name'=>'Blocked by recovery'];
+        $this->callApi('PUT','workspace/business-settings',$token,$payload)->assertStatus(503);
+        $this->assertSame(0,DB::table('invoice_business_profiles')->where('parent_id',$this->owner->id)->count());
+        Http::assertNothingSent();Mail::assertNothingSent();
+    }
+
     private function workspaceGrant(array $permissions): void {
         foreach ($permissions as $permission) {
             Permission::firstOrCreate(['name'=>$permission,'guard_name'=>'web']);
