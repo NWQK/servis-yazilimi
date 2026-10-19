@@ -12,6 +12,12 @@ Route::prefix('v1')->name('mobile.')->group(function(){
             Route::get('devices',[AuthController::class,'devices']);
             Route::delete('devices/{id}',[AuthController::class,'revoke'])->whereNumber('id');
             Route::get('dashboard',[BusinessController::class,'dashboard']);
+            Route::get('workspace/menu',[\App\Http\Controllers\Api\V1\WorkspaceController::class,'menu']);
+            Route::get('workspace/account',[\App\Http\Controllers\Api\V1\WorkspaceController::class,'account']);
+            Route::match(['GET','PUT'],'workspace/business-settings',[\App\Http\Controllers\Api\V1\WorkspaceController::class,'business']);
+            Route::get('workspace/reports/{report}',[\App\Http\Controllers\Api\V1\WorkspaceController::class,'report'])->whereIn('report',['usage','cash']);
+            Route::get('workspace/catalog/{module}',[\App\Http\Controllers\Api\V1\WorkspaceController::class,'index']);
+            Route::get('workspace/catalog/{module}/{id}',[\App\Http\Controllers\Api\V1\WorkspaceController::class,'show'])->whereNumber('id');
             Route::get('notifications',[\App\Http\Controllers\Api\V1\NotificationController::class,'index']);
             Route::put('push-device',[\App\Http\Controllers\Api\V1\PushDeviceController::class,'store']);
             Route::delete('push-device',[\App\Http\Controllers\Api\V1\PushDeviceController::class,'destroy']);

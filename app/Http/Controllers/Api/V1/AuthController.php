@@ -54,7 +54,9 @@ class AuthController extends Controller {
             'capabilities'=>['branch_switch'=>false,'financial_writes'=>false]]]);
     }
     public function devices(Request $request) {
-        return response()->json(['data'=>$request->user()->tokens()->whereJsonContains('abilities','mobile:v1')->get(['id','name','last_used_at','expires_at'])]);
+        $current=$request->user()->currentAccessToken()->id;
+        return response()->json(['data'=>$request->user()->tokens()->whereJsonContains('abilities','mobile:v1')->get(['id','name','last_used_at','expires_at'])
+            ->map(fn($token)=>$token->toArray()+['is_current'=>$token->id===$current])])->header('Cache-Control','private, no-store');
     }
     public function revoke(Request $request,int $id) {
         $request->user()->tokens()->findOrFail($id)->delete();return response()->noContent();

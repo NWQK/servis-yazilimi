@@ -14,8 +14,11 @@ class CashRegister
         foreach(['invoice_payments','counter_sales','expenses'] as $table){
             $q=DB::table($table)->where($table.'.parent_id',$owner);
             if($table==='invoice_payments'){
-                $q->where('payment_date',$date)->where(fn($q)=>$q->whereNull('payment_status')->orWhereIn('payment_status',['success','succeeded']))
-                    ->whereExists(fn($q)=>$q->selectRaw('1')->from('invoices')->whereColumn('invoices.id','invoice_payments.invoice_id')->where('invoices.parent_id',$owner));
+                $q->where('payment_date',$date);
+                if (\Illuminate\Support\Facades\Schema::hasColumn('invoice_payments','payment_status')) {
+                    $q->where(fn($q)=>$q->whereNull('payment_status')->orWhereIn('payment_status',['success','succeeded']));
+                }
+                $q->whereExists(fn($q)=>$q->selectRaw('1')->from('invoices')->whereColumn('invoices.id','invoice_payments.invoice_id')->where('invoices.parent_id',$owner));
             }else $q->where($table==='expenses'?'date':'sale_date',$date);
             $q->select($table.'.*')->orderBy($table.'.id')->chunkById(200,function($rows)use($table,&$income,&$expense,$hash){foreach($rows as $row){
                 $channel=array_key_exists($row->cash_channel,self::CHANNELS)?$row->cash_channel:'unclassified';

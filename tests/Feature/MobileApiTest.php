@@ -5,6 +5,75 @@ use Illuminate\Support\Facades\{DB,Hash,Mail,Http};
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 class MobileApiTest extends TestCase {
+    private function workspaceGrant(array $permissions): void {
+        foreach ($permissions as $permission) {
+            Permission::firstOrCreate(['name'=>$permission,'guard_name'=>'web']);
+            $this->owner->givePermissionTo($permission);
+        }
+    }
+    public function test_workspace_menu_permissions_catalogs_pagination_and_isolation(): void {
+        $token=$this->login();
+        $this->callApi('GET','workspace/menu',$token)->assertOk()->assertJsonMissing(['id'=>'invoices']);
+        $this->callApi('GET','workspace/catalog/invoices',$token)->assertForbidden();
+        $this->workspaceGrant(array_unique(array_column(\App\Services\MobileWorkspace::CATALOGS,2)));
+        foreach (\App\Services\MobileWorkspace::CATALOGS as $id=>$spec) {
+            $this->callApi('GET','workspace/catalog/'.$id,$token)->assertOk()->assertJsonPath('meta.read_only',true);
+        }
+        $this->callApi('GET','workspace/catalog/settings',$token)->assertNotFound();
+        $foreign=$this->account('owner');
+        $mine=DB::table('suppliers')->insertGetId(['parent_id'=>$this->owner->id,'company_name'=>'Benim tedarikçim']);
+        $other=DB::table('suppliers')->insertGetId(['parent_id'=>$foreign->id,'company_name'=>'Gizli tedarikçi']);
+        DB::table('suppliers')->insert(['parent_id'=>$this->owner->id,'company_name'=>'İkinci kayıt']);
+        $this->callApi('GET','workspace/catalog/suppliers?per_page=1',$token)->assertJsonCount(1,'data')->assertJsonPath('meta.has_more',true)->assertJsonMissing(['title'=>'Gizli tedarikçi']);
+        $this->callApi('GET','workspace/catalog/suppliers?q=Benim',$token)->assertJsonCount(1,'data')->assertJsonPath('data.0.id',$mine);
+        $this->callApi('GET','workspace/catalog/suppliers/'.$other,$token)->assertNotFound();
+        $this->callApi('POST','workspace/catalog/suppliers',$token,['company_name'=>'Oluşturulmamalı'])->assertStatus(405);
+    }
+    public function test_workspace_invoice_detail_requires_show_permission_and_uses_existing_totals(): void {
+        $this->workspaceGrant(['manage invoice']);$token=$this->login();
+        $invoice=Invoice::create(['parent_id'=>$this->owner->id,'invoice_id'=>123,'invoice_date'=>'2026-10-19']);
+        DB::table('invoice_items')->insert(['parent_id'=>$this->owner->id,'invoice_id'=>$invoice->id,'quantity'=>2,'amount'=>50,'description'=>'Sentetik parça']);
+        $this->callApi('GET','workspace/catalog/invoices',$token)->assertOk()->assertJsonPath('data.0.can_open',false);
+        $this->callApi('GET','workspace/catalog/invoices/'.$invoice->id,$token)->assertForbidden();
+        $this->workspaceGrant(['show invoice']);
+        $this->callApi('GET','workspace/catalog/invoices/'.$invoice->id,$token)->assertOk()->assertJsonFragment(['label'=>'Toplam (₺)','value'=>'100,00']);
+        $other=Invoice::create(['parent_id'=>$this->account('owner')->id,'invoice_id'=>999]);
+        $this->callApi('GET','workspace/catalog/invoices/'.$other->id,$token)->assertNotFound();
+        $this->assertEquals(100,$invoice->fresh()->getInvoiceAllTotalAmount());
+    }
+    public function test_business_profile_write_retry_stale_version_and_secret_allowlist(): void {
+        $token=$this->login();$this->callApi('GET','workspace/business-settings',$token)->assertForbidden();
+        $this->workspaceGrant(['manage company settings']);
+        DB::table('settings')->insert(['parent_id'=>$this->owner->id,'name'=>'smtp_password','value'=>'DO-NOT-EXPOSE']);
+        $initial=$this->callApi('GET','workspace/business-settings',$token)->assertOk()->assertDontSee('DO-NOT-EXPOSE')->json('data');
+        $payload=['expected_version'=>$initial['version'],'billing'=>['name'=>'Yeni unvan','email'=>'sentetik@example.test','APP_KEY'=>'IGNORE']];
+        $one=$this->callApi('PUT','workspace/business-settings',$token,$payload)->assertOk()->assertJsonPath('data.values.name','Yeni unvan')->assertJsonMissingPath('data.values.APP_KEY');
+        $this->callApi('PUT','workspace/business-settings',$token,$payload)->assertOk()->assertJsonPath('data.version',$one->json('data.version'));
+        $payload['billing']['name']='Eski form';
+        $this->callApi('PUT','workspace/business-settings',$token,$payload)->assertConflict();
+        $this->callApi('GET','workspace/business-settings',$token)->assertJsonPath('data.values.name','Yeni unvan');
+        $this->assertSame(1,DB::table('invoice_business_profiles')->where('parent_id',$this->owner->id)->count());
+        Http::assertNothingSent();Mail::assertNothingSent();
+    }
+    public function test_workspace_reports_use_common_services_and_validate_dates(): void {
+        $token=$this->login();$this->callApi('GET','workspace/reports/usage',$token)->assertForbidden();
+        $this->workspaceGrant(['manage item','manage service report','manage expense']);
+        $service=Service::create(['parent_id'=>$this->owner->id,'status'=>'completed','service_date'=>'2026-10-19']);
+        Service::create(['parent_id'=>$this->account('owner')->id,'status'=>'completed','service_date'=>'2026-10-19']);
+        $this->callApi('GET','workspace/reports/usage?start_date=2026-10-01&end_date=2026-10-31',$token)->assertOk()->assertJsonPath('data.0.subtitle','1');
+        $this->callApi('GET','workspace/reports/usage?start_date=2026-10-31&end_date=2026-10-01',$token)->assertUnprocessable();
+        DB::table('expenses')->insert(['parent_id'=>$this->owner->id,'date'=>'2026-10-19','amount'=>12,'cash_channel'=>'cash']);
+        $this->callApi('GET','workspace/reports/cash?date=2026-10-19',$token)->assertOk()->assertJsonPath('data.0.fields.1.value','12.00');
+        $this->assertSame(1200,app(\App\Services\CashRegister::class)->summary($this->owner->id,'2026-10-19')['expense']['cash']);
+    }
+    public function test_new_workspace_routes_remain_behind_two_factor_and_device_owner_gate(): void {
+        $secret='JBSWY3DPEHPK3PXP'; // Synthetic test secret; never used outside this fixture.
+        $this->owner->twofa_secret=$secret;$this->owner->save();
+        $pending=$this->login();
+        foreach (['workspace/menu','workspace/account','workspace/catalog/invoices','workspace/reports/usage','workspace/business-settings'] as $path) {
+            $this->callApi('GET',$path,$pending)->assertForbidden();
+        }
+    }
     private User $owner;
     protected function setUp(): void {
         parent::setUp();

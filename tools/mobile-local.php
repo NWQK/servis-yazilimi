@@ -16,13 +16,28 @@ require $base.'/vendor/autoload.php';
 $app=require $base.'/bootstrap/app.php';
 $app->loadEnvironmentFrom('.env.mobile-local-unused');
 if(PHP_SAPI==='cli') {
-    if(in_array($argv[1]??'', ['upgrade','seed-notifications','seed-vehicle-form'], true)) {
+    if(in_array($argv[1]??'', ['upgrade','seed-notifications','seed-vehicle-form','seed-workspace'], true)) {
         if(!file_exists($database)){fwrite(STDERR,"Synthetic database missing; seed first.\n");exit(1);}
         $kernel=$app->make(Illuminate\Contracts\Console\Kernel::class);$kernel->bootstrap();
         Illuminate\Support\Facades\Mail::fake();Illuminate\Support\Facades\Http::preventStrayRequests();
         $paths=array_values(array_filter(glob($base.'/database/migrations/*.php'),fn($p)=>!str_contains($p,'version_1_7_filled')));
         $exit=$kernel->call('migrate',['--path'=>$paths,'--realpath'=>true,'--force'=>true]);
         echo $kernel->output();if($exit!==0)exit($exit);
+        if($argv[1]==='seed-workspace') {
+            $owner=App\Models\User::where('email','esnaf@example.test')->where('type','owner')->firstOrFail();
+            $permissions=array_unique(array_merge(array_column(App\Services\MobileWorkspace::CATALOGS,2),['show invoice','show item','show employee','manage company settings','manage service report']));
+            foreach($permissions as $permission) { Spatie\Permission\Models\Permission::firstOrCreate(['name'=>$permission,'guard_name'=>'web']);$owner->givePermissionTo($permission); }
+            $supplier=App\Models\Supplier::where('parent_id',$owner->id)->where('company_name','Sentetik Tedarikçi')->first();
+            if(!$supplier) { $supplier=new App\Models\Supplier(['company_name'=>'Sentetik Tedarikçi','contact_name'=>'Test yetkilisi','phone'=>'5550000000']); $supplier->parent_id=$owner->id; $supplier->save(); }
+            $item=App\Models\Item::where('parent_id',$owner->id)->where('item_code','SYNTHETIC-MENU')->first();
+            if(!$item) $item=app(App\Services\InventoryAccounting::class)->savePurchase($owner->id,['title'=>'Sentetik bakım ürünü','item_code'=>'SYNTHETIC-MENU','quantity'=>20,'purchase_price'=>25,'sales_price'=>50,'supplier_id'=>$supplier->id]);
+            if(!App\Models\Invoice::where('parent_id',$owner->id)->where('invoice_id',9001)->exists()) {
+                $client=App\Models\User::where('parent_id',$owner->id)->where('type','client')->firstOrFail();
+                $invoice=App\Models\Invoice::create(['parent_id'=>$owner->id,'invoice_id'=>9001,'invoice_date'=>now()->toDateString(),'client'=>$client->id]);
+                app(App\Services\InventoryAccounting::class)->add($invoice,['item'=>$item->id,'quantity'=>2]);
+            }
+            echo "Synthetic workspace permissions and fixtures ready. No external messages sent.\n";
+        }
         if($argv[1]==='seed-vehicle-form') {
             $owner=App\Models\User::where('email','esnaf@example.test')->where('type','owner')->firstOrFail();
             Spatie\Permission\Models\Permission::firstOrCreate(['name'=>'create vehicle','guard_name'=>'web']);
