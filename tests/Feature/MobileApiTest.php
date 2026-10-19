@@ -116,10 +116,31 @@ class MobileApiTest extends TestCase {
             $this->assertSame('sent',app(\App\Services\FirebasePush::class)->send('synthetic-fid-identifier',42,'pending'));
             Http::assertSent(fn($r)=>$r['message']['fid']==='synthetic-fid-identifier'
                 && $r['message']['data']===['appointment_id'=>'42','event'=>'pending']
+                && $r['message']['android']['priority']==='HIGH'
+                && $r['message']['android']['notification']['channel_id']==='appointments_v1'
+                && $r['message']['android']['notification']['icon']==='ic_stat_sanayirandevu'
+                && $r['message']['android']['notification']['default_sound']===true
                 && !isset($r['message']['token']) && count($r['message']['data'])===2
                 && $r['message']['android']['notification']['tag']==='appointment-42-pending');
             Http::assertSentCount(1);
         } finally { unlink($path); }
+    }
+    public function test_push_status_reports_disabled_setup_without_network_or_sensitive_output(): void {
+        config(['mobile_push.enabled'=>false,'mobile_push.credentials_file'=>null]);
+        $this->artisan('mobile:push-status')
+            ->expectsOutput('Gönderim: kapalı')
+            ->expectsOutput('Sunucu kimliği: eksik veya geçersiz')
+            ->expectsOutput('Kayıtlı cihaz: 0')
+            ->expectsOutput('pending: 0')
+            ->assertExitCode(1);
+        $this->assertSame(0,DB::table('mobile_push_outbox')->count());
+        Http::assertNothingSent();
+    }
+    public function test_disabled_push_worker_records_heartbeat_without_sending(): void {
+        config(['mobile_push.enabled'=>false]);
+        $this->artisan('mobile:push-work')->assertExitCode(0);
+        $this->assertSame('disabled',DB::table('system_health')->where('component','mobile_push_worker')->value('code'));
+        Http::assertNothingSent();
     }
     public function test_pending_push_waits_for_maintenance_and_recovery_without_network_calls(): void {
         $token=$this->login();$this->callApi('PUT','push-device',$token,['fid'=>str_repeat('synthetic-waiting',4),'platform'=>'android'])->assertNoContent();

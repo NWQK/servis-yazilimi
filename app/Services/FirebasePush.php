@@ -41,9 +41,14 @@ class FirebasePush
                 // No customer names, phones, plates or tenant data on the lock screen.
                 'notification'=>['title'=>'Sanayirandevu','body'=>'Randevu bildiriminiz var. Ayrıntıları uygulamada görüntüleyin.'],
                 'data'=>['appointment_id'=>(string)$appointment,'event'=>$event],
-                'android'=>['ttl'=>'300s','collapse_key'=>$tag,'notification'=>['tag'=>$tag]],
+                'android'=>['priority'=>'HIGH','ttl'=>'300s','collapse_key'=>$tag,'notification'=>[
+                    'tag'=>$tag,'channel_id'=>'appointments_v1','icon'=>'ic_stat_sanayirandevu',
+                    'color'=>'#E51B24','default_sound'=>true,'default_vibrate_timings'=>true,
+                    'notification_priority'=>'PRIORITY_HIGH',
+                ]],
                 'apns'=>['headers'=>['apns-collapse-id'=>$tag,'apns-expiration'=>(string)(time()+300)]],
             ]]);
+        SystemHealth::record('mobile_push_transport',$response->successful(),'http_'.$response->status());
         if ($response->successful()) return 'sent';
         foreach($response->json('error.details',[]) as $detail) if (($detail['errorCode']??'')==='UNREGISTERED') return 'unregistered';
         // No automatic retry: a timeout/server error may have accepted the message.

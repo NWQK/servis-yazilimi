@@ -78,3 +78,44 @@ Resmî kaynaklar:
 - https://firebase.google.com/docs/cloud-messaging/send/v1-api
 - https://firebase.google.com/docs/reference/fcm/rest/v1/projects.messages
 - https://firebase.google.com/docs/cloud-messaging/android/get-started
+
+## Arka planda bildirim gelmiyorsa — 19 Ekim 2026
+
+Uygulamaya girince listenin güncellenmesi yalnızca API sorgusunun çalıştığını
+kanıtlar. Push kaydı, outbox üretimi, sunucu gönderimi ve Android gösterimi ayrı
+adımlardır. `google-services.json` mobil istemci ayarıdır; sunucu servis hesabının
+ve zamanlayıcının yerine geçmez.
+
+Yeni `php artisan mobile:push-status` komutu salt okunurdur: gönderimi açmaz,
+mesaj göndermez, token/anahtar/müşteri bilgisi yazdırmaz. Yapılandırmayı, yerel
+servis hesabı geçerliliğini, cihaz sayısını, outbox durum sayılarını ve son scheduler/
+push-worker çalışma kaydını raporlar. Gerçek Firebase yetkisini veya teslimi
+sınamaz. Kodun sunucuya güvenli dağıtımından sonra çalıştırılmalıdır.
+
+- Gönderim kapalıysa, yetkili yönetici mevcut sunucu .env dosyasında mobile_push
+  ayarlarını yapılandırmalı. Kimlik dosyası repo/public dışında tutulmalı.
+- Ayar değişiminde mevcut dağıtım prosedüründeki config cache yenilenmeli.
+- Yerel kimlik geçersizse dosyanın okunabilirliğini, özel anahtarı ve aynı Firebase
+  proje kimliğini sunucuda kontrol edin; dosyayı sohbete/Git'e koymayın.
+- Cihaz sayısı 0 ise doğru API ortamındaki uygulamada giriş yapıp cihaz bildirim
+  kaydını yenileyin. Cihaz kaydı yapılmadan oluşan eski randevu push'u tekrar üretilmez.
+- pending artıyor, worker güncel değilse mevcut Laravel scheduler cron'unu inceleyin.
+  Standart schedule:run dakikada bir çalışmalı; ikinci kopya cron eklemeyin.
+- Worker dakikada bir çalıştığı için bildirimde yaklaşık bir dakikalık kuyruk gecikmesi
+  olabilir; kesin anlık teslim garantisi yoktur.
+- failed/uncertain için son FCM denemesindeki http_401/http_403/http_400 veya
+  send_exception kodlarını inceleyin. Yanıt gövdeleri/kimlikler loglanmaz. http_200
+  yalnızca FCM kabulüdür; telefon gösterimi kanıtı değildir.
+- sending/uncertain kayıtlarını otomatik sıfırlamayın: tekrar gönderim çift uyarı
+  oluşturabilir. Yeni bir sentetik randevuyla kontrollü uçtan uca test yapın.
+
+Bu sürüm FCM Android priority HIGH ile, appointments_v1 kanalı ve
+ic_stat_sanayirandevu küçük ikonu üzerinden sesli bildirim ister. İstemci bu kanalı
+ilk açılışta oluşturur; eski uygulamalar manifest/fallback kanalı kullanabilir.
+Kullanıcının kanal sesi, bildirim izni ve Rahatsız Etmeyin seçimleri geçerlidir.
+Android'in zorla durdurma ve pil yönetimi kısıtları aşılamaz.
+
+Kontrollü test: doğru sunucudaki yeni APK'yı aç → giriş ve bildirim izni → ana ekrana
+dön (zorla durdurma değil) → yeni sentetik randevu oluştur → scheduler turunu bekle →
+bildirim ve dokunma akışını doğrula → ardından normal uygulama kapatma senaryosunu
+ayrı dene. Gerçek müşteriye SMS/e-posta gitmeyecek test ortamını kullanın.

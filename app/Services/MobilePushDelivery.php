@@ -37,6 +37,7 @@ class MobilePushDelivery
             if ($status==='unregistered') DB::table('mobile_push_devices')->where('id',$device->id)->delete();
         } catch (\Throwable $e) {
             // Do not log credentials, FCM tokens, JWTs or customer data.
+            SystemHealth::record('mobile_push_transport',false,'send_exception');
             $status='uncertain';
         }
         DB::table('mobile_push_outbox')->where('id',$id)->update(['status'=>$status,'updated_at'=>now()]);
