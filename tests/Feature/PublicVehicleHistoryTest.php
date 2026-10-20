@@ -97,6 +97,15 @@ class PublicVehicleHistoryTest extends TestCase
         $this->search('WVWZZZ1JZXW000002')->assertSee('1 servis kaydı');
         $this->assertStringNotContainsString('name="history_public"',view('vehicle.history-fields',['historyVehicle'=>$v])->render());
     }
+    public function test_marketing_directory_and_booking_header_link_to_public_chassis_lookup(): void {
+        auth()->logout();
+        foreach(['marketing.index','directory.index'] as $route) {
+            $this->get(route($route))->assertOk()->assertSee('Şasi sorgula')->assertSee(route('vehicle-history.index'),false);
+        }
+        $html=view('components.public-brand',['directoryHeader'=>false])->render();
+        $this->assertStringContainsString(route('vehicle-history.index'),$html);
+        $this->assertStringContainsString('Şasi sorgula',$html);
+    }
     protected function setUp(): void
     {
         parent::setUp();config(['database.default'=>'sqlite','database.connections.sqlite.database'=>':memory:','cache.default'=>'array','session.driver'=>'array']);DB::purge('sqlite');

@@ -12,6 +12,12 @@ Route::prefix('v1')->name('mobile.')->group(function(){
             Route::get('devices',[AuthController::class,'devices']);
             Route::delete('devices/{id}',[AuthController::class,'revoke'])->whereNumber('id');
             Route::get('dashboard',[BusinessController::class,'dashboard']);
+            Route::get('actions/lookups/{kind}',[\App\Http\Controllers\Api\V1\DetailActionController::class,'lookup']);
+            Route::get('actions/{kind}/{id}/form',[\App\Http\Controllers\Api\V1\DetailActionController::class,'form'])->whereIn('kind',['customers','vehicles','invoices'])->whereNumber('id');
+            Route::put('actions/{kind}/{id}',[\App\Http\Controllers\Api\V1\DetailActionController::class,'update'])->whereIn('kind',['customers','vehicles','invoices'])->whereNumber('id');
+            Route::get('actions/invoices/{id}/payment-form',[\App\Http\Controllers\Api\V1\DetailActionController::class,'paymentForm'])->whereNumber('id');
+            Route::post('actions/invoices/{id}/preview',[\App\Http\Controllers\Api\V1\DetailActionController::class,'preview'])->whereNumber('id');
+            Route::post('actions/invoices/{id}/payments',[\App\Http\Controllers\Api\V1\DetailActionController::class,'payment'])->whereNumber('id');
             Route::get('workspace/menu',[\App\Http\Controllers\Api\V1\WorkspaceController::class,'menu']);
             Route::get('workspace/account',[\App\Http\Controllers\Api\V1\WorkspaceController::class,'account']);
             Route::match(['GET','PUT'],'workspace/business-settings',[\App\Http\Controllers\Api\V1\WorkspaceController::class,'business']);

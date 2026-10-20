@@ -50,8 +50,8 @@ class AuthController extends Controller {
         $user=$request->user(); $owner=User::findOrFail($request->attributes->get('mobile_owner'));
         return response()->json(['data'=>['user'=>['id'=>$user->id,'name'=>$user->name,'type'=>$user->type],
             'business'=>['id'=>$owner->id,'name'=>$owner->name],
-            'permissions'=>collect(['manage client','show client','create client','manage vehicle','show vehicle','create vehicle','manage service','show service'])->filter(fn($p)=>$user->can($p))->values(),
-            'capabilities'=>['branch_switch'=>false,'financial_writes'=>false]]]);
+            'permissions'=>collect(['manage client','show client','create client','manage vehicle','show vehicle','create vehicle','manage service','show service','edit client','edit vehicle','manage invoice','show invoice','edit invoice','create invoice payment'])->filter(fn($p)=>$user->can($p))->values(),
+            'capabilities'=>['branch_switch'=>false,'financial_writes'=>$user->can('edit invoice') || ($user->can('create invoice payment') && \App\Services\ManualInvoicePayment::available()),'invoice_edit'=>$user->can('edit invoice'),'invoice_payment'=>$user->can('create invoice payment') && \App\Services\ManualInvoicePayment::available(),'customer_update'=>$user->can('edit client'),'vehicle_update'=>$user->can('edit vehicle')]]]);
     }
     public function devices(Request $request) {
         $current=$request->user()->currentAccessToken()->id;

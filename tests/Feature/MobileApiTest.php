@@ -5,6 +5,127 @@ use Illuminate\Support\Facades\{DB,Hash,Mail,Http};
 use Spatie\Permission\Models\Permission;
 use Tests\TestCase;
 class MobileApiTest extends TestCase {
+    public function test_detail_vehicle_edit_preserves_status_history_and_rejects_stale_and_foreign_choices(): void {
+        $this->workspaceGrant(['edit vehicle']);$token=$this->login();$data=$this->vehiclePayload($this->owner);
+        $id=$this->callApi('POST','vehicles',$token,$data,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertCreated()->json('data.id');
+        $path='actions/vehicles/'.$id;$form=$this->callApi('GET',$path.'/form',$token)->assertOk()->json('data.values');
+        $old=Vehicle::findOrFail($id);$payload=array_replace($form,['license_plate'=>'34 NEW 18','mileage'=>'16000','status'=>'forged','history_public'=>true]);
+        $key=['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()];
+        $this->callApi('PUT',$path,$token,$payload,$key)->assertOk();
+        $this->callApi('PUT',$path,$token,$payload,$key)->assertOk()->assertJsonPath('meta.replayed',true);
+        $this->assertSame('34 NEW 18',$old->fresh()->license_plate);$this->assertSame($old->status,$old->fresh()->status);
+        $this->callApi('PUT',$path,$token,$payload,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertConflict();
+        $current=$this->callApi('GET',$path.'/form',$token)->json('data.values');
+        $foreign=$this->vehiclePayload($this->account('owner'));$current['client']=$foreign['client'];
+        $this->callApi('PUT',$path,$token,$current,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertUnprocessable();
+        $current=$this->callApi('GET',$path.'/form',$token)->json('data.values');$current['chassis_no']='TESTVN12345678902';
+        $this->callApi('PUT',$path,$token,$current,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertUnprocessable();
+        $current['chassis_change_confirm']=true;
+        $this->callApi('PUT',$path,$token,$current,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertOk();
+        $this->assertSame('TESTVN12345678902',$old->fresh()->chassis_no);
+        $this->assertSame(1,DB::table('vehicle_history_index')->where('is_public',true)->count());
+    }
+    public function test_detail_actions_obey_permission_two_factor_maintenance_and_recovery_guards(): void {
+        $this->workspaceGrant(['edit invoice','edit client']);$invoice=$this->detailInvoice();$token=$this->login();
+        $path='actions/customers/'.$invoice->client;
+        $form=$this->callApi('GET',$path.'/form',$token)->json('data.values');$form['name']='Blocked';
+        $headers=['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()];
+        $staff=$this->login($this->account('employee',$this->owner->id));
+        $this->callApi('GET',$path.'/form',$staff)->assertForbidden();
+        $this->callApi('PUT',$path,$staff,$form,$headers)->assertForbidden();
+        \App\Services\PlatformMaintenance::set(true);$this->callApi('PUT',$path,$token,$form,$headers)->assertStatus(503);
+        \App\Services\PlatformMaintenance::set(false);
+        DB::table('business_recovery_locks')->insert(['owner_id'=>$this->owner->id,'recovery_id'=>(string)\Illuminate\Support\Str::uuid(),'created_at'=>now()]);
+        $this->callApi('PUT',$path,$token,$form,$headers)->assertStatus(503);
+        DB::table('business_recovery_locks')->delete();
+        $this->owner->twofa_secret='JBSWY3DPEHPK3PXP';$this->owner->save();$pending=$this->login();
+        $this->callApi('GET',$path.'/form',$pending)->assertForbidden();$this->callApi('PUT',$path,$pending,$form,$headers)->assertForbidden();
+        $this->callApi('POST','actions/invoices/'.$invoice->id.'/preview',$pending,[])->assertForbidden();
+        $this->assertSame(0,DB::table('mobile_detail_operations')->count());$this->assertNotSame('Blocked',User::find($invoice->client)->name);
+    }
+    public function test_mobile_vehicle_edit_cannot_override_admin_moderation_or_move_published_history(): void {
+        $this->workspaceGrant(['edit vehicle']);$token=$this->login();$data=$this->vehiclePayload($this->owner);
+        $id=$this->callApi('POST','vehicles',$token,$data,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertCreated()->json('data.id');
+        Service::create(['parent_id'=>$this->owner->id,'client'=>$data['client'],'vehicle'=>$id,'status'=>'completed','service_date'=>'2026-10-20']);
+        $snapshot=(array)DB::table('public_service_history')->where('vehicle_id',$id)->first();
+        $this->assertNotEmpty($snapshot);
+        DB::table('vehicle_history_controls')->insert(['vehicle_id'=>$id,'hidden'=>true,'reason'=>'Synthetic administrator decision','revision'=>1,'updated_at'=>now()]);
+        $path='actions/vehicles/'.$id;
+        $form=$this->callApi('GET',$path.'/form',$token)->assertOk()->json('data.values');
+        $this->assertArrayNotHasKey('history_public',$form);
+        $payload=array_replace($form,['history_public'=>true,'chassis_no'=>'TESTVN12345678902','chassis_change_confirm'=>true,'mileage'=>20000]);
+        $headers=['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()];
+        $this->callApi('PUT',$path,$token,$payload,$headers)->assertOk();
+        $this->callApi('PUT',$path,$token,$payload,$headers)->assertOk()->assertJsonPath('meta.replayed',true);
+        $this->assertTrue(app(\App\Services\PublicVehicleHistory::class)->hidden($id));
+        $this->assertEquals($snapshot,(array)DB::table('public_service_history')->where('vehicle_id',$id)->first());
+        $this->assertSame(1,(int)DB::table('vehicle_history_controls')->where('vehicle_id',$id)->value('revision'));
+    }
+    public function test_partial_legacy_payment_schema_is_reported_unavailable_instead_of_failing_during_save(): void {
+        $this->workspaceGrant(['create invoice payment']);$token=$this->login();$invoice=$this->detailInvoice();
+        \Illuminate\Support\Facades\Schema::table('invoice_payments',fn($t)=>$t->string('payment_status')->nullable());
+        $this->callApi('GET','session',$token)->assertOk()->assertJsonPath('data.capabilities.invoice_payment',false)->assertJsonPath('data.capabilities.financial_writes',false);
+        $this->callApi('GET','actions/invoices/'.$invoice->id.'/payment-form',$token)->assertStatus(503);
+        $this->callApi('POST','actions/invoices/'.$invoice->id.'/payments',$token,[],['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertStatus(503);
+        $this->assertSame(0,DB::table('invoice_payments')->count());
+    }
+    private function detailInvoice(): Invoice {
+        $customer=app(\App\Services\ClientRegistration::class)->create($this->owner->id,['name'=>'Sentetik müşteri','phone_number'=>'5551234567']);
+        $service=Service::create(['parent_id'=>$this->owner->id,'client'=>$customer->id,'service_id'=>9002,'status'=>'scheduled']);
+        $invoice=Invoice::create(['parent_id'=>$this->owner->id,'client'=>$customer->id,'service'=>$service->id,'invoice_id'=>9002,'invoice_date'=>'2026-10-20']);
+        $item=app(\App\Services\InventoryAccounting::class)->savePurchase($this->owner->id,['title'=>'Sentetik parça','quantity'=>10,'purchase_price'=>10,'sales_price'=>50]);
+        app(\App\Services\InventoryAccounting::class)->add($invoice,['item'=>$item->id,'quantity'=>2]);
+        return $invoice->fresh();
+    }
+    public function test_mobile_payment_is_idempotent_revision_checked_and_tenant_scoped(): void {
+        \Illuminate\Support\Facades\Schema::table('invoice_payments',function($t){foreach(['transaction_id','payment_type','payment_status','receipt'] as $c)$t->string($c)->nullable();});
+        $this->workspaceGrant(['create invoice payment','show invoice','manage invoice']);$token=$this->login();$invoice=$this->detailInvoice();
+        $this->callApi('GET','session',$token)->assertOk()->assertJsonPath('data.capabilities.financial_writes',true)->assertJsonPath('data.capabilities.invoice_payment',true);
+        $form=$this->callApi('GET','actions/invoices/'.$invoice->id.'/payment-form',$token)->assertOk()->json('data.values');
+        $data=array_replace($form,['amount'=>'40.00','payment_date'=>'2026-10-20','cash_channel'=>'card']);
+        $headers=['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()];
+        $this->callApi('POST','actions/invoices/'.$invoice->id.'/payments',$token,$data,$headers)->assertOk()->assertJsonPath('meta.replayed',false);
+        $this->callApi('POST','actions/invoices/'.$invoice->id.'/payments',$token,$data,$headers)->assertOk()->assertJsonPath('meta.replayed',true);
+        $this->assertSame(1,DB::table('invoice_payments')->where('invoice_id',$invoice->id)->count());
+        $this->assertEquals(60,$invoice->fresh()->getInvoiceTotalDueAmount());
+        $this->callApi('POST','actions/invoices/'.$invoice->id.'/payments',$token,$data,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertConflict();
+        $fresh=$this->callApi('GET','actions/invoices/'.$invoice->id.'/payment-form',$token)->json('data.values');
+        $this->callApi('POST','actions/invoices/'.$invoice->id.'/payments',$token,array_replace($fresh,['amount'=>'60.01']),['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertUnprocessable();
+        $data['amount']='41.00';$this->callApi('POST','actions/invoices/'.$invoice->id.'/payments',$token,$data,$headers)->assertConflict();
+        $other=Invoice::create(['parent_id'=>$this->account('owner')->id]);
+        $this->callApi('GET','actions/invoices/'.$other->id.'/payment-form',$token)->assertNotFound();
+        Http::assertNothingSent();Mail::assertNothingSent();
+    }
+    public function test_mobile_invoice_preview_rolls_back_and_commits_stock_once(): void {
+        $this->workspaceGrant(['edit invoice','show invoice']);$token=$this->login();$invoice=$this->detailInvoice();
+        $data=$this->callApi('GET','actions/invoices/'.$invoice->id.'/form',$token)->assertOk()->json('data.values');
+        $itemId=$data['item'][0];$this->assertSame(8,(int)DB::table('items')->where('id',$itemId)->value('quantity'));
+        $data['quantity'][0]=3;$data['discount_amount']='10.00';
+        $preview=$this->callApi('POST','actions/invoices/'.$invoice->id.'/preview',$token,$data)->assertOk()->assertJsonPath('data.after_total',140)->json('data');
+        $this->assertSame(8,(int)DB::table('items')->where('id',$itemId)->value('quantity'));
+        $this->callApi('PUT','actions/invoices/'.$invoice->id,$token,$data,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertUnprocessable();
+        $data['preview_token']=$preview['token'];$headers=['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()];
+        $this->callApi('PUT','actions/invoices/'.$invoice->id,$token,$data,$headers)->assertOk();
+        $this->callApi('PUT','actions/invoices/'.$invoice->id,$token,$data,$headers)->assertOk()->assertJsonPath('meta.replayed',true);
+        $this->assertSame(7,(int)DB::table('items')->where('id',$itemId)->value('quantity'));
+        $this->assertEquals(140,$invoice->fresh()->getInvoiceAllTotalAmount());
+        $this->callApi('POST','actions/invoices/'.$invoice->id.'/preview',$token,$data)->assertConflict();
+    }
+    public function test_mobile_contact_edit_does_not_modify_vehicle_or_service_and_links_are_scoped(): void {
+        $this->workspaceGrant(['edit client']);$token=$this->login();$invoice=$this->detailInvoice();$customer=$invoice->client;
+        $form=$this->callApi('GET','actions/customers/'.$customer.'/form',$token)->assertOk()->json('data.values');
+        $data=array_replace($form,['name'=>'Yeni müşteri adı','phone_number'=>'05551234567','status'=>'completed','parent_id'=>999]);
+        $headers=['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()];
+        $this->callApi('PUT','actions/customers/'.$customer,$token,$data,$headers)->assertOk();
+        $this->callApi('PUT','actions/customers/'.$customer,$token,$data,$headers)->assertOk()->assertJsonPath('meta.replayed',true);
+        $this->assertSame('Yeni müşteri adı',User::find($customer)->name);
+        $this->assertSame('scheduled',Service::find($invoice->service)->status);
+        $this->assertSame($this->owner->id,(int)User::find($customer)->parent_id);
+        $this->callApi('GET','customers/'.$customer,$token)->assertOk()->assertJsonPath('data.actions.whatsapp_url','https://wa.me/905551234567');
+        $this->callApi('PUT','actions/customers/'.$customer,$token,$data,['Idempotency-Key'=>(string)\Illuminate\Support\Str::uuid()])->assertConflict();
+        $foreign=app(\App\Services\ClientRegistration::class)->create($this->account('owner')->id,['name'=>'Gizli','phone_number'=>'5551234567']);
+        $this->callApi('GET','actions/customers/'.$foreign->id.'/form',$token)->assertNotFound();
+    }
     public function test_workspace_search_cannot_escape_tenant_and_show_alone_does_not_grant_list_access(): void {
         $this->workspaceGrant(['manage item','show item']);
         $token=$this->login();$foreign=$this->account('owner');

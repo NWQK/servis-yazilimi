@@ -71,6 +71,10 @@ class WorkspaceController extends Controller
             $card['fields'][]=['label'=>'Toplam (₺)','value'=>number_format($total,2,',','.')];
             if ($module==='invoices') {
                 $due=$document->getInvoiceTotalDueAmount();
+                $phone=DB::table('users')->where('parent_id',$owner)->where('type','client')->where('id',$document->client)->value('phone_number');
+                $mobile=\App\Support\TurkishPhone::mobile($phone);
+                $card['actions']=['edit'=>$r->user()->can('edit invoice'),'payment'=>$r->user()->can('create invoice payment') && $due>0 && \Illuminate\Support\Facades\Schema::hasColumn('invoice_payments','payment_status'),
+                    'whatsapp_url'=>$mobile?'https://wa.me/'.ltrim($mobile,'+'):null];
                 $card['fields'][]=['label'=>'Kalan borç (₺)','value'=>number_format($due,2,',','.')];
                 $card['fields'][]=['label'=>'Fatura sürümü','value'=>(string)$document->revision];
                 $card['sections']=[['title'=>'Ödemeler (ilk 100)','rows'=>$document->payments->take(100)->map(fn($p)=>[

@@ -22,7 +22,7 @@
         <a class="brand" href="{{ route('marketing.index') }}" aria-label="Sanayi Randevu tanıtım sayfası"><img src="{{ asset('images/brand/sanayirandevu-logo.svg') }}" width="260" height="36" alt="sanayirandevu.com"></a>
         <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="main-nav">Menü <span aria-hidden="true">☰</span></button>
         <nav id="main-nav" aria-label="Ana menü">
-            <a href="{{ route('vehicle-history.index') }}">Araç geçmişi</a><a href="#ozellikler">Özellikler</a><a href="#nasil-calisir">Nasıl çalışır?</a><a href="#sorular">Sık sorulanlar</a>
+            <a href="{{ route('vehicle-history.index') }}">Şasi sorgula</a><a href="#ozellikler">Özellikler</a><a href="#nasil-calisir">Nasıl çalışır?</a><a href="#sorular">Sık sorulanlar</a>
             <a class="nav-login" href="{{ route('login') }}">İşletme girişi <span aria-hidden="true">↗</span></a>
             <a class="button button-small" href="{{ route('directory.index') }}">Servis bul <span aria-hidden="true">→</span></a>
         </nav>
@@ -129,6 +129,6 @@
 
     <section class="final-cta wrap"><p class="eyebrow">İŞİNİZİN YENİ DÜZENİ.</p><h2>Sanayide iş çok.<br><span>Takibi kolay olsun.</span></h2><div class="hero-actions"><a class="button button-white" href="{{ route('register') }}">İşletmem için başla <span aria-hidden="true">↗</span></a><a class="button button-ghost" href="{{ route('directory.index') }}">Servis bul, randevu al <span aria-hidden="true">→</span></a></div></section>
 </main>
-<footer class="site-footer wrap"><div><a class="brand" href="{{ route('marketing.index') }}"><img src="{{ asset('images/brand/sanayirandevu-logo.svg') }}" width="260" height="36" loading="lazy" alt="sanayirandevu.com"></a><p>Servisinizin işi, müşterinizin zamanı.</p></div><nav aria-label="Alt menü"><a href="{{ route('page', \App\Services\TermsAndConditions::SLUG) }}">Şartlar ve koşullar</a><a href="#ozellikler">Özellikler</a><a href="{{ route('directory.index') }}">Randevu al</a><a href="{{ route('login') }}">İşletme girişi</a></nav><div class="footer-bottom"><span>© {{ date('Y') }} Sanayi Randevu</span><span>Türkiye için. Türkçe. ₺.</span></div></footer>
+<footer class="site-footer wrap"><div><a class="brand" href="{{ route('marketing.index') }}"><img src="{{ asset('images/brand/sanayirandevu-logo.svg') }}" width="260" height="36" loading="lazy" alt="sanayirandevu.com"></a><p>Servisinizin işi, müşterinizin zamanı.</p></div><nav aria-label="Alt menü"><a href="{{ route('page', \App\Services\TermsAndConditions::SLUG) }}">Şartlar ve koşullar</a><a href="#ozellikler">Özellikler</a><a href="{{ route('directory.index') }}">Randevu al</a><a href="{{ route('vehicle-history.index') }}">Şasi sorgula</a><a href="{{ route('login') }}">İşletme girişi</a></nav><div class="footer-bottom"><span>© {{ date('Y') }} Sanayi Randevu</span><span>Türkiye için. Türkçe. ₺.</span></div></footer>
 </body>
 </html>
