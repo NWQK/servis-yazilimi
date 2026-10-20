@@ -51,7 +51,6 @@ class VehicleRegistration
         return $vehicle;
     });
 
-    if ($request->exists('history_public')) app(\App\Services\PublicVehicleHistory::class)->share($vehicle,$request->boolean('history_public'));
         return $vehicle;
     }
     private function number(int $owner): int {

@@ -32,6 +32,8 @@ class Service extends Model
 
     protected static function booted(): void
     {
+        static::saved(fn(self $service)=>app(\App\Services\PublicVehicleHistory::class)->capture((int)$service->id));
+        static::deleting(fn(self $service)=>app(\App\Services\PublicVehicleHistory::class)->capture((int)$service->id));
         static::saving(function(self $service){
             if($service->exists && $service->isDirty('status') && $service->getOriginal('status')==='completed')
                 \App\Services\PhotoRetention::markExpired((int)$service->parent_id,(int)$service->id);

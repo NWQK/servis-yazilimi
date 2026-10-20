@@ -21,14 +21,10 @@
         </div>
     @endif
     @if(auth()->user()->type!=='client' && auth()->user()->can('edit vehicle'))
-    <form method="post" action="{{ route('vehicle.history-sharing',$vehicle) }}" class="border rounded p-3 mb-3">
-        @csrf
+    <div class="border rounded p-3 mb-3">
         <strong>Herkese açık servis geçmişi</strong>
-        <p class="text-muted small mt-2">Paylaşım açıldığında yalnızca bu aracın tamamlanmış servislerinin işletme adı, tarihi, işlem türü ve servis kilometresi şasi sorgusunda görünür. Özel notlar ve mali bilgiler gösterilmez.</p>
-        <input type="hidden" name="history_public" value="0">
-        <div class="form-check mb-2"><input id="vehicle-public-history" name="history_public" type="checkbox" value="1" class="form-check-input" @checked(app(\App\Services\PublicVehicleHistory::class)->isPublic($vehicle))><label class="form-check-label" for="vehicle-public-history">Tamamlanmış servis özetlerini paylaş</label></div>
-        <button class="btn btn-sm btn-primary">Paylaşım tercihini kaydet</button>
-    </form>
+        <p class="text-muted small mt-2 mb-0">Geçerli şasiye bağlı tamamlanmış servis özetleri otomatik görünür. İşletme, marka/model, plakanın son üç karakteri, işlem, tarih ve kilometre paylaşılır. Yayımlanmış geçmiş kayıt silinerek kaldırılamaz. Görünürlüğü yalnız süper admin yönetir; müşteri ve mali bilgiler paylaşılmaz.</p>
+    </div>
     @endif
     <div class="product-card">
         <div class="row">

@@ -28,9 +28,8 @@ class ChassisNumber
     {
         if ($request->exists('chassis_no')) $request->merge(['chassis_no'=>self::normalize($request->input('chassis_no'))]);
         $request->validate(['chassis_no'=>self::rules(!$vehicle || !empty($vehicle->chassis_no)),
-            'history_public'=>'nullable|boolean','chassis_change_confirm'=>'sometimes|accepted']);
+            'chassis_change_confirm'=>'sometimes|accepted']);
         $number=self::normalize($request->input('chassis_no'));
-        if ($request->boolean('history_public') && !self::valid($number)) throw ValidationException::withMessages(['chassis_no'=>'Servis geçmişini paylaşmak için önce geçerli şasi numarasını girin.']);
         if ($vehicle && !empty($vehicle->chassis_no) && self::normalize($vehicle->chassis_no)!==$number
             && !$request->boolean('chassis_change_confirm')) {
             throw ValidationException::withMessages(['chassis_change_confirm'=>'Şasi değişikliği servis geçmişinin eşleşmesini değiştirir. Ruhsattan kontrol edip değişikliği onaylayın.']);

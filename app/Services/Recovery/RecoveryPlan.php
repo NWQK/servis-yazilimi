@@ -263,7 +263,7 @@ class RecoveryPlan
                 }
             }
         }
-        // Rebuild the public search index without republishing old sharing permissions.
+        // Rebuild the live VIN index. Platform snapshots/moderation are not tenant restore data.
         if(Schema::hasTable('vehicle_history_index')){
             if($mode!=='missing')DB::table('vehicle_history_index')->where('parent_id',$owner)->delete();
             foreach(\App\Models\Vehicle::where('parent_id',$owner)->cursor() as $vehicle){

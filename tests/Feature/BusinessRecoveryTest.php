@@ -283,13 +283,14 @@ class BusinessRecoveryTest extends TestCase
         $job->update(['checkpoint_expires_at'=>now()->subMinute()]);app(BusinessRecoveryService::class)->prune();
         $this->assertDirectoryDoesNotExist($dir);$this->assertNull($job->fresh()->checkpoint_hash);
     }
-    public function test_old_sessions_must_reauthenticate_and_old_public_sharing_is_not_republished(): void
+    public function test_old_sessions_must_reauthenticate_and_platform_visibility_is_not_reverted(): void
     {
         $a=$this->records($this->owner);
-        app(\App\Services\PublicVehicleHistory::class)->share($a['vehicle'],true);
+        DB::table('vehicle_history_controls')->insert(['vehicle_id'=>$a['vehicle']->id,'hidden'=>true,'revision'=>1,'reason'=>'Test yönetici kararı']);
         $backup=$this->backup();$a['client']->update(['name'=>'After']);$job=$this->execute($this->prepared($backup,'replace'));
         $this->assertSame('completed',$job->status,$job->error??'');
         $this->assertFalse(app(\App\Services\PublicVehicleHistory::class)->isPublic($a['vehicle']->fresh()));
+        $this->assertSame(1,DB::table('vehicle_history_controls')->where('vehicle_id',$a['vehicle']->id)->value('revision'));
         $this->actingAs($this->owner)->withSession(['business_recovery_epochs'=>[$this->owner->id=>0]])
             ->get(route('dashboard'))->assertRedirect(route('login'));
     }

@@ -18,6 +18,7 @@ class Vehicle extends Model
 
     protected static function booted(): void
     {
+        static::deleting(fn(self $vehicle)=>app(\App\Services\PublicVehicleHistory::class)->captureVehicle((int)$vehicle->id));
         static::saving(function(self $vehicle){
             if ($vehicle->isDirty('chassis_no')) $vehicle->chassis_no=\App\Services\ChassisNumber::normalize($vehicle->chassis_no);
         });

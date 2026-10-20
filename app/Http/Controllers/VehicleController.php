@@ -144,7 +144,6 @@ class VehicleController extends Controller
                 User::whereKey(parentId())->lockForUpdate()->firstOrFail();
                 $vehicle=Vehicle::where('parent_id',parentId())->lockForUpdate()->findOrFail($vehicle->id);
                 \App\Services\ChassisNumber::validateForm($request,$vehicle);
-                $historyIdentityChanged=\App\Services\ChassisNumber::normalize($vehicle->chassis_no)!==\App\Services\ChassisNumber::normalize($request->chassis_no);
                 $vehicle->client = $request->client;
                 $vehicle->type = $request->type;
                 $vehicle->brand = $request->brand;
@@ -162,7 +161,6 @@ class VehicleController extends Controller
                 $vehicle->notes = $request->notes;
                 \App\Services\ChassisNumber::assertUnique($vehicle);
                 $vehicle->save();
-                if ($request->exists('history_public')) app(\App\Services\PublicVehicleHistory::class)->share($vehicle,!$historyIdentityChanged && $request->boolean('history_public'));
 
             },5);
 
@@ -186,16 +184,7 @@ class VehicleController extends Controller
 
     public function historySharing(Request $request, Vehicle $vehicle)
     {
-        abort_unless(auth()->user()->type!=='client' && auth()->user()->can('edit vehicle') && (int)$vehicle->parent_id===(int)parentId(),403);
-        $request->validate(['history_public'=>'required|boolean']);
-        \Illuminate\Support\Facades\DB::transaction(function() use($request,$vehicle){
-            User::whereKey(parentId())->lockForUpdate()->firstOrFail();
-            $vehicle=Vehicle::where('parent_id',parentId())->lockForUpdate()->findOrFail($vehicle->id);
-            if ($request->boolean('history_public') && !\App\Services\ChassisNumber::valid(\App\Services\ChassisNumber::normalize($vehicle->chassis_no)))
-                throw \Illuminate\Validation\ValidationException::withMessages(['chassis_no'=>'Önce araç düzenleme formundan geçerli şasi numarasını kaydedin.']);
-            app(\App\Services\PublicVehicleHistory::class)->share($vehicle,$request->boolean('history_public'));
-        },5);
-        return redirect()->route('vehicle.index')->with('success','Servis geçmişi paylaşım tercihi kaydedildi.');
+        abort(403,'Servis geçmişi görünürlüğünü yalnız süper admin yönetebilir.');
     }
 
     public function vehicleNumber()

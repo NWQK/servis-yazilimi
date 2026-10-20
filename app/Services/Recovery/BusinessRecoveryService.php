@@ -99,7 +99,7 @@ class BusinessRecoveryService
     public function execute(BusinessRecovery $job): void
     {
         if(DB::getDriverName()==='mysql'){
-            $tables=array_merge(RecoveryTables::existing(),['business_recoveries','business_recovery_locks','model_has_roles','model_has_permissions','vehicle_history_index','admin_audit_logs']);
+            $tables=array_merge(RecoveryTables::existing(),['business_recoveries','business_recovery_locks','model_has_roles','model_has_permissions','vehicle_history_index','public_service_history','vehicle_history_controls','admin_audit_logs']);
             $unsafe=DB::table('information_schema.tables')->where('table_schema',DB::getDatabaseName())
                 ->whereIn('table_name',$tables)->whereRaw('UPPER(engine) <> ?', ['INNODB'])->exists();
             if($unsafe)throw new RecoveryFailure('Güvenli geri yükleme için ilgili MySQL tabloları InnoDB olmalıdır.');

@@ -166,7 +166,6 @@ class ClientController extends Controller
                 $vehicle->notes               = $request->vehicle_notes;
                 $vehicle->parent_id           = parentId();
                 $vehicle->save();
-                if ($request->exists('history_public')) app(\App\Services\PublicVehicleHistory::class)->share($vehicle,$request->boolean('history_public'));
                 $service               = new Service();
                 $service->service_id   = $this->serviceNumber();
                 $service->vehicle      = $vehicle->id;
@@ -432,7 +431,6 @@ class ClientController extends Controller
                 $vehicle = Vehicle::where('parent_id',parentId())->where('client', $id)->first();
                 if ($vehicle) {
                     $serviceMileageChanged=$request->filled('mileage') && (int)$request->mileage !== (int)$vehicle->mileage;
-                    $historyIdentityChanged=\App\Services\ChassisNumber::normalize($vehicle->chassis_no)!==\App\Services\ChassisNumber::normalize($request->chassis_no);
                     $vehicle->chassis_no=$request->chassis_no;
                     \App\Services\ChassisNumber::assertUnique($vehicle);
                     $vehicle->update([
@@ -451,7 +449,6 @@ class ClientController extends Controller
                         'notes'                 => $request->vehicle_notes,
                     ]);
                 }
-                if ($vehicle && $request->exists('history_public')) app(\App\Services\PublicVehicleHistory::class)->share($vehicle,!$historyIdentityChanged && $request->boolean('history_public'));
                 $service = Service::where('parent_id',parentId())->where('client', $id)->first();
                 if ($service) {
                     abort_unless((int) $service->parent_id === (int) parentId(), 403);

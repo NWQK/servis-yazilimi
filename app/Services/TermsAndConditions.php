@@ -6,7 +6,7 @@ class TermsAndConditions
 {
     public const SLUG = 'terms_conditions';
     public const TITLE = 'Şartlar ve koşullar';
-    public const VERSION = '11 Eki 2026';
+    public const VERSION = '20 Eki 2026';
 
     public static function content(): string
     {

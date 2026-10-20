@@ -110,6 +110,9 @@ use GuzzleHttp\Psr7\Query;
 
 require __DIR__ . '/auth.php';
 Route::middleware(['auth', 'XSS'])->group(function () {
+    Route::get('admin/vehicle-history',[\App\Http\Controllers\VehicleHistoryAdminController::class,'index'])->name('vehicle-history-admin.index');
+    Route::get('admin/vehicle-history/{vehicle}',[\App\Http\Controllers\VehicleHistoryAdminController::class,'show'])->whereNumber('vehicle')->name('vehicle-history-admin.show');
+    Route::post('admin/vehicle-history/{vehicle}',[\App\Http\Controllers\VehicleHistoryAdminController::class,'update'])->whereNumber('vehicle')->middleware('throttle:20,1')->name('vehicle-history-admin.update');
     Route::get('admin/branches', [\App\Http\Controllers\BusinessGroupController::class,'index'])->name('branches.index');
     Route::post('admin/branches', [\App\Http\Controllers\BusinessGroupController::class,'store'])->name('branches.store');
     Route::post('admin/branches/{group}/membership', [\App\Http\Controllers\BusinessGroupController::class,'membership'])->whereNumber('group')->name('branches.membership');
