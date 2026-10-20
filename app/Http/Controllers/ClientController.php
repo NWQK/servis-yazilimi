@@ -414,21 +414,7 @@ class ClientController extends Controller
                     return redirect()->back()->withErrors($validator)->withInput();
                 }
                 $user = User::findOrFail($id);
-                $user->update([
-                    'name'         => $request->name,
-                    'email'        => $request->filled('email') ? $request->email : null,
-                    'phone_number' => $request->phone_number,
-                ]);
-                $client = Client::where('parent_id',parentId())->where('user_id', $id)->first();
-                if ($client) {
-                    $client->update([
-                        'state'     => $request->state,
-                        'city'      => $request->city,
-                        'zip_code'  => $request->zip_code,
-                        'address'   => $request->address,
-                        'notes'     => $request->notes,
-                    ]);
-                }
+                app(\App\Services\CustomerContact::class)->update($user, ['name'=>$request->name, 'email'=>$request->email, 'phone_number'=>$request->phone_number, 'state'=>$request->state, 'city'=>$request->city, 'zip_code'=>$request->zip_code, 'address'=>$request->address, 'notes'=>$request->notes]);
                 $vehicle = Vehicle::where('parent_id',parentId())->where('client', $id)->first();
                 if ($vehicle) {
                     $serviceMileageChanged=$request->filled('mileage') && (int)$request->mileage !== (int)$vehicle->mileage;

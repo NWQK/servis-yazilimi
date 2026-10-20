@@ -64,6 +64,12 @@ class BusinessController extends Controller {
         abort_unless($item,404);
         $data=(array)$item;
         if($kind==='customers')$data['profile']=DB::table('clients')->where('parent_id',$r->attributes->get('mobile_owner'))->where('user_id',$id)->first(['city','state','address','notes']);
+        if(in_array($kind,['customers','vehicles'],true)) {
+            $phone=$kind==='customers'?$data['phone_number']:DB::table('users')->where('parent_id',$r->attributes->get('mobile_owner'))->where('type','client')
+                ->where('id',Vehicle::where('parent_id',$r->attributes->get('mobile_owner'))->whereKey($id)->value('client'))->value('phone_number');
+            $mobile=\App\Support\TurkishPhone::mobile($phone);
+            $data['actions']=['edit'=>$r->user()->can($kind==='customers'?'edit client':'edit vehicle'),'whatsapp_url'=>$mobile?'https://wa.me/'.ltrim($mobile,'+'):null];
+        }
         return response()->json(['data'=>$data]);
     }
     public function dashboard(Request $r) {
